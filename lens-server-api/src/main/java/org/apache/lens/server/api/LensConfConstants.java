@@ -52,9 +52,9 @@ public final class LensConfConstants {
   public static final String METASTORE_PFX = "lens.metastore.";
 
   /**
-   * The Constant DRIVER_CLASSES.
+   * The Constant DRIVER_TYPES_AND_CLASSES
    */
-  public static final String DRIVER_CLASSES = SERVER_PFX + "drivers";
+  public static final String DRIVER_TYPES_AND_CLASSES = SERVER_PFX + "drivers";
   /**
    * The Constant DRIVER_SELECTOR_CLASS.
    */
@@ -942,4 +942,58 @@ public final class LensConfConstants {
    */
   public static final int DEFAULT_FETCH_COUNT_SAVED_QUERY_LIST = 20;
 
+  /**
+   * This is the base directory where all drivers are available under lens-server's Conf directory.
+   */
+  public static final String DRIVERS_BASE_DIR = "drivers";
+
+  /**
+   * Name of the property that holds the path of "conf" directory of server
+   */
+  public static final String CONFIG_LOCATION = "config.location";
+
+  /**
+   * Default location of "conf" directory (wrt to lens-server/bin)
+   */
+  public static final String DEFAULT_CONFIG_LOCATION = "../conf";
+
+  /**
+   * The Constant RESULTSET_PURGE_ENABLED.
+   */
+  public static final String RESULTSET_PURGE_ENABLED = SERVER_PFX + "resultset.purge.enabled";
+
+  /**
+   * The Constant DEFAULT_RESULTSET_PURGE_ENABLED
+   */
+  public static final boolean DEFAULT_RESULTSET_PURGE_ENABLED = false;
+
+  /**
+   * The Constant RESULTSET_PURGE_INTERVAL_IN_SECONDS.
+   */
+  public static final String RESULTSET_PURGE_INTERVAL_IN_SECONDS = SERVER_PFX + "resultsetpurger.sleep.interval.secs";
+
+  /*
+   * The Constant DEFAULT_RESULTSET_PURGE_INTERVAL_IN_SECONDS.
+   */
+  public static final int DEFAULT_RESULTSET_PURGE_INTERVAL_IN_SECONDS = 3600;
+
+  /**
+   * The Constant QUERY_RESULTSET_RETENTION.
+   */
+  public static final String QUERY_RESULTSET_RETENTION = SERVER_PFX + "query.resultset.retention";
+
+  /**
+   * The Constant DEFAULT_QUERY_RESULTSET_RETENTION.
+   */
+  public static final String DEFAULT_QUERY_RESULTSET_RETENTION = "1 day";
+
+  /**
+   * The Constant HDFS_OUTPUT_RETENTION.
+   */
+  public static final String HDFS_OUTPUT_RETENTION = SERVER_PFX + "hdfs.output.retention";
+
+  /**
+   * The Constant DEFAULT_HDFS_OUTPUT_RETENTION.
+   */
+  public static final String DEFAULT_HDFS_OUTPUT_RETENTION = "1 day";
 }

@@ -20,6 +20,9 @@ package org.apache.lens.server.query;
 
 import static javax.ws.rs.core.Response.Status.*;
 
+import static org.apache.lens.server.LensServerTestUtil.DB_WITH_JARS;
+import static org.apache.lens.server.LensServerTestUtil.DB_WITH_JARS_2;
+import static org.apache.lens.server.api.LensServerAPITestUtil.getLensConf;
 import static org.apache.lens.server.common.RestAPITestUtil.*;
 
 import static org.testng.Assert.*;
@@ -46,9 +49,10 @@ import org.apache.lens.api.result.LensErrorTO;
 import org.apache.lens.api.result.QueryCostTO;
 import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.driver.hive.HiveDriver;
+import org.apache.lens.driver.hive.LensHiveErrorCode;
 import org.apache.lens.server.LensJerseyTest;
+import org.apache.lens.server.LensServerTestUtil;
 import org.apache.lens.server.LensServices;
-import org.apache.lens.server.LensTestUtil;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.error.LensException;
@@ -182,7 +186,7 @@ public class TestQueryService extends LensJerseyTest {
    * @throws InterruptedException the interrupted exception
    */
   private void createTable(String tblName) throws InterruptedException {
-    LensTestUtil.createTable(tblName, target(), lensSessionId);
+    LensServerTestUtil.createTable(tblName, target(), lensSessionId);
   }
 
   /**
@@ -193,7 +197,7 @@ public class TestQueryService extends LensJerseyTest {
    * @throws InterruptedException the interrupted exception
    */
   private void loadData(String tblName, final String testDataFile) throws InterruptedException {
-    LensTestUtil.loadDataFromClasspath(tblName, testDataFile, target(), lensSessionId);
+    LensServerTestUtil.loadDataFromClasspath(tblName, testDataFile, target(), lensSessionId);
   }
 
   /**
@@ -203,7 +207,7 @@ public class TestQueryService extends LensJerseyTest {
    * @throws InterruptedException the interrupted exception
    */
   private void dropTable(String tblName) throws InterruptedException {
-    LensTestUtil.dropTable(tblName, target(), lensSessionId);
+    LensServerTestUtil.dropTable(tblName, target(), lensSessionId);
   }
 
   // test get a random query, should return 400
@@ -217,6 +221,18 @@ public class TestQueryService extends LensJerseyTest {
 
     Response rs = target.path("random").queryParam("sessionid", lensSessionId).request().get();
     assertEquals(rs.getStatus(), 400);
+  }
+
+  @Test
+  public void testLoadingMultipleDrivers() {
+    Collection<LensDriver> drivers = queryService.getDrivers();
+    assertEquals(drivers.size(), 4);
+    Set<String> driverNames = new HashSet<String>(drivers.size());
+    for(LensDriver driver : drivers){
+      assertEquals(driver.getConf().get("lens.driver.test.drivername"), driver.getFullyQualifiedName());
+      driverNames.add(driver.getFullyQualifiedName());
+    }
+    assertTrue(driverNames.containsAll(Arrays.asList("hive/hive1", "hive/hive2", "jdbc/jdbc1", "mock/fail1")));
   }
 
   /**
@@ -237,7 +253,7 @@ public class TestQueryService extends LensJerseyTest {
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
       MediaType.APPLICATION_XML_TYPE));
     final Response response = target.request().post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
-    assertEquals(response.getStatus(), INTERNAL_SERVER_ERROR.getStatusCode());
+    assertEquals(response.getStatus(), BAD_REQUEST.getStatusCode());
   }
 
   /**
@@ -401,7 +417,7 @@ public class TestQueryService extends LensJerseyTest {
 
     final Response responseExplain = target.request().post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
 
-    assertEquals(responseExplain.getStatus(), INTERNAL_SERVER_ERROR.getStatusCode());
+    assertEquals(responseExplain.getStatus(), BAD_REQUEST.getStatusCode());
 
     // Test explain and prepare
     final WebTarget ptarget = target().path("queryapi/preparedqueries");
@@ -418,7 +434,38 @@ public class TestQueryService extends LensJerseyTest {
     final Response responseExplainAndPrepare = target.request().post(
       Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
 
-    assertEquals(responseExplainAndPrepare.getStatus(), INTERNAL_SERVER_ERROR.getStatusCode());
+    assertEquals(responseExplainAndPrepare.getStatus(), BAD_REQUEST.getStatusCode());
+  }
+
+  /**
+   * Test semantic error for hive query on non-existent table.
+   *
+   * @throws IOException          Signals that an I/O exception has occurred.
+   * @throws InterruptedException the interrupted exception
+   */
+  @Test
+  public void testHiveSemanticFailure() throws InterruptedException, IOException {
+    final WebTarget target = target().path("queryapi/queries");
+
+    final FormDataMultiPart mp = new FormDataMultiPart();
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), lensSessionId,
+      MediaType.APPLICATION_XML_TYPE));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), " select ID from NOT_EXISTS"));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "execute"));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
+      MediaType.APPLICATION_XML_TYPE));
+
+    Response response = target.request().post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
+    LensAPIResult result = response.readEntity(LensAPIResult.class);
+    List<LensErrorTO> childErrors = result.getLensErrorTO().getChildErrors();
+    boolean hiveSemanticErrorExists=false;
+    for (LensErrorTO error : childErrors) {
+      if (error.getCode() == LensHiveErrorCode.SEMANTIC_ERROR.getLensErrorInfo().getErrorCode()) {
+        hiveSemanticErrorExists = true;
+        break;
+      }
+    }
+    assertTrue(hiveSemanticErrorExists);
   }
 
   // post to preparedqueries
@@ -461,8 +508,8 @@ public class TestQueryService extends LensJerseyTest {
       .get(LensPreparedQuery.class);
     assertTrue(ctx.getUserQuery().equalsIgnoreCase("select ID from " + TEST_TABLE));
     assertTrue(ctx.getDriverQuery().equalsIgnoreCase("select ID from " + TEST_TABLE));
-    assertEquals(ctx.getSelectedDriverClassName(),
-      org.apache.lens.driver.hive.HiveDriver.class.getCanonicalName());
+    //both drivers hive/hive1 and hive/hive2 are capable of handling the query as they point to the same hive server
+    assertTrue(ctx.getSelectedDriverName().equals("hive/hive1") || ctx.getSelectedDriverName().equals("hive/hive2"));
     assertNull(ctx.getConf().getProperties().get("my.property"));
 
     // Update conf for prepared query
@@ -536,8 +583,8 @@ public class TestQueryService extends LensJerseyTest {
       .request().get(LensPreparedQuery.class);
     assertTrue(ctx.getUserQuery().equalsIgnoreCase("select ID from " + TEST_TABLE));
     assertTrue(ctx.getDriverQuery().equalsIgnoreCase("select ID from " + TEST_TABLE));
-    assertEquals(ctx.getSelectedDriverClassName(),
-      org.apache.lens.driver.hive.HiveDriver.class.getCanonicalName());
+    //both drivers hive/hive1 and hive/hive2 are capable of handling the query as they point to the same hive server
+    assertTrue(ctx.getSelectedDriverName().equals("hive/hive1") || ctx.getSelectedDriverName().equals("hive/hive2"));
     assertNull(ctx.getConf().getProperties().get("my.property"));
 
     // Update conf for prepared query
@@ -1139,7 +1186,7 @@ public class TestQueryService extends LensJerseyTest {
       MediaType.APPLICATION_XML_TYPE));
 
     Response response = target.request().post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
-    assertEquals(response.getStatus(), INTERNAL_SERVER_ERROR.getStatusCode());
+    assertEquals(response.getStatus(), BAD_REQUEST.getStatusCode());
   }
 
   /**
@@ -1167,6 +1214,8 @@ public class TestQueryService extends LensJerseyTest {
     assertNull(conf.get("hive.metastore.warehouse.dir"));
     // core default should not be loaded
     assertNull(conf.get("fs.default.name"));
+    // server configuration should not set
+    assertNull(conf.get("lens.server.persist.location"));
 
     // Test server config. Hive configs overriden should be set
     assertFalse(Boolean.parseBoolean(queryService.getHiveConf().get("hive.server2.log.redirection.enabled")));
@@ -1202,6 +1251,8 @@ public class TestQueryService extends LensJerseyTest {
       assertEquals(dconf.get("lens.driver.test.key"), "set");
       // core default should not be loaded
       assertNull(dconf.get("fs.default.name"));
+      // server configuration should not set
+      assertNull(dconf.get("lens.server.persist.location"));
     }
   }
 
@@ -1243,23 +1294,23 @@ public class TestQueryService extends LensJerseyTest {
 
     // Open session with a DB which has static jars
     LensSessionHandle sessionHandle =
-      sessionService.openSession("foo@localhost", "bar", LensTestUtil.DB_WITH_JARS, new HashMap<String, String>());
+      sessionService.openSession("foo@localhost", "bar", DB_WITH_JARS, new HashMap<String, String>());
 
     // Add a jar in the session
     File testJarFile = new File("target/testjars/test2.jar");
     sessionService.addResourceToAllServices(sessionHandle, "jar", "file://" + testJarFile.getAbsolutePath());
 
-    log.info("@@@ Opened session " + sessionHandle.getPublicId() + " with database " + LensTestUtil.DB_WITH_JARS);
+    log.info("@@@ Opened session " + sessionHandle.getPublicId() + " with database " + DB_WITH_JARS);
     LensSessionImpl session = sessionService.getSession(sessionHandle);
 
     // Jars should be pending until query is run
-    assertEquals(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS).size(), 1);
-    assertEquals(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS_2).size(), 1);
+    assertEquals(session.getPendingSessionResourcesForDatabase(DB_WITH_JARS).size(), 1);
+    assertEquals(session.getPendingSessionResourcesForDatabase(DB_WITH_JARS_2).size(), 1);
 
     final String tableInDBWithJars = "testHiveDriverGetsDBJars";
     try {
       // First execute query on the session with db should load jars from DB
-      LensTestUtil.createTable(tableInDBWithJars, target(), sessionHandle, "(ID INT, IDSTR STRING) "
+      LensServerTestUtil.createTable(tableInDBWithJars, target(), sessionHandle, "(ID INT, IDSTR STRING) "
         + "ROW FORMAT SERDE \"DatabaseJarSerde\"");
 
       boolean addedToHiveDriver = false;
@@ -1267,37 +1318,39 @@ public class TestQueryService extends LensJerseyTest {
       for (LensDriver driver : queryService.getDrivers()) {
         if (driver instanceof HiveDriver) {
           addedToHiveDriver =
-            ((HiveDriver) driver).areDBResourcesAddedForSession(sessionHandle.getPublicId().toString(),
-              LensTestUtil.DB_WITH_JARS);
+            ((HiveDriver) driver).areDBResourcesAddedForSession(sessionHandle.getPublicId().toString(), DB_WITH_JARS);
+          if (addedToHiveDriver){
+            break; //There are two Hive drivers now both pointing to same hive server. So break after first success
+          }
         }
       }
       assertTrue(addedToHiveDriver);
 
       // Switch database
       log.info("@@@# database switch test");
-      session.setCurrentDatabase(LensTestUtil.DB_WITH_JARS_2);
-      LensTestUtil.createTable(tableInDBWithJars + "_2", target(), sessionHandle, "(ID INT, IDSTR STRING) "
+      session.setCurrentDatabase(DB_WITH_JARS_2);
+      LensServerTestUtil.createTable(tableInDBWithJars + "_2", target(), sessionHandle, "(ID INT, IDSTR STRING) "
         + "ROW FORMAT SERDE \"DatabaseJarSerde\"");
 
       // All db jars should have been added
-      assertTrue(session.getDBResources(LensTestUtil.DB_WITH_JARS_2).isEmpty());
-      assertTrue(session.getDBResources(LensTestUtil.DB_WITH_JARS).isEmpty());
+      assertTrue(session.getDBResources(DB_WITH_JARS_2).isEmpty());
+      assertTrue(session.getDBResources(DB_WITH_JARS).isEmpty());
 
       // All session resources must have been added to both DBs
       assertFalse(session.getLensSessionPersistInfo().getResources().isEmpty());
       for (LensSessionImpl.ResourceEntry resource : session.getLensSessionPersistInfo().getResources()) {
-        assertTrue(resource.isAddedToDatabase(LensTestUtil.DB_WITH_JARS_2));
-        assertTrue(resource.isAddedToDatabase(LensTestUtil.DB_WITH_JARS));
+        assertTrue(resource.isAddedToDatabase(DB_WITH_JARS_2));
+        assertTrue(resource.isAddedToDatabase(DB_WITH_JARS));
       }
 
-      assertTrue(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS).isEmpty());
-      assertTrue(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS_2).isEmpty());
+      assertTrue(session.getPendingSessionResourcesForDatabase(DB_WITH_JARS).isEmpty());
+      assertTrue(session.getPendingSessionResourcesForDatabase(DB_WITH_JARS_2).isEmpty());
 
     } finally {
       log.info("@@@ TEST_OVER");
       try {
-        LensTestUtil.dropTable(tableInDBWithJars, target(), sessionHandle);
-        LensTestUtil.dropTable(tableInDBWithJars + "_2", target(), sessionHandle);
+        LensServerTestUtil.dropTable(tableInDBWithJars, target(), sessionHandle);
+        LensServerTestUtil.dropTable(tableInDBWithJars + "_2", target(), sessionHandle);
       } catch (Throwable th) {
         log.error("Exception while dropping table.", th);
       }
@@ -1356,13 +1409,13 @@ public class TestQueryService extends LensJerseyTest {
     LensConf conf = new LensConf();
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_INDRIVER, "true");
     String tblName = "testNonSelectQueriesWithPersistResult";
-    LensTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
+    LensServerTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_SET, "true");
-    LensTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
+    LensServerTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_INDRIVER, "false");
-    LensTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
+    LensServerTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_SET, "false");
-    LensTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
+    LensServerTestUtil.dropTableWithConf(tblName, target(), lensSessionId, conf);
   }
 
   @Test
@@ -1390,12 +1443,15 @@ public class TestQueryService extends LensJerseyTest {
 
     assertTrue(reg.getGauges().keySet().containsAll(Arrays.asList(
         "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-DRIVER_SELECTION",
-        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-HiveDriver-CUBE_REWRITE",
-        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-HiveDriver-DRIVER_ESTIMATE",
-        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-HiveDriver-RewriteUtil-rewriteQuery",
-        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-JDBCDriver-CUBE_REWRITE",
-        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-JDBCDriver-DRIVER_ESTIMATE",
-        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-JDBCDriver-RewriteUtil-rewriteQuery",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-hive/hive1-CUBE_REWRITE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-hive/hive1-DRIVER_ESTIMATE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-hive/hive1-RewriteUtil-rewriteQuery",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-hive/hive2-CUBE_REWRITE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-hive/hive2-DRIVER_ESTIMATE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-hive/hive2-RewriteUtil-rewriteQuery",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-jdbc/jdbc1-CUBE_REWRITE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-jdbc/jdbc1-DRIVER_ESTIMATE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-jdbc/jdbc1-RewriteUtil-rewriteQuery",
         "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-PARALLEL_ESTIMATE")),
       reg.getGauges().keySet().toString());
   }
@@ -1446,6 +1502,26 @@ public class TestQueryService extends LensJerseyTest {
     waitForPurge(1, queryService.finishedQueries);
     assertTrue(queryService.finishedQueries.size() == 1);
     getLensQueryResult(target(), lensSessionId, ctx1.getQueryHandle());
+  }
+
+  /**
+   * Test session close when a query is active on the session
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testSessionClose() throws Exception {
+    // Query with group by, will run long enough to close the session before finish
+    String query = "select ID, IDSTR, count(*) from " + TEST_TABLE + " group by ID, IDSTR";
+    SessionService sessionService = LensServices.get().getService(HiveSessionService.NAME);
+    Map<String, String> sessionconf = new HashMap<String, String>();
+    LensSessionHandle sessionHandle = sessionService.openSession("foo", "bar", "default", sessionconf);
+    LensConf conf = getLensConf(LensConfConstants.QUERY_PERSISTENT_RESULT_INDRIVER, "true");
+    QueryHandle qHandle =
+      executeAndGetHandle(target(), Optional.of(sessionHandle), Optional.of(query), Optional.of(conf));
+    sessionService.closeSession(sessionHandle);
+    sessionHandle = sessionService.openSession("foo", "bar", "default", sessionconf);
+    waitForQueryToFinish(target(), sessionHandle, qHandle, Status.SUCCESSFUL);
   }
 
   @AfterMethod

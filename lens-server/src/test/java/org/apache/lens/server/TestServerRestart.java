@@ -18,6 +18,8 @@
  */
 package org.apache.lens.server;
 
+import static org.apache.lens.server.LensServerTestUtil.createTable;
+import static org.apache.lens.server.LensServerTestUtil.loadData;
 import static org.apache.lens.server.common.RestAPITestUtil.execute;
 
 import static org.testng.Assert.assertEquals;
@@ -67,6 +69,11 @@ public class TestServerRestart extends LensAllApplicationJerseyTest {
 
   /** The data file. */
   private File dataFile;
+
+  /**
+   * No of valid hive drivers that can execute queries in this test class
+   */
+  private static final int NO_OF_HIVE_DRIVERS = 2;
 
   /*
    * (non-Javadoc)
@@ -135,8 +142,8 @@ public class TestServerRestart extends LensAllApplicationJerseyTest {
     createRestartTestDataFile();
 
     // Create a test table
-    LensTestUtil.createTable("test_server_restart", target(), lensSessionId);
-    LensTestUtil.loadData("test_server_restart", TestResourceFile.TEST_DATA_FILE.getValue(), target(), lensSessionId);
+    createTable("test_server_restart", target(), lensSessionId);
+    loadData("test_server_restart", TestResourceFile.TEST_DATA_FILE.getValue(), target(), lensSessionId);
     log.info("Loaded data");
 
     // test post execute op
@@ -211,7 +218,7 @@ public class TestServerRestart extends LensAllApplicationJerseyTest {
       }
     }
     log.info("End server restart test");
-    LensTestUtil.dropTable("test_server_restart", target(), lensSessionId);
+    LensServerTestUtil.dropTable("test_server_restart", target(), lensSessionId);
     queryService.closeSession(lensSessionId);
   }
 
@@ -242,8 +249,8 @@ public class TestServerRestart extends LensAllApplicationJerseyTest {
     log.info("@@ Added resource {}", dataFile.toURI());
 
     // Create a test table
-    LensTestUtil.createTable("test_hive_server_restart", target(), lensSessionId);
-    LensTestUtil.loadData("test_hive_server_restart", TestResourceFile.TEST_DATA_FILE.getValue(), target(),
+    createTable("test_hive_server_restart", target(), lensSessionId);
+    loadData("test_hive_server_restart", TestResourceFile.TEST_DATA_FILE.getValue(), target(),
       lensSessionId);
     log.info("Loaded data");
 
@@ -345,7 +352,10 @@ public class TestServerRestart extends LensAllApplicationJerseyTest {
     // Now we can expect that session resources have been added back exactly once
     for (int i = 0; i < sessionResources.size(); i++) {
       LensSessionImpl.ResourceEntry resourceEntry = sessionResources.get(i);
-      assertEquals(resourceEntry.getRestoreCount(), 1 + restoreCounts[i],
+      //The restore count can vary based on How many Hive Drivers were able to execute the estimate on the query
+      //successfully after Hive Server Restart.
+      Assert.assertTrue((resourceEntry.getRestoreCount() > restoreCounts[i]
+          && resourceEntry.getRestoreCount() <=  restoreCounts[i] + NO_OF_HIVE_DRIVERS),
           "Restore test failed for " + resourceEntry + " pre count=" + restoreCounts[i] + " post count=" + resourceEntry
               .getRestoreCount());
       log.info("@@ Latest count {}={}", resourceEntry, resourceEntry.getRestoreCount());
@@ -354,7 +364,7 @@ public class TestServerRestart extends LensAllApplicationJerseyTest {
     // "Expected to be successful " + handle);
 
     log.info("End hive server restart test");
-    LensTestUtil.dropTable("test_hive_server_restart", target(), lensSessionId);
+    LensServerTestUtil.dropTable("test_hive_server_restart", target(), lensSessionId);
     queryService.closeSession(lensSessionId);
   }
 

@@ -34,6 +34,7 @@ import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.collect.WaitingQueriesSelectionPolicy;
 import org.apache.lens.server.api.query.constraint.QueryLaunchingConstraint;
+import org.apache.lens.server.api.query.priority.QueryPriorityDecider;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -43,11 +44,13 @@ import com.google.common.collect.Lists;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The Class QueryContext.
  */
 @ToString
+@Slf4j
 public class QueryContext extends AbstractQueryContext {
 
   /**
@@ -77,7 +80,8 @@ public class QueryContext extends AbstractQueryContext {
   /**
    * The is driver persistent.
    */
-  @Getter private boolean isDriverPersistent;
+  @Getter
+  private boolean isDriverPersistent;
 
   /**
    * The status.
@@ -145,7 +149,7 @@ public class QueryContext extends AbstractQueryContext {
 
   @Getter
   @Setter
-  private transient QueryOutputFormatter queryOutputFormatter;
+  private QueryOutputFormatter queryOutputFormatter;
 
   /**
    * The finished query persisted.
@@ -199,10 +203,11 @@ public class QueryContext extends AbstractQueryContext {
    * @param drivers All the drivers
    * @param selectedDriver SelectedDriver
    */
-  private QueryContext(String userQuery, String user, LensConf qconf, Configuration conf,
-      Collection<LensDriver> drivers, LensDriver selectedDriver, boolean mergeDriverConf) {
+  QueryContext(String userQuery, String user, LensConf qconf, Configuration conf,
+    Collection<LensDriver> drivers, LensDriver selectedDriver, boolean mergeDriverConf) {
     this(userQuery, user, qconf, conf, drivers, selectedDriver, System.currentTimeMillis(), mergeDriverConf);
   }
+
   /**
    * Instantiates a new query context.
    *
@@ -220,7 +225,6 @@ public class QueryContext extends AbstractQueryContext {
     this.submissionTime = submissionTime;
     this.queryHandle = new QueryHandle(UUID.randomUUID());
     this.status = new QueryStatus(0.0f, null, Status.NEW, "Query just got created", false, null, null, null);
-    this.priority = Priority.NORMAL;
     this.lensConf = qconf;
     this.conf = conf;
     this.isPersistent = conf.getBoolean(LensConfConstants.QUERY_PERSISTENT_RESULT_SET,
@@ -248,7 +252,7 @@ public class QueryContext extends AbstractQueryContext {
    * @return QueryContext object
    */
   public static QueryContext createContextWithSingleDriver(String query, String user, LensConf qconf,
-      Configuration conf, LensDriver driver, String lensSessionPublicId, boolean mergeDriverConf) {
+    Configuration conf, LensDriver driver, String lensSessionPublicId, boolean mergeDriverConf) {
     QueryContext ctx = new QueryContext(query, user, qconf, conf, Lists.newArrayList(driver), driver, mergeDriverConf);
     ctx.setLensSessionIdentifier(lensSessionPublicId);
     return ctx;
@@ -300,8 +304,7 @@ public class QueryContext extends AbstractQueryContext {
    */
   public LensQuery toLensQuery() {
     return new LensQuery(queryHandle, userQuery, super.getSubmittedUser(), priority, isPersistent,
-      getSelectedDriver() != null ? getSelectedDriver().getClass()
-        .getCanonicalName() : null,
+      getSelectedDriver() != null ? getSelectedDriver().getFullyQualifiedName() : null,
       getSelectedDriverQuery(),
       status,
       resultSetPath, driverOpHandle, lensConf, submissionTime, launchTime, driverStatus.getDriverStartTime(),
@@ -334,6 +337,7 @@ public class QueryContext extends AbstractQueryContext {
 
   public synchronized void setStatus(final QueryStatus newStatus) throws LensException {
     validateTransition(newStatus);
+    log.info("Updating status of {} from {} to {}", getQueryHandle(), this.status, newStatus);
     this.status = newStatus;
   }
 
@@ -355,12 +359,12 @@ public class QueryContext extends AbstractQueryContext {
 
   public boolean getCompressOutput() {
     return conf.getBoolean(LensConfConstants.QUERY_OUTPUT_ENABLE_COMPRESSION,
-        LensConfConstants.DEFAULT_OUTPUT_ENABLE_COMPRESSION);
+      LensConfConstants.DEFAULT_OUTPUT_ENABLE_COMPRESSION);
   }
 
   public long getMaxResultSplitRows() {
     return conf.getLong(LensConfConstants.RESULT_SPLIT_MULTIPLE_MAX_ROWS,
-        LensConfConstants.DEFAULT_RESULT_SPLIT_MULTIPLE_MAX_ROWS);
+      LensConfConstants.DEFAULT_RESULT_SPLIT_MULTIPLE_MAX_ROWS);
   }
 
   /**
@@ -370,7 +374,7 @@ public class QueryContext extends AbstractQueryContext {
    */
   public boolean splitResultIntoMultipleFiles() {
     return conf.getBoolean(LensConfConstants.RESULT_SPLIT_INTO_MULTIPLE,
-        LensConfConstants.DEFAULT_RESULT_SPLIT_INTO_MULTIPLE);
+      LensConfConstants.DEFAULT_RESULT_SPLIT_INTO_MULTIPLE);
   }
 
   public String getClusterUser() {
@@ -394,7 +398,7 @@ public class QueryContext extends AbstractQueryContext {
   public void validateTransition(final QueryStatus newStatus) throws LensException {
     if (!this.status.isValidTransition(newStatus.getStatus())) {
       throw new LensException("Invalid state transition:from[" + this.status.getStatus() + " to "
-          + newStatus.getStatus() + "]");
+        + newStatus.getStatus() + "]");
     }
   }
 
@@ -420,5 +424,20 @@ public class QueryContext extends AbstractQueryContext {
 
   public ImmutableSet<WaitingQueriesSelectionPolicy> getSelectedDriverSelectionPolicies() {
     return getSelectedDriver().getWaitingQuerySelectionPolicies();
+  }
+
+  public Priority decidePriority(LensDriver driver, QueryPriorityDecider queryPriorityDecider) throws LensException {
+    // On-demand re-computation of cost, in case it's not alredy set by a previous estimate call.
+    // In driver test cases, estimate doesn't happen. Hence this code path ensures cost is computed and
+    // priority is set based on correct cost.
+    calculateCost(driver);
+    priority = queryPriorityDecider.decidePriority(getDriverQueryCost(driver));
+    return priority;
+  }
+
+  private void calculateCost(LensDriver driver) throws LensException {
+    if (getDriverQueryCost(driver) == null) {
+      setDriverCost(driver, driver.estimate(this));
+    }
   }
 }

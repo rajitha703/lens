@@ -40,9 +40,12 @@ import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 
+import lombok.RequiredArgsConstructor;
+
 /**
  * Top level class which is used to execute lens queries.
  */
+@RequiredArgsConstructor
 public class LensStatement {
 
   /** The connection. */
@@ -50,15 +53,6 @@ public class LensStatement {
 
   /** The query. */
   private LensQuery query;
-
-  /**
-   * Instantiates a new lens statement.
-   *
-   * @param connection the connection
-   */
-  public LensStatement(LensConnection connection) {
-    this.connection = connection;
-  }
 
   /**
    * Execute.
@@ -213,7 +207,7 @@ public class LensStatement {
       }
     }
     LensClient.getCliLooger().info("User query: '{}' was submitted to {}", query.getUserQuery(),
-      query.getSelectedDriverClassName());
+      query.getSelectedDriverName());
     if (query.getDriverQuery() != null) {
       LensClient.getCliLooger().info(" Driver query: '{}' and Driver handle: {}", query.getDriverQuery(),
         query.getDriverOpHandle());
@@ -382,15 +376,17 @@ public class LensStatement {
    * @param state     the state
    * @param queryName the query name
    * @param user      the user
+   * @param driver    the driver name
    * @param fromDate  the from date
    * @param toDate    the to date
    * @return the all queries
    */
-  public List<QueryHandle> getAllQueries(String state, String queryName, String user, long fromDate, long toDate) {
+  public List<QueryHandle> getAllQueries(String state, String queryName, String user, String driver, long fromDate,
+    long toDate) {
     WebTarget target = getQueryWebTarget(connection.buildClient());
     List<QueryHandle> handles = target.queryParam("sessionid", connection.getSessionHandle())
       .queryParam("state", state).queryParam("queryName", queryName).queryParam("user", user)
-      .queryParam("fromDate", fromDate).queryParam("toDate", toDate).request()
+      .queryParam("driver", driver).queryParam("fromDate", fromDate).queryParam("toDate", toDate).request()
       .get(new GenericType<List<QueryHandle>>() {
       });
     return handles;

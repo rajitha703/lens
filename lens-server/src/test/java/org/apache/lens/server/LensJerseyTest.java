@@ -18,6 +18,10 @@
  */
 package org.apache.lens.server;
 
+import static org.apache.lens.server.LensServerTestUtil.DB_WITH_JARS;
+import static org.apache.lens.server.LensServerTestUtil.DB_WITH_JARS_2;
+import static org.apache.lens.server.LensServerTestUtil.createTestDatabaseResources;
+
 import static org.testng.Assert.*;
 
 import java.io.IOException;
@@ -29,6 +33,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.ws.rs.core.UriBuilder;
 
 import org.apache.lens.driver.hive.TestRemoteHiveDriver;
+import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.metrics.LensMetricsUtil;
 import org.apache.lens.server.api.metrics.MetricsService;
 import org.apache.lens.server.model.LogSegregationContext;
@@ -44,6 +49,7 @@ import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 
 import com.google.common.collect.Lists;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -116,6 +122,7 @@ public abstract class LensJerseyTest extends JerseyTest {
   public void startAll() throws Exception {
     log.info("Before suite");
     System.setProperty("lens.log.dir", "target/");
+    System.setProperty(LensConfConstants.CONFIG_LOCATION, "target/test-classes/");
     TestRemoteHiveDriver.createHS2Service();
     System.out.println("Remote hive server started!");
     HiveConf hiveConf = new HiveConf();
@@ -123,10 +130,10 @@ public abstract class LensJerseyTest extends JerseyTest {
     hiveConf.setIntVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_CLIENT_CONNECTION_RETRY_LIMIT, 3);
     hiveConf.setIntVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_CLIENT_RETRY_LIMIT, 3);
 
-    LensTestUtil.createTestDatabaseResources(new String[]{LensTestUtil.DB_WITH_JARS, LensTestUtil.DB_WITH_JARS_2},
+    createTestDatabaseResources(new String[]{DB_WITH_JARS, DB_WITH_JARS_2},
       hiveConf);
 
-    LensServices.get().init(LensServerConf.getHiveConf());
+    LensServices.get().init(getServerConf());
     LensServices.get().start();
 
     // Check if mock service is started

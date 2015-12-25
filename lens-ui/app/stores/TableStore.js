@@ -31,7 +31,7 @@ function receiveTables (payload) {
   }
 
   payload.tables.elements &&
-    payload.tables.elements.forEach( table => {
+    payload.tables.elements.forEach(table => {
       if (!tables[database][table]) {
         tables[database][table] = { name: table, isLoaded: false };
       }
@@ -86,7 +86,7 @@ let TableStore = assign({}, EventEmitter.prototype, {
 });
 
 AppDispatcher.register((action) => {
-  switch(action.actionType) {
+  switch (action.actionType) {
     case AdhocQueryConstants.RECEIVE_TABLES:
       receiveTables(action.payload);
       TableStore.emitChange();
@@ -94,6 +94,10 @@ AppDispatcher.register((action) => {
 
     case AdhocQueryConstants.RECEIVE_TABLE_DETAILS:
       receiveTableDetails(action.payload);
+      TableStore.emitChange();
+      break;
+
+    case AdhocQueryConstants.RECEIVE_TABLES_FAILED:
       TableStore.emitChange();
       break;
   }

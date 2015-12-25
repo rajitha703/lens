@@ -19,6 +19,7 @@
 package org.apache.lens.server.api.query;
 
 import java.util.Collection;
+import java.util.Iterator;
 
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.query.QueryHandle;
@@ -151,18 +152,18 @@ public class FinishedLensQuery {
   private long driverEndTime;
 
   /**
-   * The metadata class.
-   */
-  @Getter
-  @Setter
-  private String metadataClass;
-
-  /**
    * The query name.
    */
   @Getter
   @Setter
   private String queryName;
+
+  /**
+   * The selected driver's fully qualified name.
+   */
+  @Getter
+  @Setter
+  private String driverName;
 
   @Getter
   private LensDriver selectedDriver;
@@ -195,11 +196,21 @@ public class FinishedLensQuery {
       this.queryName = ctx.getQueryName().toLowerCase();
     }
     this.selectedDriver = ctx.getSelectedDriver();
+    if (null != ctx.getSelectedDriver()) {
+      this.driverName = ctx.getSelectedDriver().getFullyQualifiedName();
+    }
   }
 
   public QueryContext toQueryContext(Configuration conf, Collection<LensDriver> drivers) {
-    QueryContext qctx = new QueryContext(userQuery, submitter, new LensConf(), conf, drivers, null, submissionTime,
-      false);
+
+    if (null == selectedDriver && null != driverName) {
+      selectedDriver = getDriverFromName(drivers);
+    }
+
+    QueryContext qctx =
+      new QueryContext(userQuery, submitter, new LensConf(), conf, drivers, selectedDriver, submissionTime,
+        false);
+
     qctx.setQueryHandle(QueryHandle.fromString(handle));
     qctx.setLaunchTime(this.startTime);
     qctx.setEndTime(getEndTime());
@@ -210,6 +221,17 @@ public class FinishedLensQuery {
     qctx.setResultSetPath(getResult());
     qctx.setQueryName(getQueryName());
     return qctx;
+  }
+
+  private LensDriver getDriverFromName(Collection<LensDriver> drivers) {
+    Iterator<LensDriver> iterator = drivers.iterator();
+    while (iterator.hasNext()) {
+      LensDriver driver = iterator.next();
+      if (driverName.equals(driver.getFullyQualifiedName())) {
+        return driver;
+      }
+    }
+    return null;
   }
 
   public ImmutableSet<WaitingQueriesSelectionPolicy> getDriverSelectionPolicies() {

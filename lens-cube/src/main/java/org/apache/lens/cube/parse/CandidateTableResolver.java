@@ -272,7 +272,8 @@ class CandidateTableResolver implements ContextRewriter {
         if (!checkForColumnExists(cfact, queriedMsrs)
           && (cubeql.getQueriedExprsWithMeasures().isEmpty()
             || cubeql.getExprCtx().allNotEvaluable(cubeql.getQueriedExprsWithMeasures(), cfact))) {
-          log.info("Not considering fact table:{} as columns {} is not available", cfact, queriedMsrs);
+          log.info("Not considering fact table:{} as columns {},{} is not available", cfact, queriedMsrs,
+                  cubeql.getQueriedExprsWithMeasures());
           cubeql.addFactPruningMsgs(cfact.fact, CandidateTablePruneCause.columnNotFound(queriedMsrs,
             cubeql.getQueriedExprsWithMeasures()));
           toRemove = true;
@@ -590,11 +591,13 @@ class CandidateTableResolver implements ContextRewriter {
           for (CandidateTable candidate : removedCandidates.get(dim)) {
             // check if evaluable expressions of this candidate are no more evaluable because dimension is not reachable
             // if no evaluable expressions exist, then remove the candidate
-            Iterator<ExprSpecContext> escIter = ec.getEvaluableExpressions().get(candidate).iterator();
-            while (escIter.hasNext()) {
-              ExprSpecContext esc = escIter.next();
-              if (esc.getExprDims().contains(dim)) {
-                escIter.remove();
+            if (ec.getEvaluableExpressions().get(candidate) != null) {
+              Iterator<ExprSpecContext> escIter = ec.getEvaluableExpressions().get(candidate).iterator();
+              while (escIter.hasNext()) {
+                ExprSpecContext esc = escIter.next();
+                if (esc.getExprDims().contains(dim)) {
+                  escIter.remove();
+                }
               }
             }
             if (cubeql.getExprCtx().isEvaluable(col.getExprCol(), candidate)) {

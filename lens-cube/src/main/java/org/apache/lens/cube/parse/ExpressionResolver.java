@@ -19,18 +19,11 @@
 
 package org.apache.lens.cube.parse;
 
-import static org.apache.hadoop.hive.ql.parse.HiveParser.DOT;
-import static org.apache.hadoop.hive.ql.parse.HiveParser.Identifier;
-import static org.apache.hadoop.hive.ql.parse.HiveParser.TOK_TABLE_OR_COL;
+import static org.apache.hadoop.hive.ql.parse.HiveParser.*;
 
 import java.util.*;
 
-import org.apache.lens.cube.metadata.AbstractBaseTable;
-import org.apache.lens.cube.metadata.AbstractCubeTable;
-import org.apache.lens.cube.metadata.CubeColumn;
-import org.apache.lens.cube.metadata.CubeInterface;
-import org.apache.lens.cube.metadata.Dimension;
-import org.apache.lens.cube.metadata.ExprColumn;
+import org.apache.lens.cube.metadata.*;
 import org.apache.lens.cube.metadata.ExprColumn.ExprSpec;
 import org.apache.lens.cube.parse.CandidateTablePruneCause.CandidateTablePruneCode;
 import org.apache.lens.cube.parse.HQLParser.ASTNodeVisitor;
@@ -405,11 +398,11 @@ class ExpressionResolver implements ContextRewriter {
      */
     public boolean allNotEvaluable(Set<String> exprs, CandidateTable cTable) {
       for (String expr : exprs) {
-        if (!isEvaluable(expr, cTable)) {
-          return true;
+        if (isEvaluable(expr, cTable)) {
+          return false;
         }
       }
-      return false;
+      return true;
     }
 
     public Collection<String> coveringExpressions(Set<String> exprs, CandidateTable cTable) {
@@ -439,7 +432,7 @@ class ExpressionResolver implements ContextRewriter {
     }
 
     public Set<Dimension> rewriteExprCtx(CandidateFact cfact, Map<Dimension, CandidateDim> dimsToQuery,
-      boolean replaceFact) throws LensException {
+      QueryAST queryAST) throws LensException {
       Set<Dimension> exprDims = new HashSet<Dimension>();
       if (!allExprsQueried.isEmpty()) {
         // pick expressions for fact
@@ -453,7 +446,7 @@ class ExpressionResolver implements ContextRewriter {
           }
         }
         // Replace picked expressions in all the base trees
-        replacePickedExpressions(cfact, replaceFact);
+        replacePickedExpressions(queryAST);
         for (Set<PickedExpression> peSet : pickedExpressions.values()) {
           for (PickedExpression pe : peSet) {
             exprDims.addAll(pe.pickedCtx.exprDims);
@@ -464,21 +457,13 @@ class ExpressionResolver implements ContextRewriter {
       return exprDims;
     }
 
-    private void replacePickedExpressions(CandidateFact cfact, boolean replaceFact)
+    private void replacePickedExpressions(QueryAST queryAST)
       throws LensException {
-      if (replaceFact) {
-        replaceAST(cubeql, cfact.getSelectAST());
-        replaceAST(cubeql, cfact.getWhereAST());
-        replaceAST(cubeql, cfact.getJoinTree());
-        replaceAST(cubeql, cfact.getGroupByAST());
-        replaceAST(cubeql, cfact.getHavingAST());
-      } else {
-        replaceAST(cubeql, cubeql.getSelectAST());
-        replaceAST(cubeql, cubeql.getWhereAST());
-        replaceAST(cubeql, cubeql.getJoinTree());
-        replaceAST(cubeql, cubeql.getGroupByAST());
-        replaceAST(cubeql, cubeql.getHavingAST());
-      }
+      replaceAST(cubeql, queryAST.getSelectAST());
+      replaceAST(cubeql, queryAST.getWhereAST());
+      replaceAST(cubeql, queryAST.getJoinAST());
+      replaceAST(cubeql, queryAST.getGroupByAST());
+      replaceAST(cubeql, queryAST.getHavingAST());
       replaceAST(cubeql, cubeql.getOrderByAST());
     }
 
