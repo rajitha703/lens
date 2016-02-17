@@ -1577,7 +1577,7 @@
       <dependency>
         <groupId>io.druid</groupId>
         <artifactId>druid-processing</artifactId>
-        <version>0.8.2-SNAPSHOT</version>
+        <version>0.8.3</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
