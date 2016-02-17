@@ -182,8 +182,8 @@ public class ASTTraverserForDruid {
       if (((DruidVisitor) visitor).isTimeDimension(leftCol)) {
         String startInstant = whereClause.getChildren().get(3).toString();
         String endInstant = whereClause.getChildren().get(4).toString();
-        ((DruidVisitor) visitor).visitStartTimeInstant(startInstant.substring(1, startInstant.length() - 1));
-        ((DruidVisitor) visitor).visitEndTimeInstant(endInstant.substring(1, endInstant.length() - 1));
+        ((DruidVisitor) visitor).visitStartTimeInstant(DruidVisitor.trimValue(startInstant));
+        ((DruidVisitor) visitor).visitEndTimeInstant(DruidVisitor.trimValue(endInstant));
 
       } else {
         throw new UnsupportedOperationException("Between not supported except for timedimension in Druid");

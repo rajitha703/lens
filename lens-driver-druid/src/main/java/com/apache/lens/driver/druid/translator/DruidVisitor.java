@@ -56,7 +56,9 @@ import io.druid.query.aggregation.PostAggregator;
 import io.druid.query.filter.DimFilter;
 import lombok.Data;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Data
 public abstract class DruidVisitor implements ASTVisitor {
 
@@ -200,7 +202,7 @@ public abstract class DruidVisitor implements ASTVisitor {
         }
       }
     } catch (HiveException e) {
-      //TODO
+      log.error("Exception while fetching fieldschema " , e);
     }
     return hiveType;
   }
@@ -224,5 +226,9 @@ public abstract class DruidVisitor implements ASTVisitor {
 
   public static boolean hasLimit(ASTNode rootQueryNode) {
     return HQLParser.findNodeByPath(rootQueryNode, TOK_INSERT, TOK_LIMIT) != null;
+  }
+
+  public static String trimValue(String value) {
+    return value.replaceAll("'", "");
   }
 }
