@@ -153,9 +153,9 @@ public class DruidDriver extends AbstractLensDriver {
   public LensResultSet execute(QueryContext context) throws LensException {
     log.info("Executing Druid query..");
     final DruidQuery rewrittenQuery = rewrite(context);
- //   final QueryHandle queryHandle = context.getQueryHandle();
+    final QueryHandle queryHandle = context.getQueryHandle();
     DruidResultSet druidResultSet = druidClient.execute(rewrittenQuery);
-  //  notifyComplIfRegistered(queryHandle);
+    notifyComplIfRegistered(queryHandle);
     return druidResultSet;
   }
 
