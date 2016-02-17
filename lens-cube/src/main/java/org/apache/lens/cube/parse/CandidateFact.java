@@ -29,6 +29,7 @@ import org.apache.lens.server.api.error.LensException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.ql.lib.Node;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
@@ -54,26 +55,32 @@ public class CandidateFact implements CandidateTable, QueryAST {
   private final Set<FactPartition> partsQueried = Sets.newHashSet();
 
   private CubeInterface baseTable;
-  @Getter @Setter
+  @Getter
+  @Setter
   private ASTNode selectAST;
-  @Getter @Setter
+  @Getter
+  @Setter
   private ASTNode whereAST;
-  @Getter @Setter
+  @Getter
+  @Setter
   private ASTNode groupByAST;
-  @Getter @Setter
+  @Getter
+  @Setter
   private ASTNode havingAST;
-  @Getter @Setter
+  @Getter
+  @Setter
   private ASTNode joinAST;
-  @Getter @Setter
+  @Getter
+  @Setter
   private ASTNode orderByAST;
-  @Getter @Setter
+  @Getter
+  @Setter
   private Integer limitValue;
-  private List<TimeRangeNode> timenodes = Lists.newArrayList();
   private final List<Integer> selectIndices = Lists.newArrayList();
   private final List<Integer> dimFieldIndices = Lists.newArrayList();
   private Collection<String> columns;
   @Getter
-  private final Map<String, String> storgeWhereClauseMap = new HashMap<>();
+  private final Map<String, ASTNode> storgeWhereClauseMap = new HashMap<>();
   @Getter
   private final Map<TimeRange, Map<String, LinkedHashSet<FactPartition>>> rangeToStoragePartMap = new HashMap<>();
   @Getter
@@ -103,16 +110,38 @@ public class CandidateFact implements CandidateTable, QueryAST {
     return (!timeRange.getFromDate().before(fact.getStartTime())) && (!timeRange.getToDate().after(fact.getEndTime()));
   }
 
-  static class TimeRangeNode {
-    ASTNode timenode;
-    ASTNode parent;
-    int childIndex;
-
-    TimeRangeNode(ASTNode timenode, ASTNode parent, int childIndex) {
-      this.timenode = timenode;
-      this.parent = parent;
-      this.childIndex = childIndex;
+  public void addToHaving(ASTNode ast) {
+    if (getHavingAST() == null) {
+      setHavingAST(new ASTNode(new CommonToken(TOK_HAVING, "TOK_HAVING")));
+      getHavingAST().addChild(ast);
+      return;
     }
+    ASTNode existingHavingAST = (ASTNode) getHavingAST().getChild(0);
+    ASTNode newHavingAST = new ASTNode(new CommonToken(KW_AND, "KW_AND"));
+    newHavingAST.addChild(ast);
+    newHavingAST.addChild(existingHavingAST);
+    getHavingAST().setChild(0, newHavingAST);
+  }
+
+  public String addAndGetAliasFromSelect(ASTNode ast, AliasDecider aliasDecider) {
+    for (Node n : getSelectAST().getChildren()) {
+      ASTNode astNode = (ASTNode) n;
+      if (HQLParser.equalsAST(ast, (ASTNode) astNode.getChild(0))) {
+        if (astNode.getChildCount() > 1) {
+          return astNode.getChild(1).getText();
+        }
+        String alias = aliasDecider.decideAlias(astNode);
+        astNode.addChild(new ASTNode(new CommonToken(Identifier, alias)));
+        return alias;
+      }
+    }
+    // Not found, have to add to select
+    String alias = aliasDecider.decideAlias(ast);
+    ASTNode selectExprNode = new ASTNode(new CommonToken(TOK_SELEXPR));
+    selectExprNode.addChild(ast);
+    selectExprNode.addChild(new ASTNode(new CommonToken(Identifier, alias)));
+    getSelectAST().addChild(selectExprNode);
+    return alias;
   }
 
   void incrementPartsQueried(int incr) {
@@ -129,13 +158,15 @@ public class CandidateFact implements CandidateTable, QueryAST {
     if (cubeql.getGroupByAST() != null) {
       setGroupByAST(HQLParser.copyAST(cubeql.getGroupByAST()));
     }
-    if (cubeql.getHavingAST() != null) {
-      setHavingAST(HQLParser.copyAST(cubeql.getHavingAST()));
-    }
   }
 
-  public String getWhereClause(String storageTable) {
-    return getStorgeWhereClauseMap().get(storageTable);
+
+  public ASTNode getStorageWhereClause(String storageTable) {
+    return storgeWhereClauseMap.get(storageTable);
+  }
+
+  public boolean isExpressionAnswerable(ASTNode node, CubeQueryContext context) throws LensException {
+    return getColumns().containsAll(getColsInExpr(context, context.getCube().getAllFieldNames(), node));
   }
 
   /**
@@ -179,16 +210,15 @@ public class CandidateFact implements CandidateTable, QueryAST {
       currentChild++;
     }
 
-    // update whereAST to include only filters of this fact
-    // TODO
+    // don't need to update where ast, since where is only on dim attributes and dim attributes
+    // are assumed to be common in multi fact queries.
 
-    // update havingAST to include only filters of this fact
-    // TODO
+    // push down of having clauses happens just after this call in cubequerycontext
   }
 
   private Set<String> getColsInExpr(final CubeQueryContext cubeql, final Set<String> cubeCols,
     ASTNode expr) throws LensException {
-    final Set<String> cubeColsInExpr = new HashSet<String>();
+    final Set<String> cubeColsInExpr = new HashSet<>();
     HQLParser.bft(expr, new ASTNodeVisitor() {
       @Override
       public void visit(TreeNode visited) {
@@ -302,8 +332,6 @@ public class CandidateFact implements CandidateTable, QueryAST {
     }
     return null;
   }
-
-
 
   /**
    * @return the selectIndices

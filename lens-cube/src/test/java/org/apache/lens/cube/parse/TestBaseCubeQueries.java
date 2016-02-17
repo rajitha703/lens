@@ -23,6 +23,7 @@ import static org.apache.lens.cube.metadata.DateFactory.*;
 import static org.apache.lens.cube.metadata.DateUtil.*;
 import static org.apache.lens.cube.parse.CandidateTablePruneCause.CandidateTablePruneCode.MISSING_PARTITIONS;
 import static org.apache.lens.cube.parse.CubeTestSetup.*;
+import static org.apache.lens.cube.parse.TestCubeRewriter.compareContains;
 import static org.apache.lens.cube.parse.TestCubeRewriter.compareQueries;
 
 import static org.apache.hadoop.hive.ql.parse.HiveParser.KW_AND;
@@ -188,12 +189,13 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     String expected2 =
       getExpectedQuery(cubeName, "select round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
         null, getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     String lower = hqlQuery.toLowerCase();
     assertTrue(lower.startsWith("select mq2.roundedmsr2 roundedmsr2, mq1.msr12 msr12 from ")
       || lower.startsWith("select mq1.roundedmsr2 roundedmsr2, mq2.msr12 msr12 from "), hqlQuery);
     assertTrue(lower.contains("mq1 full outer join") && lower.endsWith("mq2"), hqlQuery);
+    assertFalse(lower.contains("mq2 on"), hqlQuery);
     assertFalse(lower.contains("<=>"), hqlQuery);
   }
 
@@ -204,10 +206,10 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
       getExpectedQuery(cubeName, "select basecube.dim1 as `dim1`, sum(basecube.msr12) as `msr12` FROM ", null,
         " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
     String expected2 = getExpectedQuery(cubeName,
-        "select basecube.dim1 as `dim1`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
-        " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+      "select basecube.dim1 as `dim1`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
+      " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     String lower = hqlQuery.toLowerCase();
     assertTrue(
       lower.startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, mq2.roundedmsr2 roundedmsr2, mq1.msr12 msr12 from ")
@@ -229,8 +231,8 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     String expected2 = getExpectedQuery(cubeName,
         "select basecube.dim1 as `dim1`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
         " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     String lower = hqlQuery.toLowerCase();
     assertTrue(
       lower.startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, mq2.roundedmsr2 roundedmsr2, mq1.msr12 msr12 from ")
@@ -254,8 +256,8 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     String expected2 = getExpectedQuery(cubeName,
             "select basecube.dim1 as `dim1`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
             " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     String lower = hqlQuery.toLowerCase();
     assertTrue(
             lower.startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, mq2.roundedmsr2 roundedmsr2, "
@@ -278,8 +280,8 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     String expected2 = getExpectedQuery(cubeName,
         "select basecube.dim1 as `dim1`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
         " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     String lower = hqlQuery.toLowerCase();
     assertTrue(
       lower.startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, mq2.msr12 msr12, mq1.roundedmsr2 roundedmsr2 from ")
@@ -305,9 +307,9 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     String expected3 =
       getExpectedQuery(cubeName, "select basecube.dim1 as `dim1`, max(basecube.msr13) as `msr13` FROM ", null,
         " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "c1_testfact3_base"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
-    TestCubeRewriter.compareContains(expected3, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    compareContains(expected3, hqlQuery);
     assertTrue(
       hqlQuery.toLowerCase().startsWith(
         "select coalesce(mq1.dim1, mq2.dim1, mq3.dim1) dim1, mq1.msr12 msr12,"
@@ -342,8 +344,8 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
         cubeName,
         "select basecube.dim1 as `dim1`, basecube.dim11 as `dim11`, round(sum(basecube.msr2)/1000) as `roundedmsr2` "
         + "FROM ", null, " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase().startsWith(
       "select coalesce(mq1.dim1, mq2.dim1) dim1, coalesce(mq1.dim11, mq2.dim11) dim11,"
         + " mq1.msr12 msr12, mq2.roundedmsr2 roundedmsr2 from ")
@@ -358,15 +360,15 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
   @Test
   public void testMultiFactQueryWithNoAggregates() throws Exception {
     // no aggregates in the query
-    String hqlQuery = rewrite("select dim1, msr11, roundedmsr2 from basecube" + " where " + TWO_DAYS_RANGE, conf);
+    String hqlQuery = rewrite("select dim1, msr11, roundedmsr2 from basecube where " + TWO_DAYS_RANGE, conf);
     String expected1 =
       getExpectedQuery(cubeName, "select basecube.dim1 as `dim1`, basecube.msr11 as `msr11` FROM ", null, null,
         getWhereForHourly2days(cubeName, "C1_testfact2_raw_base"));
     String expected2 = getExpectedQuery(cubeName,
         "select basecube.dim1 as `dim1`, round(basecube.msr2/1000) as `roundedmsr2` FROM ", null, null,
         getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase().startsWith(
       "select coalesce(mq1.dim1, mq2.dim1) dim1, mq1.msr11 msr11, mq2.roundedmsr2 roundedmsr2 from ")
       || hqlQuery.toLowerCase().startsWith(
@@ -380,15 +382,15 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
   public void testMultiFactQueryWithColumnAliases() throws Exception {
     // query with aliases passed
     String hqlQuery =
-      rewrite("select dim1 d1, msr12 `my msr12`, roundedmsr2 m2 from basecube" + " where " + TWO_DAYS_RANGE, conf);
+      rewrite("select dim1 d1, msr12 `my msr12`, roundedmsr2 m2 from basecube where " + TWO_DAYS_RANGE, conf);
     String expected1 =
       getExpectedQuery(cubeName, "select basecube.dim1 as `d1`, sum(basecube.msr12) as `expr2` FROM ", null,
         " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
     String expected2 =
       getExpectedQuery(cubeName, "select basecube.dim1 as `d1`, round(sum(basecube.msr2)/1000) as `m2` FROM ", null,
         " group by basecube.dim1", getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase().startsWith(
       "select coalesce(mq1.d1, mq2.d1) d1, mq2.expr2 `my msr12`, mq1.m2 m2 from ")
       ||
@@ -400,15 +402,15 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
   @Test
   public void testMultiFactQueryWithNoDefaultAggregates() throws Exception {
    // query with non default aggregate
-    String hqlQuery = rewrite("select dim1, avg(msr12), avg(msr2) from basecube" + " where " + TWO_DAYS_RANGE, conf);
+    String hqlQuery = rewrite("select dim1, avg(msr12), avg(msr2) from basecube where " + TWO_DAYS_RANGE, conf);
     String expected1 =
       getExpectedQuery(cubeName, "select basecube.dim1 as `dim1`, avg(basecube.msr12) as `msr12` FROM ", null,
         " group by basecube.dim1", getWhereForHourly2days(cubeName, "C1_testfact2_raw_base"));
     String expected2 =
       getExpectedQuery(cubeName, "select basecube.dim1 as `dim1`, avg(basecube.msr2)) as `msr2` FROM ", null,
         " group by basecube.dim1", getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase().startsWith(
       "select coalesce(mq1.dim1, mq2.dim1) dim1, mq2.msr12 msr12, mq1.msr2 msr2 from ")
       || hqlQuery.toLowerCase().startsWith(
@@ -421,17 +423,17 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
   @Test
   public void testMultiFactQueryWithJoins() throws Exception {
     // query with join
-    String hqlQuery = rewrite("select testdim2.name, msr12, roundedmsr2 from basecube where " + TWO_DAYS_RANGE, conf);
+    String hqlQuery = rewrite("select dim2chain.name, msr12, roundedmsr2 from basecube where " + TWO_DAYS_RANGE, conf);
     String expected1 = getExpectedQuery(cubeName,
-        "select testdim2.name as `name`, sum(basecube.msr12) as `msr12` FROM ", " JOIN " + getDbName()
-            + "c1_testdim2tbl testdim2 ON basecube.dim2 = " + " testdim2.id and (testdim2.dt = 'latest') ", null,
-        " group by testdim2.name", null, getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+        "select dim2chain.name as `name`, sum(basecube.msr12) as `msr12` FROM ", " JOIN " + getDbName()
+            + "c1_testdim2tbl dim2chain ON basecube.dim2 = " + " dim2chain.id and (dim2chain.dt = 'latest') ", null,
+        " group by dim2chain.name", null, getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
     String expected2 = getExpectedQuery(cubeName,
-        "select testdim2.name as `name`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", " JOIN " + getDbName()
-            + "c1_testdim2tbl testdim2 ON basecube.dim2 = " + " testdim2.id and (testdim2.dt = 'latest') ", null,
-        " group by testdim2.name", null, getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+        "select dim2chain.name as `name`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", " JOIN " + getDbName()
+            + "c1_testdim2tbl dim2chain ON basecube.dim2 = " + " dim2chain.id and (dim2chain.dt = 'latest') ", null,
+        " group by dim2chain.name", null, getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase().startsWith(
       "select coalesce(mq1.name, mq2.name) name, mq2.msr12 msr12, mq1.roundedmsr2 roundedmsr2 from ")
       || hqlQuery.toLowerCase().startsWith(
@@ -443,16 +445,16 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
   @Test
   public void testMultiFactQueryWithDenormColumn() throws Exception {
     // query with denorm variable
-    String hqlQuery = rewrite("select dim2, msr13, roundedmsr2 from basecube" + " where " + TWO_DAYS_RANGE, conf);
-    String expected1 = getExpectedQuery(cubeName, "select testdim2.id as `dim2`, max(basecube.msr13) as `msr13` FROM ",
-        " JOIN " + getDbName() + "c1_testdim2tbl testdim2 ON basecube.dim12 = "
-            + " testdim2.id and (testdim2.dt = 'latest') ", null, " group by testdim2.id", null,
+    String hqlQuery = rewrite("select dim2, msr13, roundedmsr2 from basecube where " + TWO_DAYS_RANGE, conf);
+    String expected1 = getExpectedQuery(cubeName, "select dim2chain.id as `dim2`, max(basecube.msr13) as `msr13` FROM ",
+        " JOIN " + getDbName() + "c1_testdim2tbl dim2chain ON basecube.dim12 = "
+            + " dim2chain.id and (dim2chain.dt = 'latest') ", null, " group by dim2chain.id", null,
         getWhereForHourly2days(cubeName, "C1_testFact3_RAW_BASE"));
     String expected2 = getExpectedQuery(cubeName,
         "select basecube.dim2 as `dim2`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", null,
         " group by basecube.dim2", getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase().startsWith(
       "select coalesce(mq1.dim2, mq2.dim2) dim2, mq2.msr13 msr13, mq1.roundedmsr2 roundedmsr2 from ")
       || hqlQuery.toLowerCase().startsWith(
@@ -462,26 +464,47 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
   }
 
   @Test
+  public void testMultiFactQueryWithDenormColumnInWhere() throws Exception {
+    // query with denorm variable
+    String hqlQuery = rewrite("select dim2, msr13, roundedmsr2 from basecube where dim2 == 10 and " + TWO_DAYS_RANGE,
+      conf);
+    String expected1 = getExpectedQuery(cubeName, "select dim2chain.id as `dim2`, max(basecube.msr13) as `msr13` FROM ",
+      " JOIN " + getDbName() + "c1_testdim2tbl dim2chain ON basecube.dim12 = "
+        + " dim2chain.id and (dim2chain.dt = 'latest') ", "dim2chain.id == 10", " group by dim2chain.id", null,
+      getWhereForHourly2days(cubeName, "C1_testFact3_RAW_BASE"));
+    String expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim2 as `dim2`, round(sum(basecube.msr2)/1000) as `roundedmsr2` FROM ", "basecube.dim2 == 10",
+      " group by basecube.dim2", getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith(
+      "select coalesce(mq1.dim2, mq2.dim2) dim2, mq2.msr13 msr13, mq1.roundedmsr2 roundedmsr2 from ")
+      || hqlQuery.toLowerCase().startsWith(
+        "select coalesce(mq1.dim2, mq2.dim2) dim2, mq1.msr13 msr13, mq2.roundedmsr2 roundedmsr2 from "), hqlQuery);
+    assertTrue(hqlQuery.contains("mq1 full outer join ") && hqlQuery.endsWith("mq2 on mq1.dim2 <=> mq2.dim2"),
+      hqlQuery);
+  }
+  @Test
   public void testMultiFactQueryWithExpressionInvolvingDenormVariable() throws Exception {
     // query with expression
     // The expression to be answered from denorm columns
     String hqlQuery =
       rewrite(
-        "select booleancut, round(sum(msr2)/1000), avg(msr13 + msr14) from basecube" + " where " + TWO_DAYS_RANGE,
+        "select booleancut, round(sum(msr2)/1000), avg(msr13 + msr14) from basecube where " + TWO_DAYS_RANGE,
         conf);
     String expected1 =
-      getExpectedQuery(cubeName, "select basecube.dim1 != 'x' AND testdim2.id != 10 as `booleancut`,"
+      getExpectedQuery(cubeName, "select basecube.dim1 != 'x' AND dim2chain.id != 10 as `booleancut`,"
           + " avg(basecube.msr13 + basecube.msr14) as `expr3` FROM ", " JOIN " + getDbName()
-          + "c1_testdim2tbl testdim2 ON basecube.dim12 = " + " testdim2.id and (testdim2.dt = 'latest') ", null,
-        " group by basecube.dim1 != 'x' AND testdim2.id != 10", null,
+          + "c1_testdim2tbl dim2chain ON basecube.dim12 = " + " dim2chain.id and (dim2chain.dt = 'latest') ", null,
+        " group by basecube.dim1 != 'x' AND dim2chain.id != 10", null,
         getWhereForHourly2days(cubeName, "C1_testfact3_raw_base"));
     String expected2 =
       getExpectedQuery(cubeName, "select basecube.dim1 != 'x' AND basecube.dim2 != 10 as `booleancut`,"
           + " round(sum(basecube.msr2)/1000) as `msr2` FROM ", null,
         " group by basecube.dim1 != 'x' AND basecube.dim2 != 10",
         getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
-    TestCubeRewriter.compareContains(expected1, hqlQuery);
-    TestCubeRewriter.compareContains(expected2, hqlQuery);
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
     assertTrue(hqlQuery.toLowerCase()
       .startsWith("select coalesce(mq1.booleancut, mq2.booleancut) booleancut, mq2.msr2 msr2,"
         + " mq1.expr3 expr3 from ")
@@ -493,6 +516,38 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
       hqlQuery);
   }
 
+  @Test
+  public void testMultiFactQueryWithExpressionInvolvingDenormVariableInWhereClause() throws Exception {
+    // query with expression
+    // The expression to be answered from denorm columns
+    String hqlQuery =
+      rewrite(
+        "select booleancut, round(sum(msr2)/1000), avg(msr13 + msr14) from basecube where booleancut == 'true' and "
+          + TWO_DAYS_RANGE, conf);
+    String expected1 =
+      getExpectedQuery(cubeName, "select basecube.dim1 != 'x' AND dim2chain.id != 10 as `booleancut`,"
+          + " avg(basecube.msr13 + basecube.msr14) as `expr3` FROM ", " JOIN " + getDbName()
+          + "c1_testdim2tbl dim2chain ON basecube.dim12 = " + " dim2chain.id and (dim2chain.dt = 'latest') ",
+        "(basecube.dim1 != 'x' AND dim2chain.id != 10) == true",
+        " group by basecube.dim1 != 'x' AND dim2chain.id != 10", null,
+        getWhereForHourly2days(cubeName, "C1_testfact3_raw_base"));
+    String expected2 =
+      getExpectedQuery(cubeName, "select basecube.dim1 != 'x' AND basecube.dim2 != 10 as `booleancut`,"
+          + " round(sum(basecube.msr2)/1000) as `msr2` FROM ", "(basecube.dim1 != 'x' AND basecube.dim2 != 10) == true",
+        " group by basecube.dim1 != 'x' AND basecube.dim2 != 10",
+        getWhereForHourly2days(cubeName, "C1_testfact1_raw_base"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase()
+      .startsWith("select coalesce(mq1.booleancut, mq2.booleancut) booleancut, mq2.msr2 msr2,"
+        + " mq1.expr3 expr3 from ")
+      || hqlQuery.toLowerCase()
+        .startsWith("select coalesce(mq1.booleancut, mq2.booleancut) booleancut, mq1.msr2 msr2,"
+          + " mq2.expr3 expr3 from "), hqlQuery);
+    assertTrue(hqlQuery.contains("mq1 full outer join ")
+        && hqlQuery.endsWith("mq2 on mq1.booleancut <=> mq2.booleancut"),
+      hqlQuery);
+  }
   @Test
   public void testFallbackPartCol() throws Exception {
     Configuration conf = getConfWithStorages("C1");
@@ -569,5 +624,199 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
         throw new LensException("Unexpected");
       }
     }
+  }
+  @Test
+  public void testMultiFactQueryWithHaving() throws Exception {
+
+    String hqlQuery, expected1, expected2;
+    String endSubString = "mq2 on mq1.dim1 <=> mq2.dim1 AND mq1.dim11 <=> mq2.dim11";
+    String joinSubString = "mq1 full outer join ";
+
+    // only One having clause, that too answerable from one fact
+    hqlQuery = rewrite("select dim1, dim11, msr12 from basecube where " + TWO_DAYS_RANGE
+      + "having roundedmsr2 > 0", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, sum(basecube.msr12) as msr12 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 having round(sum(basecube.msr2)/1000) > 0",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+
+    assertTrue(hqlQuery.toLowerCase().contains("having"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+      + "coalesce(mq1.dim11, mq2.dim11) dim11, mq2.msr12 msr12 from ")
+      || hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, coalesce(mq1.dim11, mq2.dim11) "
+        + "dim11, mq1.msr12 msr12 from "), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString), hqlQuery);
+
+    // Two having clause, one from each fact.
+    hqlQuery = rewrite("select dim1, dim11, msr12, roundedmsr2 from basecube where " + TWO_DAYS_RANGE
+      + "having msr12 > 2 and roundedmsr2 > 0", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, sum(basecube.msr12) as msr12 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 HAVING sum(basecube.msr12) > 2",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, round(sum(basecube.msr2)/1000) as roundedmsr2 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 HAVING round(sum(basecube.msr2)/1000) > 0",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+      + "coalesce(mq1.dim11, mq2.dim11) dim11, mq1.msr12 msr12, mq2.roundedmsr2 roundedmsr2 from ")
+      || hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+        + "coalesce(mq1.dim11, mq2.dim11) dim11, mq2.msr12 msr12, mq1.roundedmsr2 roundedmsr2 from "), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString), hqlQuery);
+
+    // Two having clauses and one complex expression in having which needs to be split over the two facts
+    // And added as where clause outside
+    hqlQuery = rewrite("select dim1, dim11, msr12, roundedmsr2 from basecube where " + TWO_DAYS_RANGE
+      + "having flooredmsr12+roundedmsr2 <= 1000 and msr12 > 2 and roundedmsr2 > 0", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, sum(basecube.msr12) as msr12 , "
+        + "floor(sum(basecube.msr12)) as alias0 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 HAVING sum(basecube.msr12) > 2",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+      + "coalesce(mq1.dim11, mq2.dim11) dim11, mq2.msr12 msr12, mq1.roundedmsr2 roundedmsr2 from ")
+      || hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+        + "coalesce(mq1.dim11, mq2.dim11) dim11, mq1.msr12 msr12, mq2.roundedmsr2 roundedmsr2 from "), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString + " WHERE (( alias0  +  roundedmsr2 ) <=  1000 )"), hqlQuery);
+
+    // No push-down-able having clauses.
+    hqlQuery = rewrite("select dim1, dim11, msr12, roundedmsr2 from basecube where " + TWO_DAYS_RANGE
+      + "having flooredmsr12+roundedmsr2 <= 1000", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, sum(basecube.msr12) as msr12, "
+        + "floor(sum(( basecube . msr12 ))) as `alias0` FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, round(sum(basecube.msr2)/1000) as roundedmsr2 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+
+    assertFalse(hqlQuery.toLowerCase().contains("having"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+      + "coalesce(mq1.dim11, mq2.dim11) dim11, mq2.msr12 msr12, mq1.roundedmsr2 roundedmsr2 from ")
+      || hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, coalesce(mq1.dim11, mq2.dim11) "
+        + "dim11, mq1.msr12 msr12, mq2.roundedmsr2 roundedmsr2 from "), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString + " WHERE (( alias0  +  roundedmsr2 ) <=  1000 )"), hqlQuery);
+
+    // function over expression of two functions over measures
+    hqlQuery = rewrite("select dim1, dim11, msr12, roundedmsr2 from basecube where " + TWO_DAYS_RANGE
+      + "having round(flooredmsr12+roundedmsr2) <= 1000", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, sum(basecube.msr12) as msr12, "
+        + "floor(sum(( basecube . msr12 ))) as `alias0` FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, round(sum(basecube.msr2)/1000) as roundedmsr2 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+
+    assertFalse(hqlQuery.toLowerCase().contains("having"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, "
+      + "coalesce(mq1.dim11, mq2.dim11) dim11, mq2.msr12 msr12, mq1.roundedmsr2 roundedmsr2 from ")
+      || hqlQuery.toLowerCase().startsWith("select coalesce(mq1.dim1, mq2.dim1) dim1, coalesce(mq1.dim11, mq2.dim11) "
+        + "dim11, mq1.msr12 msr12, mq2.roundedmsr2 roundedmsr2 from "), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString + " WHERE (round(( alias0  +  roundedmsr2 )) <=  1000 )"), hqlQuery);
+
+
+    // Following test cases only select dimensions, and all the measures are in having.
+    // Mostly tests follow the same pattern as the above tests,
+    // The extra thing to test is the inclusion of sub-expressions in select clauses.
+
+
+    hqlQuery = rewrite("select dim1, dim11 from basecube where " + TWO_DAYS_RANGE
+      + "having msr12 > 2 and roundedmsr2 > 0", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 HAVING sum(basecube.msr12) > 2",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 HAVING round(sum(basecube.msr2)/1000) > 0",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+    String begin = "select coalesce(mq1.dim1, mq2.dim1) dim1, coalesce(mq1.dim11, mq2.dim11) dim11 from ";
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith(begin), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString) && hqlQuery.endsWith(endSubString), hqlQuery);
+
+    hqlQuery = rewrite("select dim1, dim11 from basecube where " + TWO_DAYS_RANGE
+      + "having flooredmsr12+roundedmsr2 <= 1000", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, "
+        + "floor(sum(basecube.msr12)) as alias0 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, round(sum(basecube.msr2/1000)) as alias1 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+
+    assertFalse(hqlQuery.toLowerCase().contains("having"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith(begin), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString + " WHERE (( alias0  +  alias1 ) <=  1000 )"), hqlQuery);
+
+    hqlQuery = rewrite("select dim1, dim11 from basecube where " + TWO_DAYS_RANGE
+      + "having msr12 > 2 and roundedmsr2 > 0 and flooredmsr12+roundedmsr2 <= 1000", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, "
+        + "floor(sum(( basecube . msr12 ))) as `alias0` FROM ",
+      null, " group by basecube.dim1, basecube.dim11 having sum(basecube.msr12) > 2",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, round(sum(basecube.msr2)/1000) as alias1 FROM ",
+      null, " group by basecube.dim1, basecube.dim11 having round(sum(basecube.msr2)/1000) > 0",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith(begin), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString + " WHERE (( alias0  +  alias1 ) <=  1000 )"), hqlQuery);
+
+    hqlQuery = rewrite("select dim1, dim11 from basecube where " + TWO_DAYS_RANGE
+      + "having msr12 > 2 or roundedmsr2 > 0 or flooredmsr12+roundedmsr2 <= 1000", conf);
+    expected1 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, "
+        + "sum(basecube.msr12) as alias0, floor(sum(basecube.msr12)) as alias2 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact2_BASE"));
+    expected2 = getExpectedQuery(cubeName,
+      "select basecube.dim1 as dim1, basecube.dim11 as dim11, round(sum(basecube.msr2)/1000) as alias1 FROM ",
+      null, " group by basecube.dim1, basecube.dim11",
+      getWhereForDailyAndHourly2days(cubeName, "C1_testFact1_BASE"));
+    String havingToWhere = " WHERE ((( alias0  >  2 ) or ( alias1  >  0 )) or (( alias2  +  alias1 ) <=  1000 ))";
+
+    assertFalse(hqlQuery.toLowerCase().contains("having"));
+    compareContains(expected1, hqlQuery);
+    compareContains(expected2, hqlQuery);
+    assertTrue(hqlQuery.toLowerCase().startsWith(begin), hqlQuery);
+    assertTrue(hqlQuery.contains(joinSubString)
+      && hqlQuery.endsWith(endSubString + havingToWhere), hqlQuery);
   }
 }

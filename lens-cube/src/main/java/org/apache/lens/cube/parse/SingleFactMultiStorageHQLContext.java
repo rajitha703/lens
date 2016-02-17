@@ -38,52 +38,13 @@ import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 
 import org.antlr.runtime.CommonToken;
-import org.antlr.runtime.tree.Tree;
-
-import lombok.Data;
-
 
 public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
 
   private final QueryAST ast;
-  int aliasCounter = 0;
-
-  @Data
-  public static class HashableASTNode {
-    private ASTNode ast;
-    private int hashCode = -1;
-    private boolean hashCodeComputed = false;
-
-    public HashableASTNode(ASTNode ast) {
-      this.ast = ast;
-    }
-
-    public void setAST(ASTNode ast) {
-      this.ast = ast;
-      hashCodeComputed = false;
-    }
-
-    public ASTNode getAST() {
-      return ast;
-    }
-
-    @Override
-    public int hashCode() {
-      if (!hashCodeComputed) {
-        hashCode = getString(ast).hashCode();
-        hashCodeComputed = true;
-      }
-      return hashCode;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      return o instanceof HashableASTNode && this.hashCode() == o.hashCode() && getString(this.getAST())
-        .trim().equalsIgnoreCase(getString(((HashableASTNode) o).getAST()).trim());
-    }
-  }
 
   private Map<HashableASTNode, ASTNode> innerToOuterASTs = new HashMap<>();
+  private AliasDecider aliasDecider = new DefaultAliasDecider();
 
   SingleFactMultiStorageHQLContext(CandidateFact fact, Map<Dimension, CandidateDim> dimsToQuery,
     CubeQueryContext query, QueryAST ast)
@@ -95,7 +56,6 @@ public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
     this.ast = ast;
     processSelectAST();
     processGroupByAST();
-    processWhereAST();
     processHavingAST();
     processOrderByAST();
     processLimit();
@@ -112,15 +72,6 @@ public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
   private void processGroupByAST() {
     if (ast.getGroupByAST() != null) {
       setGroupby(getString(processExpression(ast.getGroupByAST())));
-    }
-  }
-
-  private void processWhereAST() throws LensException {
-    for (String storageTable : fact.getStorgeWhereClauseMap().keySet()) {
-      ASTNode tree = parseExpr(fact.getStorgeWhereClauseMap().get(storageTable));
-      ASTNode replaced = replaceAST(tree);
-      //TODO: optimize parse/unparse cycle
-      fact.getStorgeWhereClauseMap().put(storageTable, getString(replaced));
     }
   }
 
@@ -174,7 +125,7 @@ public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
       ASTNode innerSelectASTWithoutAlias = copyAST(astNode);
       ASTNode innerSelectExprAST = new ASTNode(new CommonToken(HiveParser.TOK_SELEXPR));
       innerSelectExprAST.addChild(innerSelectASTWithoutAlias);
-      String alias = decideAlias(astNode);
+      String alias = aliasDecider.decideAlias(astNode);
       ASTNode aliasNode = new ASTNode(new CommonToken(Identifier, alias));
       innerSelectExprAST.addChild(aliasNode);
       addToInnerSelectAST(innerSelectExprAST);
@@ -185,14 +136,14 @@ public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
       outerAST.addChild(dotAST);
       innerToOuterASTs.put(new HashableASTNode(innerSelectASTWithoutAlias), outerAST);
       return outerAST;
-    } else if (isTableColumnAST(astNode)) {
+    } else if (isTableColumnAST(astNode) || isNonAggregateFunctionAST(astNode)) {
       if (innerToOuterASTs.containsKey(new HashableASTNode(astNode))) {
         return innerToOuterASTs.get(new HashableASTNode(astNode));
       }
       ASTNode innerSelectASTWithoutAlias = copyAST(astNode);
       ASTNode innerSelectExprAST = new ASTNode(new CommonToken(HiveParser.TOK_SELEXPR));
       innerSelectExprAST.addChild(innerSelectASTWithoutAlias);
-      String alias = decideAlias(astNode);
+      String alias = aliasDecider.decideAlias(astNode);
       ASTNode aliasNode = new ASTNode(new CommonToken(Identifier, alias));
       innerSelectExprAST.addChild(aliasNode);
       addToInnerSelectAST(innerSelectExprAST);
@@ -220,7 +171,7 @@ public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
     if (astNode == null) {
       return null;
     }
-    if (isAggregateAST(astNode) || isTableColumnAST(astNode)) {
+    if (isAggregateAST(astNode) || isTableColumnAST(astNode) || isNonAggregateFunctionAST(astNode)) {
       if (innerToOuterASTs.containsKey(new HashableASTNode(astNode))) {
         ASTNode ret = innerToOuterASTs.get(new HashableASTNode(astNode));
         // Set parent null for quicker GC
@@ -247,11 +198,6 @@ public class SingleFactMultiStorageHQLContext extends UnionHQLContext {
     child.getChild(0).addChild(new ASTNode(new CommonToken(Identifier, tableAlias)));
     child.addChild(new ASTNode(new CommonToken(Identifier, fieldAlias)));
     return child;
-  }
-
-  private String decideAlias(Tree child) {
-    // Can add intelligence in aliases someday. Not required though :)
-    return "alias" + (aliasCounter++);
   }
 
   private static ArrayList<HQLContextInterface> getUnionContexts(CandidateFact fact, Map<Dimension, CandidateDim>

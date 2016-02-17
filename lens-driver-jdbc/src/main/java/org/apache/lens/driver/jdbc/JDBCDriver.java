@@ -43,6 +43,7 @@ import org.apache.lens.api.query.QueryPrepareHandle;
 import org.apache.lens.cube.parse.HQLParser;
 import org.apache.lens.server.api.driver.*;
 import org.apache.lens.server.api.driver.DriverQueryStatus.DriverQueryState;
+import org.apache.lens.server.api.error.LensDriverErrorCode;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.events.LensEventListener;
 import org.apache.lens.server.api.metrics.MethodMetricsContext;
@@ -56,12 +57,13 @@ import org.apache.lens.server.api.query.constraint.QueryLaunchingConstraint;
 import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
 import org.apache.lens.server.api.query.cost.QueryCost;
 import org.apache.lens.server.api.query.rewrite.QueryRewriter;
+import org.apache.lens.server.api.util.LensUtil;
 import org.apache.lens.server.model.LogSegregationContext;
 import org.apache.lens.server.model.MappedDiagnosticLogSegregationContext;
 
 import org.apache.commons.lang3.StringUtils;
 
- import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
@@ -233,7 +235,7 @@ public class JDBCDriver extends AbstractLensDriver {
     private boolean isClosed;
 
     /** The lens result set. */
-    private JDBCResultSet lensResultSet;
+    private InMemoryResultSet lensResultSet;
 
     /**
      * Close.
@@ -795,7 +797,7 @@ public class JDBCDriver extends AbstractLensDriver {
         throw new LensException(stmt.getWarnings());
       }
     } catch (SQLException sql) {
-      throw new LensException(sql);
+      handleJDBCSQLException(sql);
     } finally {
       if (conn != null) {
         try {
@@ -810,6 +812,27 @@ public class JDBCDriver extends AbstractLensDriver {
     return stmt;
   }
 
+  /**
+   * Handle sql exception
+   *
+   * @param sqlex SQLException
+   * @throws LensException
+   */
+  private LensException handleJDBCSQLException(SQLException sqlex) throws LensException {
+    String cause = LensUtil.getCauseMessage(sqlex);
+    if (getSqlSynataxExceptions(sqlex).contains("SyntaxError")) {
+      throw new LensException(LensDriverErrorCode.SEMANTIC_ERROR.getLensErrorInfo(), sqlex, cause);
+    }
+    throw new LensException(LensDriverErrorCode.DRIVER_ERROR.getLensErrorInfo(), sqlex, cause);
+  }
+
+  private String getSqlSynataxExceptions(Throwable e) {
+    String exp = null;
+    if (e.getCause() != null) {
+      exp = e.getClass() + getSqlSynataxExceptions(e.getCause());
+    }
+    return exp;
+  }
 
   /**
    * Prepare the given query.
@@ -973,16 +996,13 @@ public class JDBCDriver extends AbstractLensDriver {
     }
   }
 
-  /**
-   * Fetch the results of the query, specified by the handle.
-   *
-   * @param context the context
-   * @return returns the {@link LensResultSet}.
-   * @throws LensException the lens exception
-   */
   @Override
-  public LensResultSet fetchResultSet(QueryContext context) throws LensException {
+  protected LensResultSet createResultSet(QueryContext ctx) throws LensException {
     checkConfigured();
+    return getDriverResult(ctx);
+  }
+
+  private LensResultSet getDriverResult(QueryContext context) throws LensException {
     JdbcQueryContext ctx = getQueryContext(context.getQueryHandle());
     if (ctx.isCancelled()) {
       throw new LensException("Result set not available for cancelled query " + context.getQueryHandle());
@@ -1124,6 +1144,5 @@ public class JDBCDriver extends AbstractLensDriver {
   @Override
   public void writeExternal(ObjectOutput arg0) throws IOException {
     // TODO Auto-generated method stub
-
   }
 }

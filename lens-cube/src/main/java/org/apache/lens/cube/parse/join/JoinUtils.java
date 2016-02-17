@@ -16,13 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.metastore;
+package org.apache.lens.cube.parse.join;
 
+import org.apache.hadoop.hive.ql.parse.JoinType;
 
-public class TestMetastoreServiceJSON { //extends TestMetastoreService {
-  /*public TestMetastoreServiceJSON() {
-    super();
-    mediaType = MediaType.APPLICATION_JSON;
-    dbPFX = "TestMetastoreServiceJSON_";
-  }*/
+public class JoinUtils {
+
+  private JoinUtils() {
+  }
+
+  public static String getJoinTypeStr(JoinType joinType) {
+    if (joinType == null) {
+      return "";
+    }
+    switch (joinType) {
+    case FULLOUTER:
+      return " full outer";
+    case INNER:
+      return " inner";
+    case LEFTOUTER:
+      return " left outer";
+    case LEFTSEMI:
+      return " left semi";
+    case UNIQUE:
+      return " unique";
+    case RIGHTOUTER:
+      return " right outer";
+    default:
+      return "";
+    }
+  }
 }
