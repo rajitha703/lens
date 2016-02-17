@@ -23,6 +23,7 @@ import static org.apache.lens.driver.es.ESDriverConfig.*;
 import org.apache.lens.driver.es.ESDriverConfig;
 import org.apache.lens.driver.es.ESQuery;
 import org.apache.lens.driver.es.translator.ESVisitor;
+import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
 
 import org.apache.commons.lang3.Validate;
 
@@ -76,6 +77,12 @@ public class ESTermVisitor extends ESVisitor {
     sortNode.put(colName, ORDER_BYS.get(orderBy));
     sorts.add(sortNode);
   }
+
+  @Override
+  public void visitHaving(ASTCriteriaVisitor visitedSubTree) {
+    throw new UnsupportedOperationException("Having is not supported in ES query");
+  }
+
 
   @Override
   public void completeVisit() {

@@ -19,7 +19,7 @@
 package org.apache.lens.driver.es.grammar;
 
 import org.apache.lens.driver.es.ESDriverConfig;
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -51,6 +51,7 @@ public enum Aggregations {
   }
 
   private static final ImmutableMap<String, Aggregations> HQL_AF_MAP;
+
   static {
     final ImmutableMap.Builder<String, Aggregations> hqlAFMapBuilder = ImmutableMap.builder();
     hqlAFMapBuilder.put("count", value_count);

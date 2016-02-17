@@ -1,0 +1,94 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+[
+  {
+    "name" : "Basic simple groupby select",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=null, limitSpec=NoopLimitSpec, context=null}"
+  }
+  ,
+ {
+   "name" : "Basic simple groupby with orderby asc",
+   "hql" : "select country , sum(count) as countname,sum(added) as addedname from db.wikipedia where time BETWEEN %s group by country order by countname asc",
+   "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}, DoubleSumAggregatorFactory{fieldName='added', name='addedname'}], havingSpec=null, limitSpec=DefaultLimitSpec{columns='[OrderByColumnSpec{dimension='countname', direction=ASCENDING}]', limit=2147483647}, context=null}"
+ },
+ {
+   	"name" : "Basic simple groupby with orderby desc",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country order by countname desc",
+     "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=null, limitSpec=DefaultLimitSpec{columns='[OrderByColumnSpec{dimension='countname', direction=DESCENDING}]', limit=2147483647}, context=null}"
+ },
+ {
+    "name" : "Basic simple groupby with simple having greater than filter",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country having countname>10",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=GreaterThanHavingSpec{aggregationName='countname', value=10}, limitSpec=NoopLimitSpec, context=null}"
+   },
+ {
+    "name" : "Basic simple groupby with simple having less than filter",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country having countname<100",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=LessThanHavingSpec{aggregationName='countname', value=100}, limitSpec=NoopLimitSpec, context=null}"
+ },
+ {
+    "name" : "Basic simple groupby with simple having equal to filter",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country having countname = 100",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=EqualToHavingSpec{aggregationName='countname', value=100}, limitSpec=NoopLimitSpec, context=null}"
+ },
+ {
+    "name" : "Basic simple groupby with complex having filter ",
+    "hql" : "select country , sum(count) as countname,sum(added) as addedname,sum(delta) as deltaname from db.wikipedia where time BETWEEN %s group by country having (countname>10 and addedname>200) or deltaname<100",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}, DoubleSumAggregatorFactory{fieldName='added', name='addedname'}, DoubleSumAggregatorFactory{fieldName='delta', name='deltaname'}], havingSpec=OrHavingSpec{havingSpecs=[AndHavingSpec{havingSpecs=[GreaterThanHavingSpec{aggregationName='countname', value=10}, GreaterThanHavingSpec{aggregationName='addedname', value=200}]}, LessThanHavingSpec{aggregationName='deltaname', value=100}]}, limitSpec=NoopLimitSpec, context=null}"
+ },
+ {
+    "name" : "Basic simple groupby with orderby asc, simple criteria filter and a limit ",
+    "hql" : "select country ,continent, sum(count) as countname from db.wikipedia where country='United States' and time BETWEEN %s group by country,continent order by countname asc limit 10",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=(country = United States), granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}, DefaultDimensionSpec{dimension='continent', outputName='continent'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=null, limitSpec=DefaultLimitSpec{columns='[OrderByColumnSpec{dimension='countname', direction=ASCENDING}]', limit=10}, context=null}"
+ },
+ {
+    "name" : "Basic simple groupby with complex filter",
+    "hql" : "select country , continent,sum(count) as countname from db.wikipedia where country='Malaysia' or !(continent='Europe' or continent = 'Asia') and time BETWEEN %s group by country,continent ",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=(country = Malaysia || (!(continent = Europe || continent = Asia))), granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}, DefaultDimensionSpec{dimension='continent', outputName='continent'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=null, limitSpec=NoopLimitSpec, context=null}"
+ },
+ {
+    "name" : "Basic simple groupby with orderby asc , having filter and a limit",
+    "hql" : "select country , continent, sum(count) as countname from db.wikipedia where time BETWEEN %s group by country,continent having countname >100 order by countname desc limit 5",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}, DefaultDimensionSpec{dimension='continent', outputName='continent'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=GreaterThanHavingSpec{aggregationName='countname', value=100}, limitSpec=DefaultLimitSpec{columns='[OrderByColumnSpec{dimension='countname', direction=DESCENDING}]', limit=5}, context=null}"
+ },
+ {
+    "name" : "Multiple groupby's having filters",
+    "hql" : "select sum(count) as countname,max(delta) as maxdelta, min(added) as minadded,count(added) as countrows from db.wikipedia where time BETWEEN %s group by country,continent having (countname >1000 or maxdelta > 100) and minadded < 10",
+    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}, DefaultDimensionSpec{dimension='continent', outputName='continent'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}, DoubleMaxAggregatorFactory{fieldName='delta', name='maxdelta'}, DoubleMinAggregatorFactory{fieldName='added', name='minadded'}, CountAggregatorFactory{name='countrows'}], havingSpec=AndHavingSpec{havingSpecs=[OrHavingSpec{havingSpecs=[GreaterThanHavingSpec{aggregationName='countname', value=1000}, GreaterThanHavingSpec{aggregationName='maxdelta', value=100}]}, LessThanHavingSpec{aggregationName='minadded', value=10}]}, limitSpec=NoopLimitSpec, context=null}"
+ },
+ {
+    "name" : "Basic simple TOPN with order asc select",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country order by countname asc limit 10",
+    "expectedJson" : "TopNQuery{dataSource='wikipedia', dimensionSpec=DefaultDimensionSpec{dimension='country', outputName='country'}, topNMetricSpec=io.druid.query.topn.InvertedTopNMetricSpec@509dac1a, threshold=10, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity='AllGranularity', aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], postAggregatorSpecs=[]}"
+ },
+ {
+    "name" : "Basic simple TOPN with order asc with simple filter",
+    "hql" : "select country , sum(count) as countname from db.wikipedia where country='United States' and time BETWEEN %s group by country order by countname asc limit 10",
+     "expectedJson" : "TopNQuery{dataSource='wikipedia', dimensionSpec=DefaultDimensionSpec{dimension='country', outputName='country'}, topNMetricSpec=io.druid.query.topn.InvertedTopNMetricSpec@509dac1a, threshold=10, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=(country = United States), granularity='AllGranularity', aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], postAggregatorSpecs=[]}"
+ },
+  {
+     "name" : "Basic simple TOPN with order asc with complex filter",
+     "hql" : "select country , sum(count) as countname from db.wikipedia where (country='United States' or country ='United Kingdom') and time BETWEEN %s group by country order by countname asc limit 10",
+      "expectedJson" : "TopNQuery{dataSource='wikipedia', dimensionSpec=DefaultDimensionSpec{dimension='country', outputName='country'}, topNMetricSpec=io.druid.query.topn.InvertedTopNMetricSpec@509dac1a, threshold=10, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=((country = United States || country = United Kingdom)), granularity='AllGranularity', aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], postAggregatorSpecs=[]}"
+  }
+]
+
+

@@ -495,7 +495,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
     config.setStrings(CubeQueryConfUtil.DRIVER_SUPPORTED_STORAGES, "es_storage");
   }
 
-  private void assertResultsAreEqual(ESResultSet resultSet1, ESResultSet resultSet2) {
+  private void  assertResultsAreEqual(ESResultSet resultSet1, ESResultSet resultSet2) {
     final Collection<ColumnDescriptor> columns1 = resultSet1.getMetadata().getColumns();
     final Collection<ColumnDescriptor> columns2 = resultSet2.getMetadata().getColumns();
     Assert.assertEquals(columns1.size(), columns2.size());

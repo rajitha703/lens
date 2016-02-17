@@ -1573,6 +1573,12 @@
         <artifactId>httpcore</artifactId>
         <version>${httpcore.version}</version>
       </dependency>
+      <!--Druid dependencies-->
+      <dependency>
+        <groupId>io.druid</groupId>
+        <artifactId>druid-processing</artifactId>
+        <version>0.8.2-SNAPSHOT</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -1586,6 +1592,7 @@
     <module>lens-driver-hive</module>
     <module>lens-driver-jdbc</module>
     <module>lens-driver-es</module>
+    <module>lens-driver-druid</module>
     <module>lens-server</module>
     <module>lens-client</module>
     <module>lens-cli</module>
@@ -1595,7 +1602,7 @@
     <module>lens-ml-lib</module>
     <module>lens-ml-dist</module>
     <module>lens-regression</module>
-    <module>lens-ui</module>
+<!--    <module>lens-ui</module>-->
   </modules>
 
   <profiles>

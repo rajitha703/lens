@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.driver.es.translator;
+package org.apache.lens.server.api.driver.lib;
 
 import java.util.List;
 
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 public interface ASTCriteriaVisitor {
   /**

@@ -22,10 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lens.cube.parse.HQLParser;
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
-import org.apache.lens.driver.es.translator.ASTCriteriaVisitor;
-import org.apache.lens.driver.es.translator.ASTVisitor;
-import org.apache.lens.driver.es.translator.CriteriaVisitorFactory;
+import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.lib.ASTVisitor;
+import org.apache.lens.server.api.driver.lib.CriteriaVisitorFactory;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.commons.lang3.Validate;
@@ -42,9 +42,9 @@ import lombok.RequiredArgsConstructor;
  * This traverses ASTNode in inorder fashion.
  * More visitors (translation/validation) can be added.
  * Any SQL query can be converted to ASTNode and can be traversed using this traversal
- *
+ * <p/>
  * Currently this traversal is limited for elastic search. So naming it this way.
- *
+ * <p/>
  * Look at the constructor for usage.
  */
 @RequiredArgsConstructor
@@ -289,6 +289,7 @@ public final class ASTTraverserForES {
       this.logicalOpType = logicalOpType;
     }
   }
+
   private static class PredicateInfo extends CriteriaInfo {
     final PredicateType predicateType;
     final String predicateOp;

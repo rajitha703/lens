@@ -75,7 +75,7 @@ public class SampleMetastore {
 
   public void createCubes() throws JAXBException, IOException {
     createCube("sample-cube.xml");
-    createCube("sales-cube.xml");
+//    createCube("sales-cube.xml");
   }
 
   private void createDimension(String dimensionSpec) {

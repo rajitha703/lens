@@ -20,7 +20,7 @@ package org.apache.lens.driver.es.grammar;
 
 import java.util.List;
 
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 import org.apache.commons.lang3.Validate;
 
@@ -60,6 +60,7 @@ public enum LogicalOperators {
   public abstract void build(ObjectNode targetNode, List<JsonNode> innerNodes);
 
   private static final ImmutableMap<String, LogicalOperators> HQL_LOG_OP_MAP;
+
   static {
     final ImmutableMap.Builder<String, LogicalOperators> logicalOpsBuilder = ImmutableMap.builder();
     logicalOpsBuilder.put("and", and);

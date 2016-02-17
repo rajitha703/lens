@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.driver.es.translator;
+package org.apache.lens.server.api.driver.lib;
 
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 /**
  * The visitor interface for ASTInorderTraversal
@@ -40,6 +40,8 @@ public interface ASTVisitor {
   void visitGroupBy(String colName);
 
   void visitOrderBy(String colName, OrderBy orderBy);
+
+  void visitHaving(ASTCriteriaVisitor visitedSubTree);
 
   void visitLimit(int limit);
 

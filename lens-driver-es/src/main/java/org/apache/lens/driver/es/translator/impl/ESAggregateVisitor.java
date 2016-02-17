@@ -22,9 +22,10 @@ import java.util.Map;
 
 import org.apache.lens.driver.es.ESDriverConfig;
 import org.apache.lens.driver.es.ESQuery;
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
 import org.apache.lens.driver.es.grammar.Aggregations;
 import org.apache.lens.driver.es.translator.ESVisitor;
+import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 import org.apache.commons.lang3.Validate;
 
@@ -90,6 +91,11 @@ public class ESAggregateVisitor extends ESVisitor {
      * http://tinyurl.com/p6e5upo
      */
     throw new UnsupportedOperationException("Order by cannot be used with aggregate queries");
+  }
+
+  @Override
+  public void visitHaving(ASTCriteriaVisitor visitedSubTree) {
+    throw new UnsupportedOperationException("Having is not supported in ES query");
   }
 
   @Override

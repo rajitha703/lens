@@ -20,10 +20,10 @@ package org.apache.lens.driver.es.translator.impl;
 
 import java.util.List;
 
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
 import org.apache.lens.driver.es.grammar.LogicalOperators;
 import org.apache.lens.driver.es.grammar.Predicates;
-import org.apache.lens.driver.es.translator.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;

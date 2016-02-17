@@ -32,6 +32,8 @@ import org.apache.lens.driver.es.translator.impl.ESAggregateVisitor;
 import org.apache.lens.driver.es.translator.impl.ESCriteriaVisitor;
 import org.apache.lens.driver.es.translator.impl.ESCriteriaVisitorFactory;
 import org.apache.lens.driver.es.translator.impl.ESTermVisitor;
+import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.lib.ASTVisitor;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.commons.lang3.Validate;

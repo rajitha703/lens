@@ -21,7 +21,7 @@ package org.apache.lens.driver.es.grammar;
 import java.util.List;
 
 import org.apache.lens.driver.es.ESDriverConfig;
-import org.apache.lens.driver.es.exceptions.InvalidQueryException;
+import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
 
 import org.apache.commons.lang.Validate;
 
@@ -133,6 +133,7 @@ public enum Predicates {
   }
 
   private static final ImmutableMap<String, Predicates> HQL_PREDICATE_MAP;
+
   static {
     final ImmutableMap.Builder<String, Predicates> predicatesBuilder = ImmutableMap.builder();
     predicatesBuilder.put(">", gt);
