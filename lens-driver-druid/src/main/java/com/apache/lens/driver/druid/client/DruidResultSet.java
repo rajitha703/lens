@@ -42,11 +42,6 @@ public class DruidResultSet extends InMemoryResultSet {
   }
 
   @Override
-  public boolean seekToStart() throws LensException {
-    return false;
-  }
-
-  @Override
   public boolean hasNext() throws LensException {
     return resultSetIterator.hasNext();
   }
