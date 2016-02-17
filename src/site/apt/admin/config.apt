@@ -17,6 +17,7 @@
 ~~ under the License.
 ~~
 
+
 Lens server configuration
 
 ===
@@ -171,11 +172,7 @@ Lens server configuration
 *--+--+---+--+
 |71|lens.server.savedquery.ws.resource.impl|org.apache.lens.server.query.save.SavedQueryResource|Implementation class for Saved query Resource|
 *--+--+---+--+
-<<<<<<< HEAD
-|69|lens.server.scheduler.service.impl|org.apache.lens.server.scheduler.SchedulerServiceImpl|Implementation class for query scheduler service|
-=======
 |72|lens.server.scheduler.service.impl|org.apache.lens.server.scheduler.SchedulerServiceImpl|Implementation class for query scheduler service|
->>>>>>> c4fa10723e094b07c6a0ba4dc3b2e490a0ed189c
 *--+--+---+--+
 |73|lens.server.scheduler.ws.resource.impl|org.apache.lens.server.scheduler.ScheduleResource|Implementation class for query scheduler resource|
 *--+--+---+--+
