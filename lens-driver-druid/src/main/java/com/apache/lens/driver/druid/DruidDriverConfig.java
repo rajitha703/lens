@@ -22,7 +22,6 @@ import org.apache.hadoop.conf.Configuration;
 
 public final class DruidDriverConfig {
 
-  public static final String QUERY_TIME_OUT_LENS_KEY = "lens.driver.druid.query.timeout.millis";
   public static final String CLIENT_CLASS_KEY = "lens.driver.druid.client.class";
   public static final String DATE_FORMAT = "lens.driver.druid.date.format";
 

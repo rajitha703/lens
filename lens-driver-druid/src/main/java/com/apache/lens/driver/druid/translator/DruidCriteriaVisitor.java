@@ -47,7 +47,7 @@ public class DruidCriteriaVisitor implements ASTCriteriaVisitor {
     InvalidQueryException {
     final String leftCol = visitColumn(leftCanonical);
     this.dimFilter = Predicates.getFor(predicateOp)
-      .build(leftCol, trimValue(StringUtils.join(rightExps, "")));
+      .build(leftCol, DruidVisitor.trimValue(StringUtils.join(rightExps, "")));
   }
 
   private static String visitColumn(String cannonicalColName) {
@@ -63,7 +63,4 @@ public class DruidCriteriaVisitor implements ASTCriteriaVisitor {
     return subTrees;
   }
 
-  private static String trimValue(String value) {
-    return value.replaceAll("'", "");
-  }
 }
