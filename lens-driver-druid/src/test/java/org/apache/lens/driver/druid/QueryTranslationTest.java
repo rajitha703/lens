@@ -133,7 +133,6 @@ public class QueryTranslationTest extends DruidInitDriverTest {
 
   @Override
   protected void initializeConfig(Configuration config) {
-    config.setInt(DruidDriverConfig.QUERY_TIME_OUT_LENS_KEY, 10000);
     config.setStrings(DruidDriverConfig.CLIENT_CLASS_KEY, MockClientDruid.class.getCanonicalName());
     config.setStrings(DruidDriverConfig.DATE_FORMAT, "yyyy-MM-dd HH:mm:ss");
   }
