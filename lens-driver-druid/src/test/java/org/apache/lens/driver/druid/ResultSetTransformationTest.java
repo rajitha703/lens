@@ -306,7 +306,6 @@ public class ResultSetTransformationTest extends DruidInitDriverTest {
 
   @Override
   protected void initializeConfig(Configuration config) {
-    config.setInt(DruidDriverConfig.QUERY_TIME_OUT_LENS_KEY, 10000);
     config.setStrings(DruidDriverConfig.CLIENT_CLASS_KEY, MockClientDruid.class.getCanonicalName());
   }
 

@@ -63,7 +63,5 @@ public class DruidHavingVisitor implements ASTCriteriaVisitor {
     return subTrees;
   }
 
-
-
 }
 
