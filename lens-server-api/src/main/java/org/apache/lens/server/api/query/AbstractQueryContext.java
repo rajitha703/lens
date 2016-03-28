@@ -489,5 +489,8 @@ public abstract class AbstractQueryContext implements Serializable {
     priority = queryPriorityDecider.decidePriority(getDriverQueryCost(driver));
     return priority;
   }
-
+  
+  public String driverQueryFor(LensDriver driver) {
+    return String.valueOf(this.getFinalDriverQuery(driver) != null) + ":" + this.getDriverQuery(driver);
+  }
 }
