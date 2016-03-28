@@ -27,6 +27,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.lens.api.LensConf;
+import org.apache.lens.api.Priority;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.driver.DriverQueryPlan;
 import org.apache.lens.server.api.driver.LensDriver;
@@ -35,6 +36,7 @@ import org.apache.lens.server.api.metrics.MethodMetricsContext;
 import org.apache.lens.server.api.metrics.MethodMetricsFactory;
 import org.apache.lens.server.api.query.DriverSelectorQueryContext.DriverQueryContext;
 import org.apache.lens.server.api.query.cost.QueryCost;
+import org.apache.lens.server.api.query.priority.QueryPriorityDecider;
 import org.apache.lens.server.api.util.LensUtil;
 
 import org.apache.hadoop.conf.Configuration;
@@ -129,6 +131,13 @@ public abstract class AbstractQueryContext implements Serializable {
 
   /** Lock used to synchronize HiveConf access */
   private transient Lock hiveConfLock = new ReentrantLock();
+
+  /**
+   * The priority.
+   */
+  @Getter
+  @Setter
+  private Priority priority;
 
   protected AbstractQueryContext(
     final String query, final String user, final LensConf qconf, final Configuration conf,
@@ -471,6 +480,17 @@ public abstract class AbstractQueryContext implements Serializable {
   public void clearTransientStateAfterCompleted() {
     driverContext.clearTransientStateAfterCompleted();
     hiveConf = null;
+  }
+
+  public Priority decidePriority(LensDriver driver, QueryPriorityDecider queryPriorityDecider) throws LensException {
+    // On-demand re-computation of cost, in case it's not alredy set by a previous estimate call.
+    // In driver test cases, estimate doesn't happen. Hence this code path ensures cost is computed and
+    // priority is set based on correct cost.
+    if (getDriverQueryCost(driver) == null) {
+      setDriverCost(driver, driver.estimate(this));
+    }
+    priority = queryPriorityDecider.decidePriority(getDriverQueryCost(driver));
+    return priority;
   }
 
   public String driverQueryFor(LensDriver driver) {

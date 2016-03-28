@@ -16,25 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.error;
+package org.apache.lens.cube.metadata;
 
-import org.apache.lens.server.api.LensErrorInfo;
+import java.util.Map;
 
-public enum LensServerErrorCode {
+import lombok.Getter;
 
-  SESSION_ID_NOT_PROVIDED(2001, 0),
-  NULL_OR_EMPTY_OR_BLANK_QUERY(2002, 0),
-  UNSUPPORTED_QUERY_SUBMIT_OPERATION(2003, 0),
-  TOO_MANY_OPEN_SESSIONS(2004, 0);
+public class CubeSegment implements Named {
+  @Getter
+  private String name;
+  @Getter
+  private Map<String, String> properties;
 
-  public LensErrorInfo getLensErrorInfo() {
-    return this.errorInfo;
+  public CubeSegment(String name,  Map<String, String> properties) {
+    this.name = name;
+    this.properties = properties;
   }
-
-  LensServerErrorCode(final int code, final int weight) {
-    this.errorInfo = new LensErrorInfo(code, weight, name());
-  }
-
-  private final LensErrorInfo errorInfo;
-
 }

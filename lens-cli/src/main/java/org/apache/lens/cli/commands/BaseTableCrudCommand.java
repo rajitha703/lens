@@ -16,25 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.error;
+package org.apache.lens.cli.commands;
 
-import org.apache.lens.server.api.LensErrorInfo;
+import java.util.List;
 
-public enum LensServerErrorCode {
+import com.google.common.base.Joiner;
 
-  SESSION_ID_NOT_PROVIDED(2001, 0),
-  NULL_OR_EMPTY_OR_BLANK_QUERY(2002, 0),
-  UNSUPPORTED_QUERY_SUBMIT_OPERATION(2003, 0),
-  TOO_MANY_OPEN_SESSIONS(2004, 0);
 
-  public LensErrorInfo getLensErrorInfo() {
-    return this.errorInfo;
+public abstract class BaseTableCrudCommand<T> extends LensCRUDCommand<T> {
+  public String showAll(String filter) {
+    List<String> all = getAll(filter);
+    if (all == null || all.isEmpty()) {
+      return "No " + getSingleObjectName() + " found" + (filter == null ? "" : " for " + filter);
+    }
+    return Joiner.on("\n").join(all);
   }
 
-  LensServerErrorCode(final int code, final int weight) {
-    this.errorInfo = new LensErrorInfo(code, weight, name());
-  }
-
-  private final LensErrorInfo errorInfo;
+  protected abstract List<String> getAll(String filter);
 
 }
