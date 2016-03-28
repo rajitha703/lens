@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.api.driver.lib.exception;
+package org.apache.lens.server.api.driver.ast.exception;
 
 import org.apache.lens.server.api.LensErrorInfo;
 import org.apache.lens.server.api.error.LensException;

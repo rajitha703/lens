@@ -18,21 +18,21 @@
  */
 package com.apache.lens.driver.druid.grammar;
 
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import com.google.common.collect.ImmutableMap;
 import io.druid.query.filter.DimFilter;
 import io.druid.query.filter.NotDimFilter;
 import io.druid.query.filter.SelectorDimFilter;
 
-public enum Predicates {
-  selector {
+public enum Predicate {
+  SELECTOR {
     @Override
     public DimFilter build(String leftCol, String rightExp) {
       return new SelectorDimFilter(leftCol, rightExp);
     }
   },
-  not {
+  NOT {
     @Override
     public DimFilter build(String leftCol, String rightExp) {
       return new NotDimFilter(new SelectorDimFilter(leftCol, rightExp));
@@ -41,19 +41,19 @@ public enum Predicates {
 
   public abstract DimFilter build(String leftCol, String rightExp);
 
-  public static Predicates getFor(String hqlPredicate) throws InvalidQueryException {
+  public static Predicate getFor(String hqlPredicate) throws InvalidQueryException {
     if (HQL_PREDICATE_MAP.containsKey(hqlPredicate)) {
       return HQL_PREDICATE_MAP.get(hqlPredicate);
     }
     throw new InvalidQueryException("Cannot find a handler for the hql predicate " + hqlPredicate);
   }
 
-  private static final ImmutableMap<String, Predicates> HQL_PREDICATE_MAP;
+  private static final ImmutableMap<String, Predicate> HQL_PREDICATE_MAP;
 
   static {
-    final ImmutableMap.Builder<String, Predicates> predicatesBuilder = ImmutableMap.builder();
-    predicatesBuilder.put("=", selector);
-    predicatesBuilder.put("!=", not);
+    final ImmutableMap.Builder<String, Predicate> predicatesBuilder = ImmutableMap.builder();
+    predicatesBuilder.put("=", SELECTOR);
+    predicatesBuilder.put("!=", NOT);
     HQL_PREDICATE_MAP = predicatesBuilder.build();
   }
 }

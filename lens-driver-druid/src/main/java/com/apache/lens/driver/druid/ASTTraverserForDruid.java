@@ -22,11 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lens.cube.parse.HQLParser;
-import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
-import org.apache.lens.server.api.driver.lib.ASTVisitor;
-import org.apache.lens.server.api.driver.lib.CriteriaVisitorFactory;
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
-import org.apache.lens.server.api.error.LensException;
+import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.ast.ASTVisitor;
+import org.apache.lens.server.api.driver.ast.CriteriaVisitorFactory;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.hadoop.hive.ql.lib.Node;
@@ -90,13 +89,13 @@ public class ASTTraverserForDruid {
     }
     try {
       for (Node selectExp : selectNode.getChildren()) {
-        final Node innerNode = Helper.getFirstChild(selectExp);
-        final String alias = Helper.getAliasFromSelectExpr(selectExp);
+        final Node innerNode = HQLParser.getFirstChild(selectExp);
+        final String alias = HQLParser.getAliasFromSelectExpr(selectExp);
         if (innerNode.getName().equals(String.valueOf(HiveParser.TOK_FUNCTION))) {
           Validate.isTrue(innerNode.getChildren().size() == 2);
           visitor.visitAggregation(
-            Helper.getFirstChild(innerNode).toString(),
-            Helper.getColumnNameFrom(innerNode.getChildren().get(1)),
+            HQLParser.getFirstChild(innerNode).toString(),
+            HQLParser.getColumnNameFrom(innerNode.getChildren().get(1)),
             alias
           );
         } else if (innerNode.getName().equals(String.valueOf(HiveParser.TOK_ALLCOLREF))) {
@@ -104,7 +103,7 @@ public class ASTTraverserForDruid {
         } else if (innerNode.getName().equals(String.valueOf(HiveParser.TOK_TABLE_OR_COL))
           || innerNode.toString().equals(".")) {
           visitor.visitSimpleSelect(
-            Helper.getColumnNameFrom(innerNode),
+            HQLParser.getColumnNameFrom(innerNode),
             alias
           );
         } else {
@@ -145,7 +144,8 @@ public class ASTTraverserForDruid {
       final ASTNode criteriaNode = HQLParser.findNodeByPath(rootQueryNode,
         HiveParser.TOK_INSERT, HiveParser.TOK_WHERE);
       if (criteriaNode != null) {
-        visitor.visitCriteria(traverseCriteriaRecursively(criteriaVisitorFactory, Helper.getFirstChild(criteriaNode)));
+        visitor
+          .visitCriteria(traverseCriteriaRecursively(criteriaVisitorFactory, HQLParser.getFirstChild(criteriaNode)));
       }
     } catch (Exception e) {
       throw new InvalidQueryException("Exception while traversing criteria", e);
@@ -161,14 +161,16 @@ public class ASTTraverserForDruid {
         HiveParser.TOK_INSERT, HiveParser.TOK_HAVING);
       if (criteriaNode != null) {
         visitor
-          .visitHaving(traverseCriteriaRecursively(havingCriteriaVisitorFactory, Helper.getFirstChild(criteriaNode)));
+          .visitHaving(
+            traverseCriteriaRecursively(havingCriteriaVisitorFactory, HQLParser.getFirstChild(criteriaNode)));
       }
     } catch (Exception e) {
       throw new InvalidQueryException("Exception while traversing criteria", e);
     }
   }
 
-  private ASTCriteriaVisitor traversePredicate(CriteriaVisitorFactory visitorfactory, Node whereClause, PredicateInfo
+  private ASTCriteriaVisitor traversePredicate(
+    CriteriaVisitorFactory visitorfactory, Node whereClause, PredicateInfo
     predicateInfo)
     throws InvalidQueryException, HiveException {
     final ASTCriteriaVisitor childVisitor = visitorfactory.getInstance();
@@ -194,7 +196,7 @@ public class ASTTraverserForDruid {
       for (Node rightExp : rightExpList.subList(1, rightExpList.size())) {
         rightExpressions.add(rightExp.toString());
       }
-      leftCol = Helper.getLeftColFromPredicate(whereClause);
+      leftCol = HQLParser.getLeftColFromPredicate(whereClause);
       childVisitor.visitPredicate(predicateInfo.predicateOp, leftCol, rightExpressions);
       break;
     default:
@@ -217,7 +219,7 @@ public class ASTTraverserForDruid {
 
   private ASTCriteriaVisitor traverseCriteriaRecursively(CriteriaVisitorFactory visitorFactory, Node whereClause)
     throws InvalidQueryException, HiveException {
-    final CriteriaInfo criteriaInfo = Helper.getCriteriaInfo(whereClause);
+    final CriteriaInfo criteriaInfo = getCriteriaInfo(whereClause);
     switch (criteriaInfo.criteriaType) {
     case PREDICATE:
       return traversePredicate(visitorFactory, whereClause, (PredicateInfo) criteriaInfo);
@@ -238,7 +240,7 @@ public class ASTTraverserForDruid {
         HiveParser.TOK_INSERT, HiveParser.TOK_GROUPBY);
       if (groupByNode != null) {
         for (Node groupBy : groupByNode.getChildren()) {
-          visitor.visitGroupBy(Helper.getColumnNameFrom(groupBy));
+          visitor.visitGroupBy(HQLParser.getColumnNameFrom(groupBy));
         }
       }
     } catch (Exception e) {
@@ -256,7 +258,7 @@ public class ASTTraverserForDruid {
       if (orderByNode != null) {
         for (Node orderBy : orderByNode.getChildren()) {
           visitor.visitOrderBy(
-            Helper.getColumnNameFrom(Helper.getFirstChild(orderBy)),
+            HQLParser.getColumnNameFrom(HQLParser.getFirstChild(orderBy)),
             orderBy.getName().equals(String.valueOf(HiveParser.TOK_TABSORTCOLNAMEDESC))
               ?
               ASTVisitor.OrderBy.DESC
@@ -278,7 +280,7 @@ public class ASTTraverserForDruid {
       final ASTNode limitNode = HQLParser.findNodeByPath(rootQueryNode,
         HiveParser.TOK_INSERT, HiveParser.TOK_LIMIT);
       if (limitNode != null) {
-        visitor.visitLimit(Integer.parseInt(Helper.getFirstChild(limitNode).toString()));
+        visitor.visitLimit(Integer.parseInt(HQLParser.getFirstChild(limitNode).toString()));
       }
     } catch (Exception e) {
       throw new InvalidQueryException("Error while parsing limit, format should be limit <int>", e);
@@ -291,7 +293,7 @@ public class ASTTraverserForDruid {
 
   private enum LogicalOpType {UNARY, BINARY}
 
-  private static class CriteriaInfo {
+  private abstract static class CriteriaInfo {
     final CriteriaType criteriaType;
 
     public CriteriaInfo(CriteriaType criteriaType) {
@@ -322,63 +324,30 @@ public class ASTTraverserForDruid {
     }
   }
 
-  private static class Helper {
+  private static List<String> predicates
+    = Lists.newArrayList("!=", "=", ">", "<");
+  private static List<String> unaryLogicalOps = Lists.newArrayList("not", "!");
+  private static List<String> binaryLogicalOps = Lists.newArrayList("and", "or", "&", "|", "&&", "||", "AND",
+    "OR");
+  private static List<String> logicalOps = Lists.newArrayList();
 
-    private static List<String> predicates
-      = Lists.newArrayList("!=", "=", ">", "<");
-    private static List<String> unaryLogicalOps = Lists.newArrayList("not", "!");
-    private static List<String> binaryLogicalOps = Lists.newArrayList("and", "or", "&", "|", "&&", "||", "AND",
-      "OR");
-    private static List<String> logicalOps = Lists.newArrayList();
+  static {
+    logicalOps.addAll(unaryLogicalOps);
+    logicalOps.addAll(binaryLogicalOps);
+  }
 
-    static {
-      logicalOps.addAll(unaryLogicalOps);
-      logicalOps.addAll(binaryLogicalOps);
-    }
-
-    private static String getAliasFromSelectExpr(Node selectExp) {
-      return selectExp.getChildren().size() == 2
-        ?
-        selectExp.getChildren().get(1).toString()
-        :
-        null;
-    }
-
-    private static CriteriaInfo getCriteriaInfo(Node whereClause) throws InvalidQueryException {
-      String whereRoot = whereClause.toString();
-      if (Helper.unaryLogicalOps.contains(whereRoot)) {
-        return new LogicalOpInfo(whereRoot, LogicalOpType.UNARY);
-      } else if (Helper.binaryLogicalOps.contains(whereRoot)) {
-        return new LogicalOpInfo(whereRoot, LogicalOpType.BINARY);
-      } else if (Helper.predicates.contains(whereRoot)) {
-        return new PredicateInfo(whereRoot, PredicateType.SIMPLE);
-      } else if (whereRoot.equals("TOK_FUNCTION") && whereClause.getChildren().get(0).toString().equals("between")) {
-        return new PredicateInfo("between", PredicateType.BETWEEN);
-      } else {
-        throw new InvalidQueryException("Could not get criteria info for where clause " + whereRoot);
-      }
-    }
-
-    private static Node getFirstChild(Node node) throws LensException {
-      try {
-        return node.getChildren().get(0);
-      } catch (Exception e) {
-        throw new LensException("Expecting a non empty first child for " + node.toString(), e);
-      }
-    }
-
-    private static String getLeftColFromPredicate(Node predicateNode) throws InvalidQueryException {
-      try {
-        return getColumnNameFrom(getFirstChild(predicateNode));
-      } catch (Exception e) {
-        throw new InvalidQueryException("Only simple predicates of the grammar <col>=<val> is supported as of now", e);
-      }
-    }
-
-    private static String getColumnNameFrom(Node columnNode) {
-      final StringBuilder stringBuilder = new StringBuilder();
-      HQLParser.toInfixString((ASTNode) columnNode, stringBuilder);
-      return stringBuilder.toString().replaceAll("[() ]", "");
+  private static CriteriaInfo getCriteriaInfo(Node whereClause) throws InvalidQueryException {
+    String whereRoot = whereClause.toString();
+    if (unaryLogicalOps.contains(whereRoot)) {
+      return new LogicalOpInfo(whereRoot, LogicalOpType.UNARY);
+    } else if (binaryLogicalOps.contains(whereRoot)) {
+      return new LogicalOpInfo(whereRoot, LogicalOpType.BINARY);
+    } else if (predicates.contains(whereRoot)) {
+      return new PredicateInfo(whereRoot, PredicateType.SIMPLE);
+    } else if (whereRoot.equals("TOK_FUNCTION") && whereClause.getChildren().get(0).toString().equals("between")) {
+      return new PredicateInfo("between", PredicateType.BETWEEN);
+    } else {
+      throw new InvalidQueryException("Could NOT get criteria info for where clause " + whereRoot);
     }
   }
 }

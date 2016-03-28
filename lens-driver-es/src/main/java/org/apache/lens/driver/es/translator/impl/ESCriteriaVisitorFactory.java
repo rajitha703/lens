@@ -18,7 +18,7 @@
  */
 package org.apache.lens.driver.es.translator.impl;
 
-import org.apache.lens.server.api.driver.lib.CriteriaVisitorFactory;
+import org.apache.lens.server.api.driver.ast.CriteriaVisitorFactory;
 
 public final class ESCriteriaVisitorFactory implements CriteriaVisitorFactory {
 

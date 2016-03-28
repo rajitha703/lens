@@ -19,7 +19,7 @@
 package org.apache.lens.driver.es.grammar;
 
 import org.apache.lens.driver.es.ESDriverConfig;
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;

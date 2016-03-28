@@ -23,7 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.client.DruidClient;
-import com.apache.lens.driver.druid.client.DruidResultSet;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 
 class MockClientDruid extends DruidClient {
 
@@ -32,7 +32,7 @@ class MockClientDruid extends DruidClient {
   }
 
   @Override
-  protected DruidResultSet executeImpl(DruidQuery druidQuery) {
+  public DefaultResultSet executeImpl(DruidQuery druidQuery) {
     return null;
   }
 

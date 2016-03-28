@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.commons.lang.StringUtils;
@@ -841,6 +842,38 @@ public final class HQLParser {
     }
     return node;
   }
+
+  public static Node getFirstChild(Node node) throws LensException {
+    try {
+      return node.getChildren().get(0);
+    } catch (Exception e) {
+      throw new LensException("Expecting a non empty first child for " + node.toString(), e);
+    }
+  }
+
+  public static String getAliasFromSelectExpr(Node selectExp) {
+    return selectExp.getChildren().size() == 2
+      ?
+      selectExp.getChildren().get(1).toString()
+      :
+      null;
+  }
+
+  public static String getLeftColFromPredicate(Node predicateNode) throws InvalidQueryException {
+    try {
+      return getColumnNameFrom(getFirstChild(predicateNode));
+    } catch (Exception e) {
+      throw new InvalidQueryException("Only simple predicates of the grammar <col>=<val> is supported as of now", e);
+    }
+  }
+
+  public static String getColumnNameFrom(Node columnNode) {
+    final StringBuilder stringBuilder = new StringBuilder();
+    HQLParser.toInfixString((ASTNode) columnNode, stringBuilder);
+    return stringBuilder.toString().replaceAll("[() ]", "");
+  }
+
+
   @Data
   public static class HashableASTNode {
     private ASTNode ast;

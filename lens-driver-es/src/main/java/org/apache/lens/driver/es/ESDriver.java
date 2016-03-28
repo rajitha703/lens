@@ -32,7 +32,6 @@ import org.apache.lens.api.query.QueryPrepareHandle;
 import org.apache.lens.cube.metadata.CubeMetastoreClient;
 import org.apache.lens.cube.parse.HQLParser;
 import org.apache.lens.driver.es.client.ESClient;
-import org.apache.lens.driver.es.client.ESResultSet;
 import org.apache.lens.driver.es.client.jest.JestClientImpl;
 import org.apache.lens.driver.es.translator.ESVisitor;
 import org.apache.lens.server.api.LensConfConstants;
@@ -140,7 +139,7 @@ public class ESDriver extends AbstractLensDriver {
   public LensResultSet execute(QueryContext context) throws LensException {
     final ESQuery esQuery = rewrite(context);
     final QueryHandle queryHandle = context.getQueryHandle();
-    final ESResultSet resultSet = esClient.execute(esQuery);
+    final DefaultResultSet resultSet = esClient.execute(esQuery);
     notifyComplIfRegistered(queryHandle);
     return resultSet;
   }
@@ -263,7 +262,7 @@ public class ESDriver extends AbstractLensDriver {
   }
 
   private ESQuery rewrite(AbstractQueryContext context) throws LensException {
-    final String key = keyFor(context);
+    final String key = context.driverQueryFor(this);
     if (rewrittenQueriesCache.containsKey(key)) {
       return rewrittenQueriesCache.get(key);
     } else {
@@ -306,10 +305,6 @@ public class ESDriver extends AbstractLensDriver {
     } catch (HiveException e) {
       throw new LensException("Error occured when trying to communicate with metastore");
     }
-  }
-
-  private String keyFor(AbstractQueryContext context) {
-    return String.valueOf(context.getFinalDriverQuery(this)!=null) + ":" + context.getDriverQuery(this);
   }
 
   ESClient getESClient() {

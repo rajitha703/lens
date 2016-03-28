@@ -27,6 +27,7 @@ import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.hadoop.conf.Configuration;
 
 import com.apache.lens.driver.druid.DruidDriverConfig;
@@ -53,7 +54,7 @@ public class DruidClientImpl extends DruidClient {
   }
 
   @Override
-  protected DruidResultSet executeImpl(DruidQuery druidQuery) throws DruidClientException {
+  public DefaultResultSet executeImpl(DruidQuery druidQuery) throws DruidClientException {
     log.info("Executing query on Druid client : " + druidQuery.toString());
     ObjectMapper objectMapper = new DefaultObjectMapper();
     ObjectWriter jsonWriter = objectMapper.writerWithDefaultPrettyPrinter();

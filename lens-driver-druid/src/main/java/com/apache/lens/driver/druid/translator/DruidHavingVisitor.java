@@ -20,13 +20,13 @@ package com.apache.lens.driver.druid.translator;
 
 import java.util.List;
 
-import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.apache.lens.driver.druid.grammar.having.HavingLogicalOperators;
-import com.apache.lens.driver.druid.grammar.having.HavingPredicates;
+import com.apache.lens.driver.druid.grammar.having.HavingLogicalOperator;
+import com.apache.lens.driver.druid.grammar.having.HavingPredicate;
 import com.google.common.collect.Lists;
 import io.druid.query.groupby.having.HavingSpec;
 import lombok.Getter;
@@ -38,7 +38,7 @@ public class DruidHavingVisitor implements ASTCriteriaVisitor {
 
   @Override
   public void visitLogicalOp(String logicalOp, List<ASTCriteriaVisitor> visitedSubTrees) throws InvalidQueryException {
-    this.havingSpec = HavingLogicalOperators.getFor(logicalOp)
+    this.havingSpec = HavingLogicalOperator.getFor(logicalOp)
       .build(collectFiltersFromVisitors(visitedSubTrees));
   }
 
@@ -46,7 +46,7 @@ public class DruidHavingVisitor implements ASTCriteriaVisitor {
   public void visitPredicate(String predicateOp, String leftCanonical, List<String> rightExps) throws
     InvalidQueryException {
     final String leftCol = visitColumn(leftCanonical);
-    this.havingSpec = HavingPredicates.getFor(predicateOp)
+    this.havingSpec = HavingPredicate.getFor(predicateOp)
       .build(leftCol, DruidVisitor.trimValue(StringUtils.join(rightExps, "")));
   }
 

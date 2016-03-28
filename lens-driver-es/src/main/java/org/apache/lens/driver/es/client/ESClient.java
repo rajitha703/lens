@@ -25,6 +25,7 @@ import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.driver.es.ESDriverConfig;
 import org.apache.lens.driver.es.ESQuery;
 import org.apache.lens.driver.es.exceptions.ESClientException;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -46,7 +47,7 @@ public abstract class ESClient {
       new ScrollingExecutionMode(esQuery);
   }
 
-  protected abstract ESResultSet executeImpl(ESQuery esQuery) throws ESClientException;
+  protected abstract DefaultResultSet executeImpl(ESQuery esQuery) throws ESClientException;
 
   private abstract static class ExecutionMode {
 
@@ -57,7 +58,7 @@ public abstract class ESClient {
       this.esQuery = query;
     }
 
-    abstract ESResultSet executeInternal() throws ESClientException;
+    abstract DefaultResultSet executeInternal() throws ESClientException;
 
   }
 
@@ -87,17 +88,17 @@ public abstract class ESClient {
 
 
     @Override
-    ESResultSet executeInternal() throws ESClientException{
-      final ESResultSet resultSet = executeImpl(esQuery);
+    DefaultResultSet executeInternal() throws ESClientException{
+      final DefaultResultSet resultSet = executeImpl(esQuery);
       final int fetchSize = esDriverConfig.getTermFetchSize();
       final int limit = esQuery.getLimit();
-      return new ESResultSet(
+      return new DefaultResultSet(
         limit,
         new Iterable<ResultRow>() {
-          ESResultSet batch = resultSet;
+          DefaultResultSet batch = resultSet;
           int processed = 0;
 
-          final ESResultSet getNextBatch() throws ESClientException {
+          final DefaultResultSet getNextBatch() throws ESClientException {
             final int toProcess = limit - processed;
             final int newFetchSize = limit == -1 || fetchSize < toProcess
               ?
@@ -116,7 +117,7 @@ public abstract class ESClient {
               public boolean hasNext() {
                 try {
                   return processed < limit
-                    && (batch.hasNext() || getNextBatch().size > 0);
+                    && (batch.hasNext() || getNextBatch().size() > 0);
                 } catch (ESClientException e) {
                   throw new RuntimeException("Encountered a runtime issue during execution", e);
                 }
@@ -151,7 +152,7 @@ public abstract class ESClient {
     }
 
     @Override
-    ESResultSet executeInternal() throws ESClientException {
+    DefaultResultSet executeInternal() throws ESClientException {
       return executeImpl(esQuery);
     }
 
@@ -161,7 +162,7 @@ public abstract class ESClient {
     this.esDriverConfig = esDriverConfig;
   }
 
-  public final ESResultSet execute(final ESQuery esQuery) throws ESClientException {
+  public final DefaultResultSet execute(final ESQuery esQuery) throws ESClientException {
     return getExecutionModeFor(esQuery).executeInternal();
   }
 

@@ -18,7 +18,7 @@
  */
 package com.apache.lens.driver.druid.grammar.having;
 
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import com.google.common.collect.ImmutableMap;
 import io.druid.query.groupby.having.EqualToHavingSpec;
@@ -26,22 +26,22 @@ import io.druid.query.groupby.having.GreaterThanHavingSpec;
 import io.druid.query.groupby.having.HavingSpec;
 import io.druid.query.groupby.having.LessThanHavingSpec;
 
-public enum HavingPredicates {
-  equal {
+public enum HavingPredicate {
+  EQUAL {
     @Override
     public HavingSpec build(String leftCol, String rightExp) {
       return new EqualToHavingSpec(leftCol, Integer.parseInt(rightExp));
     }
 
   },
-  greaterThan {
+  GREATER_THAN {
     @Override
     public HavingSpec build(String leftCol, String rightExp) {
       return new GreaterThanHavingSpec(leftCol, Integer.parseInt(rightExp));
     }
 
   },
-  lessThan {
+  LESS_THAN {
     @Override
     public HavingSpec build(String leftCol, String rightExp) {
       return new LessThanHavingSpec(leftCol, Integer.parseInt(rightExp));
@@ -51,20 +51,20 @@ public enum HavingPredicates {
 
   public abstract HavingSpec build(String leftCol, String rightExp);
 
-  public static HavingPredicates getFor(String hqlPredicate) throws InvalidQueryException {
+  public static HavingPredicate getFor(String hqlPredicate) throws InvalidQueryException {
     if (HQL_PREDICATE_MAP.containsKey(hqlPredicate)) {
       return HQL_PREDICATE_MAP.get(hqlPredicate);
     }
     throw new InvalidQueryException("Cannot find a handler for the hql predicate " + hqlPredicate);
   }
 
-  private static final ImmutableMap<String, HavingPredicates> HQL_PREDICATE_MAP;
+  private static final ImmutableMap<String, HavingPredicate> HQL_PREDICATE_MAP;
 
   static {
-    final ImmutableMap.Builder<String, HavingPredicates> predicatesBuilder = ImmutableMap.builder();
-    predicatesBuilder.put("=", equal);
-    predicatesBuilder.put(">", greaterThan);
-    predicatesBuilder.put("<", lessThan);
+    final ImmutableMap.Builder<String, HavingPredicate> predicatesBuilder = ImmutableMap.builder();
+    predicatesBuilder.put("=", EQUAL);
+    predicatesBuilder.put(">", GREATER_THAN);
+    predicatesBuilder.put("<", LESS_THAN);
     HQL_PREDICATE_MAP = predicatesBuilder.build();
   }
 }

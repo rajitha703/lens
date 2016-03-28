@@ -18,6 +18,8 @@
  */
 package com.apache.lens.driver.druid;
 
+import org.apache.lens.server.api.driver.ColumnSchema;
+
 import com.google.common.collect.ImmutableList;
 import io.druid.query.Query;
 import io.druid.query.groupby.GroupByQuery;

@@ -20,6 +20,8 @@ package com.apache.lens.driver.druid;
 
 import java.util.List;
 
+import org.apache.lens.server.api.driver.ColumnSchema;
+
 import org.joda.time.Interval;
 
 import com.google.common.collect.ImmutableList;

@@ -18,12 +18,13 @@
  */
 package com.apache.lens.driver.druid.client;
 
+import org.apache.lens.server.api.driver.DefaultResultSet;
+
 import org.apache.hadoop.conf.Configuration;
 
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.exceptions.DruidClientException;
-import io.druid.query.Query;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,58 +41,6 @@ public abstract class DruidClient {
     this.config = config;
   }
 
-  protected abstract DruidResultSet executeImpl(DruidQuery druidQuery) throws DruidClientException;
+  public abstract DefaultResultSet executeImpl(DruidQuery druidQuery) throws DruidClientException;
 
-  public DruidResultSet execute(DruidQuery druidQuery) throws DruidClientException {
-    return getQueryType(druidQuery).executeInternal();
-  }
-
-  private QueryMode getQueryType(DruidQuery druidQuery) {
-    String type = druidQuery.getQuery().getType();
-    if (type.equals(Query.GROUP_BY)) {
-      return new GroupByQueryType(druidQuery);
-    }
-    if (type.equals(Query.TOPN)) {
-      return new TopNQueryType(druidQuery);
-    } else {
-      log.error("Received query of type : " + type +"and this is not currently supported..");
-      throw new UnsupportedOperationException("Query Type not supported in druid driver : " + type);
-    }
-  }
-
-  private abstract static class QueryMode {
-
-    @NonNull
-    protected final DruidQuery druidQuery;
-
-    QueryMode(DruidQuery druidQuery) {
-      this.druidQuery = druidQuery;
-    }
-
-    abstract DruidResultSet executeInternal() throws DruidClientException;
-  }
-
-  private class GroupByQueryType extends QueryMode {
-
-    GroupByQueryType(DruidQuery druidQuery) {
-      super(druidQuery);
-    }
-
-    @Override
-    DruidResultSet executeInternal() throws DruidClientException {
-      return executeImpl(druidQuery);
-    }
-  }
-
-  private class TopNQueryType extends QueryMode {
-
-    TopNQueryType(DruidQuery druidQuery) {
-      super(druidQuery);
-    }
-
-    @Override
-    DruidResultSet executeInternal() throws DruidClientException {
-      return executeImpl(druidQuery);
-    }
-  }
 }

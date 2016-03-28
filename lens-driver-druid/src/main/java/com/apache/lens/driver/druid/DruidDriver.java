@@ -48,7 +48,6 @@ import org.apache.hadoop.hive.ql.session.SessionState;
 
 import com.apache.lens.driver.druid.client.DruidClient;
 import com.apache.lens.driver.druid.client.DruidClientImpl;
-import com.apache.lens.driver.druid.client.DruidResultSet;
 import com.apache.lens.driver.druid.translator.DruidVisitor;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -63,6 +62,7 @@ public class DruidDriver extends AbstractLensDriver {
   private static final AtomicInteger THID = new AtomicInteger();
   private static final double STREAMING_PARTITION_COST = 0;
   private static final QueryCost DRUID_DRIVER_COST = new FactPartitionBasedQueryCost(STREAMING_PARTITION_COST);
+  public static final String OPERATION_NOT_SUPPORTED_IN_DRUID = "Operation not supported in Druid";
 
   /**
    * The conf.
@@ -108,7 +108,7 @@ public class DruidDriver extends AbstractLensDriver {
       log.error("Druid driver {} cannot start!", getFullyQualifiedName(), e);
       throw new LensException("Cannot start druid driver", e);
     }
-    log.info("Druid Driver {} configured", getFullyQualifiedName());
+    log.debug("Druid Driver {} configured", getFullyQualifiedName());
     asyncQueryPool = Executors.newCachedThreadPool(new ThreadFactory() {
       @Override
       public Thread newThread(Runnable runnable) {
@@ -131,7 +131,7 @@ public class DruidDriver extends AbstractLensDriver {
 
   @Override
   public DriverQueryPlan explain(AbstractQueryContext explainCtx) throws LensException {
-    throw new UnsupportedOperationException("Operation not supported in Druid");
+    throw new UnsupportedOperationException(OPERATION_NOT_SUPPORTED_IN_DRUID);
   }
 
   @Override
@@ -141,22 +141,22 @@ public class DruidDriver extends AbstractLensDriver {
 
   @Override
   public DriverQueryPlan explainAndPrepare(PreparedQueryContext pContext) throws LensException {
-    throw new UnsupportedOperationException("Operation not supported in Druid");
+    throw new UnsupportedOperationException(OPERATION_NOT_SUPPORTED_IN_DRUID);
   }
 
   @Override
   public void closePreparedQuery(QueryPrepareHandle handle) throws LensException {
-    throw new UnsupportedOperationException("Operation not supported in Druid");
+    throw new UnsupportedOperationException(OPERATION_NOT_SUPPORTED_IN_DRUID);
   }
 
   @Override
   public LensResultSet execute(QueryContext context) throws LensException {
-    log.info("Executing Druid query..");
+    log.debug("Executing Druid query..");
     final DruidQuery rewrittenQuery = rewrite(context);
     final QueryHandle queryHandle = context.getQueryHandle();
-    DruidResultSet druidResultSet = druidClient.execute(rewrittenQuery);
+    DefaultResultSet defaultResultSet = druidClient.executeImpl(rewrittenQuery);
     notifyComplIfRegistered(queryHandle);
-    return druidResultSet;
+    return defaultResultSet;
   }
 
   private void notifyComplIfRegistered(QueryHandle queryHandle) {
@@ -175,7 +175,7 @@ public class DruidDriver extends AbstractLensDriver {
   }
 
   private DruidQuery rewrite(AbstractQueryContext context) throws LensException {
-    final String key = keyFor(context);
+    final String key = context.driverQueryFor(this);
     if (rewrittenQueriesCache.containsKey(key)) {
       return rewrittenQueriesCache.get(key);
     } else {
@@ -186,9 +186,7 @@ public class DruidDriver extends AbstractLensDriver {
     }
   }
 
-  private String keyFor(AbstractQueryContext context) {
-    return String.valueOf(context.getFinalDriverQuery(this) != null) + ":" + context.getDriverQuery(this);
-  }
+
 
   @Override
   public void executeAsync(final QueryContext context) {
@@ -206,15 +204,19 @@ public class DruidDriver extends AbstractLensDriver {
   @Override
   public void updateStatus(QueryContext context) {
     final QueryHandle queryHandle = context.getQueryHandle();
+    context.getDriverStatus().setDriverStartTime(System.currentTimeMillis());
     final Future<LensResultSet> lensResultSetFuture = resultSetMap.get(queryHandle);
     if (lensResultSetFuture == null) {
       context.getDriverStatus().setState(DriverQueryStatus.DriverQueryState.CLOSED);
       context.getDriverStatus().setStatusMessage(queryHandle + " closed");
       context.getDriverStatus().setResultSetAvailable(false);
+
     } else if (lensResultSetFuture.isDone()) {
       context.getDriverStatus().setState(DriverQueryStatus.DriverQueryState.SUCCESSFUL);
       context.getDriverStatus().setStatusMessage(queryHandle + " successful");
       context.getDriverStatus().setResultSetAvailable(true);
+      context.getDriverStatus().setDriverFinishTime(System.currentTimeMillis());
+
     } else if (lensResultSetFuture.isCancelled()) {
       context.getDriverStatus().setState(DriverQueryStatus.DriverQueryState.CANCELED);
       context.getDriverStatus().setStatusMessage(queryHandle + " cancelled");
@@ -223,7 +225,7 @@ public class DruidDriver extends AbstractLensDriver {
   }
 
   @Override
-  public LensResultSet fetchResultSet(QueryContext context) throws LensException {
+  public LensResultSet createResultSet(QueryContext context) throws LensException {
     try {
       /**
        * removing the result set as soon as the fetch is done
@@ -243,7 +245,7 @@ public class DruidDriver extends AbstractLensDriver {
     try {
       resultSetMap.remove(handle);
     } catch (NullPointerException e) {
-      throw new LensException("The query does not exist or was already purged", e);
+      throw new LensException("The query does NOT exist OR was already purged", e);
     }
   }
 
@@ -256,7 +258,7 @@ public class DruidDriver extends AbstractLensDriver {
       }
       return cancelled;
     } catch (NullPointerException e) {
-      throw new LensException("The query does not exist or was already purged", e);
+      throw new LensException("The query does NOT exist OR was already purged", e);
     }
   }
 

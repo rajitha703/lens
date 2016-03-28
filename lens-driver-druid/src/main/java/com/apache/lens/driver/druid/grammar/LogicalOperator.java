@@ -20,7 +20,7 @@ package com.apache.lens.driver.druid.grammar;
 
 import java.util.List;
 
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import com.google.common.collect.ImmutableMap;
 import io.druid.query.filter.AndDimFilter;
@@ -28,20 +28,20 @@ import io.druid.query.filter.DimFilter;
 import io.druid.query.filter.NotDimFilter;
 import io.druid.query.filter.OrDimFilter;
 
-public enum LogicalOperators {
-  and {
+public enum LogicalOperator {
+  AND {
     @Override
     public DimFilter build(List<DimFilter> dimFilters) {
       return new AndDimFilter(dimFilters);
     }
   },
-  or {
+  OR {
     @Override
     public DimFilter build(List<DimFilter> dimFilters) {
       return new OrDimFilter(dimFilters);
     }
   },
-  not {
+  NOT {
     @Override
     public DimFilter build(List<DimFilter> dimFilters) {
       return new NotDimFilter(dimFilters.get(0));
@@ -50,27 +50,27 @@ public enum LogicalOperators {
 
   public abstract DimFilter build(List<DimFilter> dimFilters);
 
-  private static final ImmutableMap<String, LogicalOperators> HQL_LOG_OP_MAP;
+  private static final ImmutableMap<String, LogicalOperator> HQL_LOG_OP_MAP;
 
   static {
-    final ImmutableMap.Builder<String, LogicalOperators> logicalOpsBuilder = ImmutableMap.builder();
-    logicalOpsBuilder.put("and", and);
-    logicalOpsBuilder.put("AND", and);
-    logicalOpsBuilder.put("&&", and);
-    logicalOpsBuilder.put("&", and);
-    logicalOpsBuilder.put("or", or);
-    logicalOpsBuilder.put("OR", or);
-    logicalOpsBuilder.put("||", or);
-    logicalOpsBuilder.put("|", or);
-    logicalOpsBuilder.put("!", not);
-    logicalOpsBuilder.put("not", not);
+    final ImmutableMap.Builder<String, LogicalOperator> logicalOpsBuilder = ImmutableMap.builder();
+    logicalOpsBuilder.put("and", AND);
+    logicalOpsBuilder.put("AND", AND);
+    logicalOpsBuilder.put("&&", AND);
+    logicalOpsBuilder.put("&", AND);
+    logicalOpsBuilder.put("or", OR);
+    logicalOpsBuilder.put("OR", OR);
+    logicalOpsBuilder.put("||", OR);
+    logicalOpsBuilder.put("|", OR);
+    logicalOpsBuilder.put("!", NOT);
+    logicalOpsBuilder.put("not", NOT);
     HQL_LOG_OP_MAP = logicalOpsBuilder.build();
   }
 
-  public static LogicalOperators getFor(String hqlLop) throws InvalidQueryException {
+  public static LogicalOperator getFor(String hqlLop) throws InvalidQueryException {
     if (HQL_LOG_OP_MAP.containsKey(hqlLop)) {
       return HQL_LOG_OP_MAP.get(hqlLop);
     }
-    throw new InvalidQueryException("Handler not available for logical operator " + hqlLop);
+    throw new InvalidQueryException("Handler NOT available for logical operator " + hqlLop);
   }
 }

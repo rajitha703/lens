@@ -18,8 +18,8 @@
  */
 package com.apache.lens.driver.druid.translator;
 
-import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
-import org.apache.lens.server.api.driver.lib.CriteriaVisitorFactory;
+import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.ast.CriteriaVisitorFactory;
 
 public class DruidCriteriaVisitorFactory implements CriteriaVisitorFactory {
   @Override

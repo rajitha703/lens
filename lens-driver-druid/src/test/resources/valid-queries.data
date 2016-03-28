@@ -30,7 +30,7 @@
    "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}, DoubleSumAggregatorFactory{fieldName='added', name='addedname'}], havingSpec=null, limitSpec=DefaultLimitSpec{columns='[OrderByColumnSpec{dimension='countname', direction=ASCENDING}]', limit=2147483647}, context=null}"
  },
  {
-   	"name" : "Basic simple groupby with orderby desc",
+   "name" : "Basic simple groupby with orderby desc",
     "hql" : "select country , sum(count) as countname from db.wikipedia where time BETWEEN %s group by country order by countname desc",
      "expectedJson" : "GroupByQuery{dataSource=wikipedia, querySegmentSpec=LegacySegmentSpec{intervals=[%s]}, dimFilter=null, granularity=AllGranularity, dimensions=[DefaultDimensionSpec{dimension='country', outputName='country'}], aggregatorSpecs=[DoubleSumAggregatorFactory{fieldName='count', name='countname'}], havingSpec=null, limitSpec=DefaultLimitSpec{columns='[OrderByColumnSpec{dimension='countname', direction=DESCENDING}]', limit=2147483647}, context=null}"
  },

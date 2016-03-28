@@ -50,7 +50,7 @@ public abstract class AbstractFileFormatter extends AbstractOutputFormatter impl
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.lib.query.AbstractOutputFormatter#init(org.apache.lens.server.api.query.QueryContext,
+   * @see org.apache.lens.ast.query.AbstractOutputFormatter#init(org.apache.lens.server.api.query.QueryContext,
    * org.apache.lens.server.api.driver.LensResultSetMetadata)
    */
   @Override

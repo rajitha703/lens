@@ -21,8 +21,8 @@ package org.apache.lens.driver.es.client.jest;
 import org.apache.lens.driver.es.ESDriverConfig;
 import org.apache.lens.driver.es.ESQuery;
 import org.apache.lens.driver.es.client.ESClient;
-import org.apache.lens.driver.es.client.ESResultSet;
 import org.apache.lens.driver.es.exceptions.ESClientException;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.hadoop.conf.Configuration;
@@ -62,7 +62,7 @@ public class JestClientImpl extends ESClient {
   }
 
   @Override
-  public ESResultSet executeImpl(ESQuery esQuery) throws ESClientException {
+  public DefaultResultSet executeImpl(ESQuery esQuery) throws ESClientException {
     try {
       final Search search = new Search.Builder(esQuery.getQuery())
         .addIndex(esQuery.getIndex())

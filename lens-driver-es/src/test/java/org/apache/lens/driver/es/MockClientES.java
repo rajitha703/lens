@@ -22,7 +22,7 @@ import java.util.List;
 
 import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.driver.es.client.ESClient;
-import org.apache.lens.driver.es.client.ESResultSet;
+import org.apache.lens.driver.es.client.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 
 import org.apache.hadoop.conf.Configuration;
@@ -38,7 +38,7 @@ class MockClientES extends ESClient {
   private static final ImmutableMap<String, ResultSetProvider> QUERY_RESULTS_MAP;
 
   private interface ResultSetProvider {
-    ESResultSet getResultSet();
+    DefaultResultSet getResultSet();
   }
 
   static {
@@ -47,8 +47,8 @@ class MockClientES extends ESClient {
       "{\"from\":0,\"size\":1,\"fields\":[\"col1\"],\"sort\":[],\"timeout\":10000,\"filter\":{\"match_all\":{}}}",
       new ResultSetProvider() {
         @Override
-        public ESResultSet getResultSet() {
-          return new ESResultSet(
+        public DefaultResultSet getResultSet() {
+          return new DefaultResultSet(
             1,
             Lists.newArrayList(
               new ResultRow(Lists.<Object>newArrayList("v1"))
@@ -67,8 +67,8 @@ class MockClientES extends ESClient {
       "{\"from\":1,\"size\":1,\"fields\":[\"col1\"],\"sort\":[],\"timeout\":10000,\"filter\":{\"match_all\":{}}}",
       new ResultSetProvider() {
         @Override
-        public ESResultSet getResultSet() {
-          return new ESResultSet(
+        public DefaultResultSet getResultSet() {
+          return new DefaultResultSet(
             1,
             Lists.newArrayList(
               new ResultRow(Lists.<Object>newArrayList("v1"))
@@ -87,8 +87,8 @@ class MockClientES extends ESClient {
       "{\"from\":2,\"size\":1,\"fields\":[\"col1\"],\"sort\":[],\"timeout\":10000,\"filter\":{\"match_all\":{}}}",
       new ResultSetProvider() {
         @Override
-        public ESResultSet getResultSet() {
-          return new ESResultSet(
+        public DefaultResultSet getResultSet() {
+          return new DefaultResultSet(
             1,
             Lists.newArrayList(
               new ResultRow(Lists.<Object>newArrayList("v1"))
@@ -107,8 +107,8 @@ class MockClientES extends ESClient {
       "{\"from\":3,\"size\":1,\"fields\":[\"col1\"],\"sort\":[],\"timeout\":10000,\"filter\":{\"match_all\":{}}}",
       new ResultSetProvider() {
         @Override
-        public ESResultSet getResultSet() {
-          return new ESResultSet(
+        public DefaultResultSet getResultSet() {
+          return new DefaultResultSet(
             0,
             Lists.<ResultRow>newArrayList(),
             new LensResultSetMetadata() {
@@ -130,7 +130,7 @@ class MockClientES extends ESClient {
   }
 
   @Override
-  protected ESResultSet executeImpl(ESQuery esQuery) {
+  protected DefaultResultSet executeImpl(ESQuery esQuery) {
     return QUERY_RESULTS_MAP.get(esQuery.getQuery()).getResultSet();
   }
 

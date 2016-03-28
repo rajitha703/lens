@@ -21,13 +21,14 @@ package com.apache.lens.driver.druid.client;
 import java.util.List;
 
 import org.apache.lens.api.query.ResultRow;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.service.cli.ColumnDescriptor;
 import org.apache.hive.service.cli.TypeDescriptor;
 
-import com.apache.lens.driver.druid.ColumnSchema;
+import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.google.common.collect.Lists;
 import io.druid.data.input.Row;
@@ -56,9 +57,9 @@ public abstract class DruidResultSetTransformer {
     }
 
     @Override
-    public DruidResultSet transform() {
+    public DefaultResultSet transform() {
       collectAllRows(result);
-      return new DruidResultSet(
+      return new DefaultResultSet(
         rows.size(),
         rows,
         getMetaData(columnSchema)
@@ -95,9 +96,9 @@ public abstract class DruidResultSetTransformer {
     }
 
     @Override
-    public DruidResultSet transform() {
+    public DefaultResultSet transform() {
       collectAllRows(result);
-      return new DruidResultSet(
+      return new DefaultResultSet(
         rows.size(),
         rows,
         getMetaData(columnSchema)
@@ -157,11 +158,11 @@ public abstract class DruidResultSetTransformer {
     } else if (queryType.equals(DruidQuery.QueryType.TOPN)) {
       return new TopNResultTransformer(druidResultObject, columnSchema);
     } else {
-      throw new UnsupportedOperationException("This query type is not supported in Druid :" + queryType);
+      throw new UnsupportedOperationException("This query type is NOT supported in Druid :" + queryType);
     }
   }
 
-  public abstract DruidResultSet transform();
+  public abstract DefaultResultSet transform();
 
   protected List<Object> getEmptyRow() {
     List<Object> objects = Lists.newArrayList();

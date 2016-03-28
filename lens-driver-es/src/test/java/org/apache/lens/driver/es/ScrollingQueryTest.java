@@ -22,8 +22,8 @@ import java.util.List;
 
 import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.cube.parse.CubeQueryConfUtil;
-import org.apache.lens.driver.es.client.ESResultSet;
 import org.apache.lens.driver.es.translator.ESVisitor;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -59,7 +59,7 @@ public class ScrollingQueryTest extends ESDriverTest{
 
   @Test
   protected void testScrollQueryExactLimit() throws LensException {
-    ESResultSet resultSet =
+    DefaultResultSet resultSet =
       mockClientES.execute(ESVisitor.rewrite(esDriverConfig, "select col1 from index.type limit 3"));
     final List<ResultRow> rows = Lists.newArrayList();
     while (resultSet.hasNext()) {
@@ -70,7 +70,7 @@ public class ScrollingQueryTest extends ESDriverTest{
 
   @Test
   protected void testScrollQueryLesserLimit() throws LensException {
-    ESResultSet resultSet =
+    DefaultResultSet resultSet =
       mockClientES.execute(ESVisitor.rewrite(esDriverConfig, "select col1 from index.type limit 2"));
     final List<ResultRow> rows = Lists.newArrayList();
     while (resultSet.hasNext()) {
@@ -81,7 +81,7 @@ public class ScrollingQueryTest extends ESDriverTest{
 
   @Test
   protected void testScrollQueryMoreLimit() throws LensException {
-    ESResultSet resultSet =
+    DefaultResultSet resultSet =
       mockClientES.execute(ESVisitor.rewrite(esDriverConfig, "select col1 from index.type limit 4"));
     final List<ResultRow> rows = Lists.newArrayList();
     while (resultSet.hasNext()) {

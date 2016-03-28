@@ -20,14 +20,14 @@ package com.apache.lens.driver.druid.translator;
 
 import java.util.List;
 
-import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.hadoop.hive.conf.HiveConf;
 
 import org.joda.time.Interval;
 
-import com.apache.lens.driver.druid.ColumnSchema;
+import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.DruidQueryBuilder;
@@ -87,7 +87,7 @@ public class TopNVisitor extends DruidVisitor {
 
   @Override
   public void visitHaving(ASTCriteriaVisitor astCriteriaVisitor) {
-    throw new UnsupportedOperationException("Having not valid in a TopN query");
+    throw new UnsupportedOperationException("Having NOT valid in a TopN query");
   }
 
   @Override

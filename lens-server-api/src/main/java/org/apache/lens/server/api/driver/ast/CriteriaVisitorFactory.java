@@ -16,26 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.api.driver.lib;
+package org.apache.lens.server.api.driver.ast;
 
-import java.util.List;
-
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
-
-public interface ASTCriteriaVisitor {
-  /**
-   *
-   * @param logicalOp The logical operator
-   * @param visitedSubTrees The visited subtree of logical operator
-   */
-  void visitLogicalOp(String logicalOp, List<ASTCriteriaVisitor> visitedSubTrees) throws InvalidQueryException;
-
-  /**
-   * Visits simple predicate
-   *
-   * @param conditionalOp Operator constructing the predicate
-   * @param leftCol Left column
-   * @param rightExps Right expression
-   */
-  void visitPredicate(String conditionalOp, String leftCol, List<String> rightExps) throws InvalidQueryException;
+/**
+ * The interface CriteriaVisitorFactory that produces instances of type ASTCriteriaVisitor
+ */
+public interface CriteriaVisitorFactory {
+  ASTCriteriaVisitor getInstance();
 }

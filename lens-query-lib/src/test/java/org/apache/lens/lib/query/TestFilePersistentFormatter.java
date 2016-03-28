@@ -113,7 +113,7 @@ public class TestFilePersistentFormatter extends TestAbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.lib.query.TestAbstractFileFormatter#createFormatter()
+   * @see org.apache.lens.ast.query.TestAbstractFileFormatter#createFormatter()
    */
   @Override
   protected WrappedFileFormatter createFormatter() {
@@ -123,7 +123,7 @@ public class TestFilePersistentFormatter extends TestAbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.lib.query.TestAbstractFileFormatter#writeAllRows(org.apache.hadoop.conf.Configuration)
+   * @see org.apache.lens.ast.query.TestAbstractFileFormatter#writeAllRows(org.apache.hadoop.conf.Configuration)
    */
   @Override
   protected void writeAllRows(Configuration conf) throws IOException {

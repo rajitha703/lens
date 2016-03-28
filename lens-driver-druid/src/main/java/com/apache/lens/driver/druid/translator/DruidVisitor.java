@@ -27,9 +27,9 @@ import java.util.List;
 
 import org.apache.lens.cube.metadata.CubeMetastoreClient;
 import org.apache.lens.cube.parse.HQLParser;
-import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
-import org.apache.lens.server.api.driver.lib.ASTVisitor;
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.ast.ASTVisitor;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -44,11 +44,11 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
 import com.apache.lens.driver.druid.ASTTraverserForDruid;
-import com.apache.lens.driver.druid.ColumnSchema;
+import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.exceptions.DruidRewriteException;
-import com.apache.lens.driver.druid.grammar.Aggregators;
+import com.apache.lens.driver.druid.grammar.Aggregator;
 import com.google.common.collect.Lists;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.aggregation.AggregatorFactory;
@@ -120,7 +120,7 @@ public abstract class DruidVisitor implements ASTVisitor {
           visitor = new GroupByVisitor(config, hiveConf);
         }
       } else {
-        throw new UnsupportedOperationException("This query is not supported in Druid");
+        throw new UnsupportedOperationException("This query is NOT supported in Druid");
       }
       new ASTTraverserForDruid(
         rootQueryNode,
@@ -147,11 +147,11 @@ public abstract class DruidVisitor implements ASTVisitor {
     columnSchema.setDataType(Type.DOUBLE_TYPE);
     columnSchemas.add(columnSchema);
 
-    AggregatorFactory aggregatorFactory = Aggregators.getFor(aggregationType).getAggregatorFactory(columnName, alias);
+    AggregatorFactory aggregatorFactory = Aggregator.valueOf(aggregationType).getAggregatorFactory(columnName, alias);
     if (null != aggregatorFactory) {
       this.getAggregatorFactories().add(aggregatorFactory);
     } else {
-      throw new UnsupportedOperationException("This aggregation is not accepted in Druid .." + aggregationType);
+      throw new UnsupportedOperationException("This aggregation is NOT accepted in Druid .." + aggregationType);
     }
   }
 
@@ -172,7 +172,7 @@ public abstract class DruidVisitor implements ASTVisitor {
 
   @Override
   public void visitAllCols() {
-    throw new UnsupportedOperationException("'*' is not supported in druid, select the columns required");
+    throw new UnsupportedOperationException("'*' is NOT supported in druid, select the columns required");
   }
 
   public abstract DruidQuery getQuery();

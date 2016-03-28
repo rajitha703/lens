@@ -20,7 +20,7 @@ package org.apache.lens.driver.es.grammar;
 
 import java.util.List;
 
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import org.apache.commons.lang3.Validate;
 

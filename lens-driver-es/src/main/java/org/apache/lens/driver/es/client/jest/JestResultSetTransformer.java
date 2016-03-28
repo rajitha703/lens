@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.lens.api.query.ResultRow;
-import org.apache.lens.driver.es.client.ESResultSet;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 
 import org.apache.commons.lang3.Validate;
@@ -38,7 +38,7 @@ import com.google.gson.JsonPrimitive;
 import lombok.NonNull;
 
 /**
- * The class ESResultSetTransformer, transforms json responses of elastic search
+ * The class DefaultResultSetTransformer, transforms json responses of elastic search
  * to 2D result sets that lens expects
  */
 public abstract class JestResultSetTransformer {
@@ -110,7 +110,7 @@ public abstract class JestResultSetTransformer {
     }
 
     @Override
-    public ESResultSet transform() {
+    public DefaultResultSet transform() {
       collectAllRows(
         result.getAsJsonObject(ResultSetConstants.AGGREGATIONS_KEY)
           .getAsJsonObject(ResultSetConstants.FILTER_WRAPPER_KEY),
@@ -118,7 +118,7 @@ public abstract class JestResultSetTransformer {
         0,
         null
       );
-      return new ESResultSet(
+      return new DefaultResultSet(
         rows.size(),
         rows,
         getMetaData(columnAliases)
@@ -136,7 +136,7 @@ public abstract class JestResultSetTransformer {
     }
 
     @Override
-    public ESResultSet transform() {
+    public DefaultResultSet transform() {
 
       JsonArray jsonArray = result
         .getAsJsonObject(ResultSetConstants.HITS_KEY)
@@ -158,7 +158,7 @@ public abstract class JestResultSetTransformer {
         }
         rows.add(new ResultRow(objects));
       }
-      return new ESResultSet(rows.size(), rows, getMetaData(columnAliases));
+      return new DefaultResultSet(rows.size(), rows, getMetaData(columnAliases));
     }
 
   }
@@ -180,7 +180,7 @@ public abstract class JestResultSetTransformer {
     }
   }
 
-  public static ESResultSet transformFrom(JsonObject jsonResult, List<String> schema, List<String> selectedColumns) {
+  public static DefaultResultSet transformFrom(JsonObject jsonResult, List<String> schema, List<String> selectedColumns) {
     if (jsonResult.getAsJsonObject(ResultSetConstants.AGGREGATIONS_KEY) != null) {
       return new AggregateTransformer(jsonResult, schema, selectedColumns).transform();
     } else {
@@ -233,7 +233,7 @@ public abstract class JestResultSetTransformer {
     return type;
   }
 
-  public abstract ESResultSet transform();
+  public abstract DefaultResultSet transform();
 
   protected LensResultSetMetadata getMetaData(final List<String> schema) {
     return new LensResultSetMetadata() {

@@ -25,7 +25,7 @@ import java.util.Map;
 
 import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.cube.parse.CubeQueryConfUtil;
-import org.apache.lens.driver.es.client.ESResultSet;
+import org.apache.lens.driver.es.client.DefaultResultSet;
 import org.apache.lens.driver.es.client.jest.JestResultSetTransformer;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.error.LensException;
@@ -47,12 +47,12 @@ import junit.framework.Assert;
 
 public class ResultSetTransformationTest extends ESDriverTest {
 
-  private static final ImmutableMap<Result, ESResultSet> VALID_TRANSFORMATIONS;
-  private static final ImmutableMap<Result, ESResultSet> IN_VALID_TRANSFORMATIONS;
+  private static final ImmutableMap<Result, DefaultResultSet> VALID_TRANSFORMATIONS;
+  private static final ImmutableMap<Result, DefaultResultSet> IN_VALID_TRANSFORMATIONS;
   private static final JsonParser JSON_PARSER = new JsonParser();
 
   static {
-    ImmutableMap.Builder<Result, ESResultSet> reponsesBuilder = ImmutableMap.builder();
+    ImmutableMap.Builder<Result, DefaultResultSet> reponsesBuilder = ImmutableMap.builder();
 
     /**
      * Sample term query result transformation
@@ -106,7 +106,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
           + "}"),
         ESQuery.QueryType.AGGR
       ),
-      new ESResultSet(
+      new DefaultResultSet(
         2,
         Lists.newArrayList(
           new ResultRow(Lists.<Object>newArrayList("val1", "val2")),
@@ -198,7 +198,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
           + "}"),
         ESQuery.QueryType.AGGR
       ),
-      new ESResultSet(
+      new DefaultResultSet(
         3,
         Lists.newArrayList(
           new ResultRow(Lists.<Object>newArrayList("g1v1", "g2v1", 1.0)),
@@ -289,7 +289,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
           + "}"),
         ESQuery.QueryType.AGGR
       ),
-      new ESResultSet(
+      new DefaultResultSet(
         3,
         Lists.newArrayList(
           new ResultRow(Lists.<Object>newArrayList("g1v1", 1.0, "g2v1")),
@@ -311,7 +311,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
 
     VALID_TRANSFORMATIONS = reponsesBuilder.build();
 
-    ImmutableMap.Builder<Result, ESResultSet> invalidResponsesBuilder = ImmutableMap.builder();
+    ImmutableMap.Builder<Result, DefaultResultSet> invalidResponsesBuilder = ImmutableMap.builder();
     /**
      * invalid aliases
      */
@@ -364,7 +364,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
           + "}"),
         ESQuery.QueryType.AGGR
       ),
-      new ESResultSet(
+      new DefaultResultSet(
         2,
         Lists.newArrayList(
           new ResultRow(Lists.<Object>newArrayList("val1", "val2")),
@@ -456,7 +456,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
           + "}"),
         ESQuery.QueryType.AGGR
       ),
-      new ESResultSet(
+      new DefaultResultSet(
         3,
         Lists.newArrayList(
           new ResultRow(Lists.<Object>newArrayList("g1v1", "g2v1", 1.0)),
@@ -495,7 +495,7 @@ public class ResultSetTransformationTest extends ESDriverTest {
     config.setStrings(CubeQueryConfUtil.DRIVER_SUPPORTED_STORAGES, "es_storage");
   }
 
-  private void  assertResultsAreEqual(ESResultSet resultSet1, ESResultSet resultSet2) {
+  private void  assertResultsAreEqual(DefaultResultSet resultSet1, DefaultResultSet resultSet2) {
     final Collection<ColumnDescriptor> columns1 = resultSet1.getMetadata().getColumns();
     final Collection<ColumnDescriptor> columns2 = resultSet2.getMetadata().getColumns();
     Assert.assertEquals(columns1.size(), columns2.size());
@@ -528,9 +528,9 @@ public class ResultSetTransformationTest extends ESDriverTest {
 
   @Test
   public void testTransformations() {
-    for (Map.Entry<Result, ESResultSet> entry : VALID_TRANSFORMATIONS.entrySet()) {
+    for (Map.Entry<Result, DefaultResultSet> entry : VALID_TRANSFORMATIONS.entrySet()) {
       final Result rawResult = entry.getKey();
-      ESResultSet resultSet =
+      DefaultResultSet resultSet =
         JestResultSetTransformer.transformFrom(rawResult.object, rawResult.schema, rawResult.cols);
       assertResultsAreEqual(resultSet, entry.getValue());
     }
@@ -538,11 +538,11 @@ public class ResultSetTransformationTest extends ESDriverTest {
 
   @Test
   public void testInvalidTranformations() {
-    for (Map.Entry<Result, ESResultSet> entry : IN_VALID_TRANSFORMATIONS.entrySet()) {
+    for (Map.Entry<Result, DefaultResultSet> entry : IN_VALID_TRANSFORMATIONS.entrySet()) {
       boolean failed = false;
       try {
         final Result rawResult = entry.getKey();
-        ESResultSet resultSet =
+        DefaultResultSet resultSet =
           JestResultSetTransformer.transformFrom(rawResult.object, rawResult.schema, rawResult.cols);
         assertResultsAreEqual(resultSet, entry.getValue());
         failed = true;

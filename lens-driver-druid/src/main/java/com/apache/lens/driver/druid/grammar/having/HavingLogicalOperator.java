@@ -20,7 +20,7 @@ package com.apache.lens.driver.druid.grammar.having;
 
 import java.util.List;
 
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import com.google.common.collect.ImmutableMap;
 import io.druid.query.groupby.having.AndHavingSpec;
@@ -28,7 +28,7 @@ import io.druid.query.groupby.having.HavingSpec;
 import io.druid.query.groupby.having.NotHavingSpec;
 import io.druid.query.groupby.having.OrHavingSpec;
 
-public enum HavingLogicalOperators {
+public enum HavingLogicalOperator {
   and {
     @Override
     public HavingSpec build(List<HavingSpec> havingSpecs) {
@@ -50,10 +50,10 @@ public enum HavingLogicalOperators {
 
   public abstract HavingSpec build(List<HavingSpec> havingSpecs);
 
-  private static final ImmutableMap<String, HavingLogicalOperators> HQL_LOG_OP_MAP;
+  private static final ImmutableMap<String, HavingLogicalOperator> HQL_LOG_OP_MAP;
 
   static {
-    final ImmutableMap.Builder<String, HavingLogicalOperators> logicalOpsBuilder = ImmutableMap.builder();
+    final ImmutableMap.Builder<String, HavingLogicalOperator> logicalOpsBuilder = ImmutableMap.builder();
     logicalOpsBuilder.put("and", and);
     logicalOpsBuilder.put("AND", and);
     logicalOpsBuilder.put("&&", and);
@@ -67,10 +67,10 @@ public enum HavingLogicalOperators {
     HQL_LOG_OP_MAP = logicalOpsBuilder.build();
   }
 
-  public static HavingLogicalOperators getFor(String hqlLop) throws InvalidQueryException {
+  public static HavingLogicalOperator getFor(String hqlLop) throws InvalidQueryException {
     if (HQL_LOG_OP_MAP.containsKey(hqlLop)) {
       return HQL_LOG_OP_MAP.get(hqlLop);
     }
-    throw new InvalidQueryException("Handler not available for Having logical operator " + hqlLop);
+    throw new InvalidQueryException("Handler NOT available for Having logical operator " + hqlLop);
   }
 }

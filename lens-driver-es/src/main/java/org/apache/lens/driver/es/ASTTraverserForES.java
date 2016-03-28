@@ -22,11 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lens.cube.parse.HQLParser;
-import org.apache.lens.server.api.driver.lib.ASTCriteriaVisitor;
-import org.apache.lens.server.api.driver.lib.ASTVisitor;
-import org.apache.lens.server.api.driver.lib.CriteriaVisitorFactory;
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
-import org.apache.lens.server.api.error.LensException;
+import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
+import org.apache.lens.server.api.driver.ast.ASTVisitor;
+import org.apache.lens.server.api.driver.ast.CriteriaVisitorFactory;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.hadoop.hive.ql.lib.Node;
@@ -89,13 +88,13 @@ public final class ASTTraverserForES {
     }
     try {
       for (Node selectExp : selectNode.getChildren()) {
-        final Node innerNode = Helper.getFirstChild(selectExp);
-        final String alias = Helper.getAliasFromSelectExpr(selectExp);
+        final Node innerNode = HQLParser.getFirstChild(selectExp);
+        final String alias = HQLParser.getAliasFromSelectExpr(selectExp);
         if (innerNode.getName().equals(String.valueOf(HiveParser.TOK_FUNCTION))) {
           Validate.isTrue(innerNode.getChildren().size() == 2);
           visitor.visitAggregation(
-            Helper.getFirstChild(innerNode).toString(),
-            Helper.getColumnNameFrom(innerNode.getChildren().get(1)),
+            HQLParser.getFirstChild(innerNode).toString(),
+            HQLParser.getColumnNameFrom(innerNode.getChildren().get(1)),
             alias
           );
         } else if (innerNode.getName().equals(String.valueOf(HiveParser.TOK_ALLCOLREF))) {
@@ -103,7 +102,7 @@ public final class ASTTraverserForES {
         } else if (innerNode.getName().equals(String.valueOf(HiveParser.TOK_TABLE_OR_COL))
           || innerNode.toString().equals(".")) {
           visitor.visitSimpleSelect(
-            Helper.getColumnNameFrom(innerNode),
+            HQLParser.getColumnNameFrom(innerNode),
             alias
           );
         } else {
@@ -145,7 +144,7 @@ public final class ASTTraverserForES {
       final ASTNode criteriaNode = HQLParser.findNodeByPath(rootQueryNode,
         HiveParser.TOK_INSERT, HiveParser.TOK_WHERE);
       if (criteriaNode != null) {
-        visitor.visitCriteria(traverseCriteriaRecursively(Helper.getFirstChild(criteriaNode)));
+        visitor.visitCriteria(traverseCriteriaRecursively(HQLParser.getFirstChild(criteriaNode)));
       }
     } catch (Exception e) {
       throw new InvalidQueryException("Exception while traversing criteria", e);
@@ -178,7 +177,7 @@ public final class ASTTraverserForES {
       for(Node rightExp : rightExpList.subList(1, rightExpList.size())) {
         rightExpressions.add(rightExp.toString());
       }
-      leftCol = Helper.getLeftColFromPredicate(whereClause);
+      leftCol = HQLParser.getLeftColFromPredicate(whereClause);
       break;
     default:
       throw new InvalidQueryException("No handlers for predicate " + predicateInfo.predicateType);
@@ -222,7 +221,7 @@ public final class ASTTraverserForES {
         HiveParser.TOK_INSERT, HiveParser.TOK_GROUPBY);
       if (groupByNode != null) {
         for (Node groupBy : groupByNode.getChildren()) {
-          visitor.visitGroupBy(Helper.getColumnNameFrom(groupBy));
+          visitor.visitGroupBy(HQLParser.getColumnNameFrom(groupBy));
         }
       }
     } catch (Exception e) {
@@ -240,7 +239,7 @@ public final class ASTTraverserForES {
       if (orderByNode != null) {
         for (Node orderBy : orderByNode.getChildren()) {
           visitor.visitOrderBy(
-            Helper.getColumnNameFrom(Helper.getFirstChild(orderBy)),
+            HQLParser.getColumnNameFrom(HQLParser.getFirstChild(orderBy)),
             orderBy.getName().equals(String.valueOf(HiveParser.TOK_TABSORTCOLNAMEDESC))
               ?
               ASTVisitor.OrderBy.DESC
@@ -262,7 +261,7 @@ public final class ASTTraverserForES {
       final ASTNode limitNode = HQLParser.findNodeByPath(rootQueryNode,
         HiveParser.TOK_INSERT, HiveParser.TOK_LIMIT);
       if (limitNode != null) {
-        visitor.visitLimit(Integer.parseInt(Helper.getFirstChild(limitNode).toString()));
+        visitor.visitLimit(Integer.parseInt(HQLParser.getFirstChild(limitNode).toString()));
       }
     } catch (Exception e) {
       throw new InvalidQueryException("Error while parsing limit, format should be limit <int>", e);
@@ -314,14 +313,6 @@ public final class ASTTraverserForES {
       logicalOps.addAll(binaryLogicalOps);
     }
 
-    private static String getAliasFromSelectExpr(Node selectExp) {
-      return selectExp.getChildren().size() == 2
-        ?
-        selectExp.getChildren().get(1).toString()
-        :
-        null;
-    }
-
     private static CriteriaInfo getCriteriaInfo(Node whereClause) throws InvalidQueryException {
       String whereRoot = whereClause.toString();
       if (Helper.unaryLogicalOps.contains(whereRoot)) {
@@ -341,26 +332,5 @@ public final class ASTTraverserForES {
       }
     }
 
-    private static Node getFirstChild(Node node) throws LensException {
-      try {
-        return node.getChildren().get(0);
-      } catch (Exception e) {
-        throw new LensException("Expecting a non empty first child for " + node.toString(), e);
-      }
-    }
-
-    private static String getLeftColFromPredicate(Node predicateNode) throws InvalidQueryException {
-      try {
-        return getColumnNameFrom(getFirstChild(predicateNode));
-      } catch (Exception e) {
-        throw new InvalidQueryException("Only simple predicates of the grammar <col>=<val> is supported as of now", e);
-      }
-    }
-
-    private static String getColumnNameFrom(Node columnNode) {
-      final StringBuilder stringBuilder = new StringBuilder();
-      HQLParser.toInfixString((ASTNode) columnNode, stringBuilder);
-      return stringBuilder.toString().replaceAll("[() ]", "");
-    }
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.lens.driver.es;
 
-import org.apache.lens.server.api.driver.lib.ASTVisitor;
+import org.apache.lens.server.api.driver.ast.ASTVisitor;
 
 import org.apache.hadoop.conf.Configuration;
 

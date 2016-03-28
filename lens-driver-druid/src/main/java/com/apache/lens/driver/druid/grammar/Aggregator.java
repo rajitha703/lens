@@ -18,31 +18,30 @@
  */
 package com.apache.lens.driver.druid.grammar;
 
-import org.apache.lens.server.api.driver.lib.exception.InvalidQueryException;
+import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
-import com.google.common.collect.ImmutableMap;
 import io.druid.query.aggregation.*;
 
-public enum Aggregators {
-  count {
+public enum Aggregator {
+  COUNT {
     @Override
     public AggregatorFactory getAggregatorFactory(String columnName, String alias) {
       return new CountAggregatorFactory(alias);
     }
   },
-  sum {
+  SUM {
     @Override
     public AggregatorFactory getAggregatorFactory(String columnName, String alias) {
       return new DoubleSumAggregatorFactory(alias, columnName);
     }
   },
-  min {
+  MIN {
     @Override
     public AggregatorFactory getAggregatorFactory(String columnName, String alias) {
       return new DoubleMinAggregatorFactory(alias, columnName);
     }
   },
-  max {
+  MAX {
     @Override
     public AggregatorFactory getAggregatorFactory(String columnName, String alias) {
       return new DoubleMaxAggregatorFactory(alias, columnName);
@@ -51,22 +50,4 @@ public enum Aggregators {
 
   public abstract AggregatorFactory getAggregatorFactory(String columnName, String alias);
 
-  private static final ImmutableMap<String, Aggregators> AGGREGATOR_FACTORY_IMMUTABLE_MAP;
-
-  static {
-    final ImmutableMap.Builder<String, Aggregators> aggregateFactoryBuilder = ImmutableMap.builder();
-    aggregateFactoryBuilder.put("count", count);
-    aggregateFactoryBuilder.put("sum", sum);
-    aggregateFactoryBuilder.put("min", min);
-    aggregateFactoryBuilder.put("max", max);
-
-    AGGREGATOR_FACTORY_IMMUTABLE_MAP = aggregateFactoryBuilder.build();
-  }
-
-  public static Aggregators getFor(String aggregator) throws InvalidQueryException {
-    if (AGGREGATOR_FACTORY_IMMUTABLE_MAP.containsKey(aggregator)) {
-      return AGGREGATOR_FACTORY_IMMUTABLE_MAP.get(aggregator);
-    }
-    throw new InvalidQueryException("Handler not available for aggregator " + aggregator);
-  }
 };

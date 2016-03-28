@@ -47,7 +47,7 @@ public class FilePersistentFormatter extends WrappedFileFormatter implements Per
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.lib.query.WrappedFileFormatter#init(org.apache.lens.server.api.query.QueryContext,
+   * @see org.apache.lens.ast.query.WrappedFileFormatter#init(org.apache.lens.server.api.query.QueryContext,
    * org.apache.lens.server.api.driver.LensResultSetMetadata)
    */
   public void init(QueryContext ctx, LensResultSetMetadata metadata) throws IOException {

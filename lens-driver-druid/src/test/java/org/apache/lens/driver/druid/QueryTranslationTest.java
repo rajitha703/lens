@@ -167,7 +167,7 @@ public class QueryTranslationTest extends DruidInitDriverTest {
       String formattedActualQuery = String.format(invalidQuery.hql, inputTimeRange);
       try {
         DruidVisitor.rewrite(druidDriverConfig, hiveConf, formattedActualQuery);
-        Assert.fail("The invalid query" + invalidQuery.name + "did not suffer any exception");
+        Assert.fail("The invalid query" + invalidQuery.name + "did NOT suffer any exception");
       } catch (Throwable e) {
         continue;
       }
