@@ -18,15 +18,14 @@
  */
 package com.apache.lens.driver.druid.translator;
 
-import static org.apache.hadoop.hive.ql.parse.HiveParser.TOK_GROUPBY;
-import static org.apache.hadoop.hive.ql.parse.HiveParser.TOK_INSERT;
-import static org.apache.hadoop.hive.ql.parse.HiveParser.TOK_LIMIT;
+import static org.apache.hadoop.hive.ql.parse.HiveParser.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lens.cube.metadata.CubeMetastoreClient;
 import org.apache.lens.cube.parse.HQLParser;
+import org.apache.lens.server.api.driver.ColumnSchema;
 import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
 import org.apache.lens.server.api.driver.ast.ASTVisitor;
 import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
@@ -44,7 +43,6 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
 import com.apache.lens.driver.druid.ASTTraverserForDruid;
-import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.exceptions.DruidRewriteException;
@@ -147,7 +145,8 @@ public abstract class DruidVisitor implements ASTVisitor {
     columnSchema.setDataType(Type.DOUBLE_TYPE);
     columnSchemas.add(columnSchema);
 
-    AggregatorFactory aggregatorFactory = Aggregator.valueOf(aggregationType).getAggregatorFactory(columnName, alias);
+    AggregatorFactory aggregatorFactory =
+      Aggregator.valueOf(aggregationType.toUpperCase()).getAggregatorFactory(columnName, alias);
     if (null != aggregatorFactory) {
       this.getAggregatorFactories().add(aggregatorFactory);
     } else {
@@ -202,7 +201,7 @@ public abstract class DruidVisitor implements ASTVisitor {
         }
       }
     } catch (HiveException e) {
-      log.error("Exception while fetching fieldschema " , e);
+      log.error("Exception while fetching fieldschema ", e);
     }
     return hiveType;
   }
