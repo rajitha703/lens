@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -117,7 +117,8 @@ public abstract class AbstractQueryContext implements Serializable {
    * Will be set to true when the driver queries are explicitly set
    * This will help avoiding rewrites in case of system restarts.
    */
-  @Getter private boolean isDriverQueryExplicitlySet = false;
+  @Getter
+  private boolean isDriverQueryExplicitlySet = false;
 
   /**
    * Is olap cube query or not
@@ -138,7 +139,8 @@ public abstract class AbstractQueryContext implements Serializable {
   @Setter
   private Priority priority;
 
-  protected AbstractQueryContext(final String query, final String user, final LensConf qconf, final Configuration conf,
+  protected AbstractQueryContext(
+    final String query, final String user, final LensConf qconf, final Configuration conf,
     final Collection<LensDriver> drivers, boolean mergeDriverConf) {
     if (conf.getBoolean(LensConfConstants.ENABLE_QUERY_METRICS, LensConfConstants.DEFAULT_ENABLE_QUERY_METRICS)) {
       UUID metricId = UUID.randomUUID();
@@ -239,7 +241,8 @@ public abstract class AbstractQueryContext implements Serializable {
     @Getter
     private LensException cause;
 
-    public DriverEstimateRunnable(AbstractQueryContext queryContext,
+    public DriverEstimateRunnable(
+      AbstractQueryContext queryContext,
       LensDriver driver) {
       this.queryContext = queryContext;
       this.driver = driver;
@@ -489,7 +492,7 @@ public abstract class AbstractQueryContext implements Serializable {
     priority = queryPriorityDecider.decidePriority(getDriverQueryCost(driver));
     return priority;
   }
-  
+
   public String driverQueryFor(LensDriver driver) {
     return String.valueOf(this.getFinalDriverQuery(driver) != null) + ":" + this.getDriverQuery(driver);
   }
