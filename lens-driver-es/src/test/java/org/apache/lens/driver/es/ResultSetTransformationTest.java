@@ -25,8 +25,8 @@ import java.util.Map;
 
 import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.cube.parse.CubeQueryConfUtil;
-import org.apache.lens.driver.es.client.DefaultResultSet;
 import org.apache.lens.driver.es.client.jest.JestResultSetTransformer;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.error.LensException;
 

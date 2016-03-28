@@ -22,7 +22,7 @@ import java.util.List;
 
 import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.driver.es.client.ESClient;
-import org.apache.lens.driver.es.client.DefaultResultSet;
+import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 
 import org.apache.hadoop.conf.Configuration;
