@@ -180,7 +180,8 @@ public abstract class JestResultSetTransformer {
     }
   }
 
-  public static DefaultResultSet transformFrom(JsonObject jsonResult, List<String> schema, List<String> selectedColumns) {
+  public static DefaultResultSet transformFrom(JsonObject jsonResult, List<String> schema, List<String> selectedColumns)
+  {
     if (jsonResult.getAsJsonObject(ResultSetConstants.AGGREGATIONS_KEY) != null) {
       return new AggregateTransformer(jsonResult, schema, selectedColumns).transform();
     } else {

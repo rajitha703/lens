@@ -24,7 +24,6 @@ import org.apache.lens.driver.es.ESDriverConfig;
 import org.apache.lens.driver.es.ESQuery;
 import org.apache.lens.driver.es.grammar.Aggregations;
 import org.apache.lens.driver.es.translator.ESVisitor;
-import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
 import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
 
 import org.apache.commons.lang3.Validate;
