@@ -26,6 +26,7 @@ import static org.apache.lens.server.api.util.LensUtil.getHashMap;
 
 import static org.testng.Assert.*;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import org.apache.lens.cube.error.LensCubeErrorCode;
@@ -928,7 +929,7 @@ public class TestCubeMetastoreClient {
     assertRangeValidityForStorageTable(storageTable);
 
 
-    Map<String, Date> timeParts = getTimePartitionByOffsets(getDatePartitionKey(), 0, "non_existing_part_col", 0);
+    Map<String, Date> timeParts = getTimePartitionByOffsets(getDatePartitionKey(), -50, "non_existing_part_col", 0);
     // test error on adding invalid partition
     // test partition
     StoragePartitionDesc partSpec = new StoragePartitionDesc(cubeFact.getName(), timeParts, null, HOURLY);
@@ -958,14 +959,13 @@ public class TestCubeMetastoreClient {
     partSpec2.setInputFormat(SequenceFileInputFormat.class.getCanonicalName());
     partSpec2.setOutputFormat(HiveIgnoreKeyTextOutputFormat.class.getCanonicalName());
     client.addPartition(partSpec2, c1);
-    assertEquals(client.getAllParts(storageTableName).size(), 2);
+    assertEquals(client.getAllParts(storageTableName).size(), 1);
     assertTrue(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts, emptyHashMap));
-    assertTrue(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts2, emptyHashMap));
+    assertFalse(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts2, emptyHashMap));
     assertTrue(client.latestPartitionExists(cubeFact.getName(), c1, getDatePartitionKey()));
     parts = client.getPartitionsByFilter(storageTableName, "dt='latest'");
     assertEquals(parts.size(), 0);
 
-    client.dropPartition(cubeFact.getName(), c1, timeParts2, null, HOURLY);
     assertEquals(client.getAllParts(storageTableName).size(), 1);
     assertTrue(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts, emptyHashMap));
     assertFalse(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts2, emptyHashMap));
@@ -978,6 +978,53 @@ public class TestCubeMetastoreClient {
     assertFalse(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts, emptyHashMap));
     assertFalse(client.factPartitionExists(cubeFact.getName(), c1, HOURLY, timeParts2, emptyHashMap));
     assertFalse(client.latestPartitionExists(cubeFact.getName(), c1, getDatePartitionKey()));
+  }
+
+  @Test(priority = 1)
+  public void testCubeSegmentation() throws Exception {
+    String segmentName = "testMetastoreCubeSegmentation";
+
+    Table cubeTbl = client.getHiveTable(CUBE_NAME);
+    assertTrue(client.isCube(cubeTbl));
+
+    Map<String, String> props = new HashMap<String, String>(){{put("foo", "bar"); }};
+    Map<String, String> prop1 = new HashMap<String, String>(){{put("foo1", "bar1"); put("foo11", "bar11"); }};
+    Map<String, String> prop2 = new HashMap<String, String>(){{put("foo2", "bar2"); }};
+    Map<String, String> prop3 = new HashMap<String, String>(){{put("foo3", "bar3"); }};
+    Map<String, String> prop5 = new HashMap<String, String>(){{put("foo5", "bar5"); }};
+
+    CubeSegment seg1 = new CubeSegment("cube1", prop1);
+    CubeSegment seg2 = new CubeSegment("cube2", prop2);
+    CubeSegment seg3 = new CubeSegment("cube3", prop3);
+    CubeSegment seg5 = new CubeSegment("cube5", prop5);
+
+    Set<CubeSegment> cubeSegs = Sets.newHashSet(seg1, seg2, seg3);
+
+    //create cube segmentation
+    client.createCubeSegmentation(CUBE_NAME, segmentName, cubeSegs, 0L, props);
+    assertEquals(client.getCubeSegmentation(segmentName).getCubeSegments().size(), 3);
+
+    //Alter cube segmentation
+    CubeSegmentation segmentation = new CubeSegmentation(Hive.get(conf).getTable(segmentName));
+    segmentation.addCubeSegment(seg5);
+    segmentation.addProperties(new HashMap<String, String>(){{put("new_key", "new_val"); }});
+    segmentation.alterBaseCubeName("segCubeAltered");
+    segmentation.alterWeight(100.0);
+    client.alterCubeSegmentation(segmentName, segmentation);
+
+    assertNotNull(client.getCubeSegmentation(segmentName));
+    assertEquals(client.getCubeSegmentation(segmentName).getCubeSegments().size(), 4);
+    assertEquals(client.getCubeSegmentation(segmentName).getBaseCube(), "segCubeAltered");
+    assertEquals(client.getCubeSegmentation(segmentName).weight(), 100.0);
+
+    //drop cubesegment to segmentation
+    segmentation.dropCubeSegment(seg5);
+    client.alterCubeSegmentation(segmentName, segmentation);
+    assertEquals(client.getCubeSegmentation(segmentName).getCubeSegments().size(), 3);
+
+    //drop segmentation
+    client.dropCubeSegmentation(segmentName);
+    assertFalse(client.tableExists(segmentName));
   }
 
   private void assertRangeValidityForStorageTable(String storageTable) throws HiveException, LensException {
@@ -1652,6 +1699,143 @@ public class TestCubeMetastoreClient {
     assertFalse(client.factPartitionExists(cubeFactWithParts.getName(), c1, HOURLY, timeParts, partSpec));
     assertFalse(client.latestPartitionExists(cubeFactWithParts.getName(), c1, getDatePartitionKey()));
     assertEquals(client.getAllParts(storageTableName).size(), 0);
+  }
+
+  @Test(priority = 2)
+  public void testSkipPartitionsOlderThanFactStartTime() throws Exception {
+    Date now = new Date();
+    SimpleDateFormat dateFormat = new SimpleDateFormat(DateUtil.ABSDATE_FMT);
+
+    List<FieldSchema> factColumns = new ArrayList<>(cubeMeasures.size());
+    String factNameSkipPart = "testFactSkipPart";
+
+    for (CubeMeasure measure : cubeMeasures) {
+      factColumns.add(measure.getColumn());
+    }
+
+    // add some dimensions of the cube
+    factColumns.add(new FieldSchema("dim1", "string", "dim1"));
+    factColumns.add(new FieldSchema("dim2", "string", "dim2"));
+
+    List<FieldSchema> factPartColumns = Lists.newArrayList(new FieldSchema("region", "string", "region part"));
+
+    Set<UpdatePeriod> updates = Sets.newHashSet(HOURLY);
+    ArrayList<FieldSchema> partCols = Lists.newArrayList(getDatePartition(), factPartColumns.get(0));
+    Map<String, String> factProps = new HashMap<>();
+
+    factProps.put(MetastoreConstants.FACT_RELATIVE_START_TIME, "now -30 days");
+    factProps.put(MetastoreConstants.FACT_RELATIVE_END_TIME, "now +10 days");
+
+    StorageTableDesc s1 = new StorageTableDesc(TextInputFormat.class, HiveIgnoreKeyTextOutputFormat.class, partCols,
+            datePartKeySingleton);
+    Map<String, Set<UpdatePeriod>> updatePeriods = getHashMap(c1, updates);
+    Map<String, StorageTableDesc> storageTables = getHashMap(c1, s1);
+
+    CubeFactTable cubeFactWithParts = new CubeFactTable(CUBE_NAME, factNameSkipPart, factColumns, updatePeriods);
+    // create cube fact
+    client.createCubeFactTable(CUBE_NAME, factNameSkipPart, factColumns,
+            updatePeriods, 0L, factProps, storageTables);
+
+    assertTrue(client.tableExists(factNameSkipPart));
+    Table cubeTbl = client.getHiveTable(factNameSkipPart);
+    assertTrue(client.isFactTable(cubeTbl));
+    assertTrue(client.isFactTableForCube(cubeTbl, CUBE_NAME));
+    CubeFactTable cubeFact2 = new CubeFactTable(cubeTbl);
+    assertTrue(cubeFactWithParts.equals(cubeFact2));
+
+    // Assert for storage tables
+    for (String entry : storageTables.keySet()) {
+      String storageTableName = getFactOrDimtableStorageTableName(factNameSkipPart, entry);
+      assertTrue(client.tableExists(storageTableName));
+    }
+
+    Map<String, String> partSpec = getHashMap(factPartColumns.get(0).getName(), "APAC");
+    Map<String, Date> timePartsNow = getHashMap(getDatePartitionKey(), NOW);
+    Map<String, Date> timePartsBeforeTwoMonths = getHashMap(getDatePartitionKey(), TWO_MONTHS_BACK);
+
+    // test partition
+    List<StoragePartitionDesc> storageDescs = new ArrayList<>();
+    StoragePartitionDesc sPartSpecNow =
+            new StoragePartitionDesc(cubeFactWithParts.getName(), timePartsNow, partSpec, HOURLY);
+    StoragePartitionDesc sPartSpecTwoMonthsBack =
+            new StoragePartitionDesc(cubeFactWithParts.getName(), timePartsBeforeTwoMonths, partSpec, HOURLY);
+    storageDescs.add(sPartSpecNow);
+    storageDescs.add(sPartSpecTwoMonthsBack);
+
+    client.addPartitions(storageDescs, c1);
+    assertTrue(client.factPartitionExists(cubeFactWithParts.getName(), c1, HOURLY, timePartsNow, partSpec));
+    assertFalse(client.factPartitionExists(cubeFactWithParts.getName(), c1, HOURLY,
+            timePartsBeforeTwoMonths, partSpec));
+  }
+
+  @Test(priority = 2)
+  public void testSkipPartitionsOlderThanStorageStartTime() throws Exception {
+    Date now = new Date();
+    SimpleDateFormat dateFormat = new SimpleDateFormat(DateUtil.ABSDATE_FMT);
+
+    List<FieldSchema> factColumns = new ArrayList<>(cubeMeasures.size());
+    String factNameSkipPart = "testStorageSkipPart";
+
+    for (CubeMeasure measure : cubeMeasures) {
+      factColumns.add(measure.getColumn());
+    }
+
+    // add some dimensions of the cube
+    factColumns.add(new FieldSchema("dim1", "string", "dim1"));
+    factColumns.add(new FieldSchema("dim2", "string", "dim2"));
+
+    List<FieldSchema> factPartColumns = Lists.newArrayList(new FieldSchema("region", "string", "region part"));
+
+    Set<UpdatePeriod> updates = Sets.newHashSet(HOURLY);
+    ArrayList<FieldSchema> partCols = Lists.newArrayList(getDatePartition(), factPartColumns.get(0));
+
+    Map<String, String> storageProps = new HashMap<>();
+    storageProps.put(getStoragetableStartTimesKey(), "now -30 days");
+    storageProps.put(getStoragetableEndTimesKey(), "now +10 days");
+
+    StorageTableDesc s1 = new StorageTableDesc(TextInputFormat.class, HiveIgnoreKeyTextOutputFormat.class, partCols,
+            datePartKeySingleton);
+    s1.getTblProps().putAll(storageProps);
+
+    Map<String, Set<UpdatePeriod>> updatePeriods = getHashMap(c1, updates);
+    Map<String, StorageTableDesc> storageTables = getHashMap(c1, s1);
+
+    CubeFactTable cubeFactWithParts = new CubeFactTable(CUBE_NAME, factNameSkipPart, factColumns, updatePeriods);
+    // create cube fact
+    client.createCubeFactTable(CUBE_NAME, factNameSkipPart, factColumns,
+            updatePeriods, 0L, null, storageTables);
+
+    assertTrue(client.tableExists(factNameSkipPart));
+    Table cubeTbl = client.getHiveTable(factNameSkipPart);
+    assertTrue(client.isFactTable(cubeTbl));
+    assertTrue(client.isFactTableForCube(cubeTbl, CUBE_NAME));
+    CubeFactTable cubeFact2 = new CubeFactTable(cubeTbl);
+    assertTrue(cubeFactWithParts.equals(cubeFact2));
+
+    // Assert for storage tables
+    for (String entry : storageTables.keySet()) {
+      String storageTableName = getFactOrDimtableStorageTableName(factNameSkipPart, entry);
+      assertTrue(client.tableExists(storageTableName));
+    }
+
+    Map<String, String> partSpec = getHashMap(factPartColumns.get(0).getName(), "APAC");
+    Map<String, Date> timePartsNow = getHashMap(getDatePartitionKey(), NOW);
+    Map<String, Date> timePartsBeforeTwoMonths = getHashMap(getDatePartitionKey(), TWO_MONTHS_BACK);
+
+    // test partition
+    List<StoragePartitionDesc> storageDescs = new ArrayList<>();
+    StoragePartitionDesc sPartSpecNow =
+            new StoragePartitionDesc(cubeFactWithParts.getName(), timePartsNow, partSpec, HOURLY);
+    StoragePartitionDesc sPartSpecTwoMonthsBack =
+            new StoragePartitionDesc(cubeFactWithParts.getName(), timePartsBeforeTwoMonths, partSpec, HOURLY);
+    storageDescs.add(sPartSpecNow);
+    storageDescs.add(sPartSpecTwoMonthsBack);
+
+    client.getTimelines(factNameSkipPart, null, null, null);
+    client.addPartitions(storageDescs, c1);
+    assertTrue(client.factPartitionExists(cubeFactWithParts.getName(), c1, HOURLY, timePartsNow, partSpec));
+    assertFalse(client.factPartitionExists(cubeFactWithParts.getName(), c1, HOURLY,
+            timePartsBeforeTwoMonths, partSpec));
   }
 
   @Test(priority = 2)
