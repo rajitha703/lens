@@ -38,7 +38,7 @@ public class DruidCriteriaVisitor implements ASTCriteriaVisitor {
 
   @Override
   public void visitLogicalOp(String logicalOp, List<ASTCriteriaVisitor> visitedSubTrees) throws InvalidQueryException {
-    this.dimFilter = LogicalOperator.valueOf(logicalOp)
+    this.dimFilter = LogicalOperator.getFor(logicalOp)
       .build(collectFiltersFromVisitors(visitedSubTrees));
   }
 
