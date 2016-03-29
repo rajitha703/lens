@@ -187,7 +187,6 @@ public class DruidDriver extends AbstractLensDriver {
   }
 
 
-
   @Override
   public void executeAsync(final QueryContext context) {
     final Future<LensResultSet> futureResult
@@ -196,8 +195,9 @@ public class DruidDriver extends AbstractLensDriver {
   }
 
   @Override
-  public void registerForCompletionNotification(QueryHandle handle, long timeoutMillis,
-                                                QueryCompletionListener listener) {
+  public void registerForCompletionNotification(
+    QueryHandle handle, long timeoutMillis,
+    QueryCompletionListener listener) {
     handleListenerMap.put(handle, listener);
   }
 

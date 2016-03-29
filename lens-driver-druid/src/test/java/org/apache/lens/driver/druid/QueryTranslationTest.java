@@ -63,9 +63,10 @@ public class QueryTranslationTest extends DruidInitDriverTest {
     private final JsonNode expectedJson;
 
     @JsonCreator
-    ValidQuery(@JsonProperty("name") String name,
-               @JsonProperty("hql") String hql,
-               @JsonProperty("expectedJson") JsonNode expectedJson) {
+    ValidQuery(
+      @JsonProperty("name") String name,
+      @JsonProperty("hql") String hql,
+      @JsonProperty("expectedJson") JsonNode expectedJson) {
       this.name = name;
       this.hql = hql;
       this.expectedJson = expectedJson;
@@ -77,8 +78,9 @@ public class QueryTranslationTest extends DruidInitDriverTest {
     private final String hql;
 
     @JsonCreator
-    InvalidQuery(@JsonProperty("name") String name,
-                 @JsonProperty("hql") String hql) {
+    InvalidQuery(
+      @JsonProperty("name") String name,
+      @JsonProperty("hql") String hql) {
       this.name = name;
       this.hql = hql;
     }
@@ -127,7 +129,7 @@ public class QueryTranslationTest extends DruidInitDriverTest {
       Table tbl = CubeMetastoreClient.getInstance(hiveConf).getHiveTable("wikipedia");
       tbl.setProperty("druid.table.time.dimension", "time");
     } catch (HiveException e) {
-      log.error("Exception while creating hive table" , e);
+      log.error("Exception while creating hive table", e);
     }
   }
 
@@ -183,7 +185,7 @@ public class QueryTranslationTest extends DruidInitDriverTest {
     log.info("Created table : " + table);
   }
 
-  public String[] getTimeInstants(){
+  public String[] getTimeInstants() {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     Calendar calendar = Calendar.getInstance();
     String endTime = dateFormat.format(calendar.getTime());
@@ -191,6 +193,7 @@ public class QueryTranslationTest extends DruidInitDriverTest {
     String startTime = dateFormat.format(calendar.getTime());
     return new String[]{startTime, endTime};
   }
+
   public static String getLastTwoDaysTimeRange(String startTimeInstant, String endTimeInstant) {
     return "'" + startTimeInstant + "'" + " AND " + "'" + endTimeInstant + "'";
   }

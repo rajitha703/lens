@@ -52,13 +52,15 @@ public class DruidRewriteException extends LensException {
     super(errorMsg, errorInfo);
   }
 
-  public DruidRewriteException(LensErrorInfo errorInfo, Throwable cause,
-                               @NonNull Object... errorMsgFormattingArgs) {
+  public DruidRewriteException(
+    LensErrorInfo errorInfo, Throwable cause,
+    @NonNull Object... errorMsgFormattingArgs) {
     super(errorInfo, cause, errorMsgFormattingArgs);
   }
 
-  public DruidRewriteException(String errorMsg, LensErrorInfo errorInfo, Throwable cause,
-                               @NonNull Object... errorMsgFormattingArgs) {
+  public DruidRewriteException(
+    String errorMsg, LensErrorInfo errorInfo, Throwable cause,
+    @NonNull Object... errorMsgFormattingArgs) {
     super(errorMsg, errorInfo, cause, errorMsgFormattingArgs);
   }
 }

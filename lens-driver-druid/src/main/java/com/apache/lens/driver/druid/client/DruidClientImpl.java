@@ -28,6 +28,7 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.lens.server.api.driver.DefaultResultSet;
+
 import org.apache.hadoop.conf.Configuration;
 
 import com.apache.lens.driver.druid.DruidDriverConfig;

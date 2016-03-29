@@ -18,8 +18,6 @@
  */
 package com.apache.lens.driver.druid.grammar;
 
-import org.apache.lens.server.api.driver.ast.exception.InvalidQueryException;
-
 import io.druid.query.aggregation.*;
 
 public enum Aggregator {

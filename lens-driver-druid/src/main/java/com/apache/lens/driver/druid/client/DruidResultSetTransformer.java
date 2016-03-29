@@ -21,6 +21,7 @@ package com.apache.lens.driver.druid.client;
 import java.util.List;
 
 import org.apache.lens.api.query.ResultRow;
+import org.apache.lens.server.api.driver.ColumnSchema;
 import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 
@@ -28,7 +29,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hive.service.cli.ColumnDescriptor;
 import org.apache.hive.service.cli.TypeDescriptor;
 
-import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.google.common.collect.Lists;
 import io.druid.data.input.Row;
@@ -151,8 +151,9 @@ public abstract class DruidResultSetTransformer {
     };
   }
 
-  public static DruidResultSetTransformer getTransformer(DruidQuery.QueryType queryType, Object druidResultObject,
-                                                         List<ColumnSchema> columnSchema) {
+  public static DruidResultSetTransformer getTransformer(
+    DruidQuery.QueryType queryType, Object druidResultObject,
+    List<ColumnSchema> columnSchema) {
     if (queryType.equals(DruidQuery.QueryType.GROUPBY)) {
       return new GroupByResultTransformer(druidResultObject, columnSchema);
     } else if (queryType.equals(DruidQuery.QueryType.TOPN)) {

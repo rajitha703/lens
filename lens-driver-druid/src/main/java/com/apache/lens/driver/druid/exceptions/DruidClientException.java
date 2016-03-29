@@ -51,13 +51,15 @@ public class DruidClientException extends LensException {
     super(errorMsg, errorInfo);
   }
 
-  public DruidClientException(LensErrorInfo errorInfo, Throwable cause,
-                              @NonNull Object... errorMsgFormattingArgs) {
+  public DruidClientException(
+    LensErrorInfo errorInfo, Throwable cause,
+    @NonNull Object... errorMsgFormattingArgs) {
     super(errorInfo, cause, errorMsgFormattingArgs);
   }
 
-  public DruidClientException(String errorMsg, LensErrorInfo errorInfo, Throwable cause,
-                              @NonNull Object... errorMsgFormattingArgs) {
+  public DruidClientException(
+    String errorMsg, LensErrorInfo errorInfo, Throwable cause,
+    @NonNull Object... errorMsgFormattingArgs) {
     super(errorMsg, errorInfo, cause, errorMsgFormattingArgs);
   }
 }

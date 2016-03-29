@@ -21,6 +21,7 @@ package com.apache.lens.driver.druid.translator;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.lens.server.api.driver.ColumnSchema;
 import org.apache.lens.server.api.driver.ast.ASTCriteriaVisitor;
 
 import org.apache.commons.lang3.Validate;
@@ -28,7 +29,6 @@ import org.apache.hadoop.hive.conf.HiveConf;
 
 import org.joda.time.Interval;
 
-import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.DruidQueryBuilder;
@@ -76,7 +76,7 @@ public class GroupByVisitor extends DruidVisitor {
   public void visitGroupBy(String columnName) {
     columnName = visitColumn(columnName);
     DimensionSpec dimensionSpec = new DefaultDimensionSpec(columnName, columnName);
-    if (!this.getDimensions().contains(dimensionSpec)){
+    if (!this.getDimensions().contains(dimensionSpec)) {
       this.getDimensions().add(dimensionSpec);
     }
   }

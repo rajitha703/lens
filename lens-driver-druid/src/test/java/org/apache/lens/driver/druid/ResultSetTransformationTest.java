@@ -21,6 +21,7 @@ package org.apache.lens.driver.druid;
 import java.util.*;
 
 import org.apache.lens.api.query.ResultRow;
+import org.apache.lens.server.api.driver.ColumnSchema;
 import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.error.LensException;
@@ -35,7 +36,6 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import org.apache.lens.server.api.driver.ColumnSchema;
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.client.DruidResultSetTransformer;
@@ -319,9 +319,12 @@ public class ResultSetTransformationTest extends DruidInitDriverTest {
     while (iterator1.hasNext()) {
       final ColumnDescriptor column1 = iterator1.next();
       final ColumnDescriptor column2 = iterator2.next();
-      Assert.assertEquals(column1.getName(), column2.getName(), "Column aliases are different! " + column1.getName() + " " + column2.getName());
-      Assert.assertEquals(column1.getOrdinalPosition(), column2.getOrdinalPosition(), "Column positions are different! " + column1.getName() + " " + column2.getName());
-      Assert.assertEquals(column1.getType(), column2.getType(), "Column types are different! " + column1.getName() + " " + column2.getName());
+      Assert.assertEquals(column1.getName(), column2.getName(),
+        "Column aliases are different! " + column1.getName() + " " + column2.getName());
+      Assert.assertEquals(column1.getOrdinalPosition(), column2.getOrdinalPosition(),
+        "Column positions are different! " + column1.getName() + " " + column2.getName());
+      Assert.assertEquals(column1.getType(), column2.getType(),
+        "Column types are different! " + column1.getName() + " " + column2.getName());
     }
 
     Assert.assertEquals(resultSet1.size(), resultSet2.size());
@@ -334,7 +337,7 @@ public class ResultSetTransformationTest extends DruidInitDriverTest {
       while (values1.hasNext()) {
         final Object column1 = values1.next();
         final Object column2 = values2.next();
-        Assert.assertEquals( column1, column2, "Values are different");
+        Assert.assertEquals(column1, column2, "Values are different");
       }
     }
 

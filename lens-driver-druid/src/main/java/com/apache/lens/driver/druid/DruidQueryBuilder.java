@@ -42,11 +42,12 @@ public final class DruidQueryBuilder {
   private DruidQueryBuilder() {
   }
 
-  public static DruidQuery createGroupByQuery(String dataSource, List<DimensionSpec> dimensions, HavingSpec having,
-                                              List<AggregatorFactory> aggregatorFactories,
-                                              List<PostAggregator> postAggregators, Interval interval,
-                                              QueryGranularity granularity, DimFilter filter, LimitSpec orderBy,
-                                              Integer limit, List<ColumnSchema> querySchema) {
+  public static DruidQuery createGroupByQuery(
+    String dataSource, List<DimensionSpec> dimensions, HavingSpec having,
+    List<AggregatorFactory> aggregatorFactories,
+    List<PostAggregator> postAggregators, Interval interval,
+    QueryGranularity granularity, DimFilter filter, LimitSpec orderBy,
+    Integer limit, List<ColumnSchema> querySchema) {
 
     Query query = GroupByQuery.builder()
       .setDataSource(dataSource)
@@ -63,12 +64,13 @@ public final class DruidQueryBuilder {
     return new DruidQuery(query, ImmutableList.copyOf(querySchema), DruidQuery.QueryType.GROUPBY);
   }
 
-  public static DruidQuery createTopNQuery(String dataSource, DimensionSpec dimensionSpec,
-                                           TopNMetricSpec topNMetricSpec, int threshold,
-                                           List<AggregatorFactory> aggregatorFactories,
-                                           List<PostAggregator> postAggregators, List<Interval> intervals,
-                                           QueryGranularity granularity, DimFilter filter,
-                                           List<ColumnSchema> querySchema) {
+  public static DruidQuery createTopNQuery(
+    String dataSource, DimensionSpec dimensionSpec,
+    TopNMetricSpec topNMetricSpec, int threshold,
+    List<AggregatorFactory> aggregatorFactories,
+    List<PostAggregator> postAggregators, List<Interval> intervals,
+    QueryGranularity granularity, DimFilter filter,
+    List<ColumnSchema> querySchema) {
     Query query = new TopNQueryBuilder().dataSource(dataSource)
       .dimension(dimensionSpec)
       .metric(topNMetricSpec)

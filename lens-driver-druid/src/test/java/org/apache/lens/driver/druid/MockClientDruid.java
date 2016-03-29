@@ -18,12 +18,13 @@
  */
 package org.apache.lens.driver.druid;
 
+import org.apache.lens.server.api.driver.DefaultResultSet;
+
 import org.apache.hadoop.conf.Configuration;
 
 import com.apache.lens.driver.druid.DruidDriverConfig;
 import com.apache.lens.driver.druid.DruidQuery;
 import com.apache.lens.driver.druid.client.DruidClient;
-import org.apache.lens.server.api.driver.DefaultResultSet;
 
 class MockClientDruid extends DruidClient {
 
