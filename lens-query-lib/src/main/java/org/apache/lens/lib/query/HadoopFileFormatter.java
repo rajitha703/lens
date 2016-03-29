@@ -50,7 +50,7 @@ public class HadoopFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#setupOutputs()
+   * @see org.apache.lens.lib.query.FileFormatter#setupOutputs()
    */
   public void setupOutputs() throws IOException {
     String pathStr = ctx.getResultSetParentDir();
@@ -73,7 +73,7 @@ public class HadoopFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#writeHeader(java.lang.String)
+   * @see org.apache.lens.lib.query.FileFormatter#writeHeader(java.lang.String)
    */
   public void writeHeader(String header) throws IOException {
     rowWriter.write(null, new Text(header));
@@ -82,7 +82,7 @@ public class HadoopFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#writeFooter(java.lang.String)
+   * @see org.apache.lens.lib.query.FileFormatter#writeFooter(java.lang.String)
    */
   public void writeFooter(String footer) throws IOException {
     rowWriter.write(null, new Text(footer));
@@ -96,7 +96,7 @@ public class HadoopFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#writeRow(java.lang.String)
+   * @see org.apache.lens.lib.query.FileFormatter#writeRow(java.lang.String)
    */
   public void writeRow(String row) throws IOException {
     if (cachedRow == null) {

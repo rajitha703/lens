@@ -90,7 +90,7 @@ public class ZipFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#setupOutputs()
+   * @see org.apache.lens.lib.query.FileFormatter#setupOutputs()
    */
   public void setupOutputs() throws IOException {
     resultFileExtn = ctx.getOuptutFileExtn();
@@ -169,7 +169,7 @@ public class ZipFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#writeHeader(java.lang.String)
+   * @see org.apache.lens.lib.query.FileFormatter#writeHeader(java.lang.String)
    */
   public void writeHeader(String header) throws IOException {
     out.write(header);
@@ -180,7 +180,7 @@ public class ZipFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#writeFooter(java.lang.String)
+   * @see org.apache.lens.lib.query.FileFormatter#writeFooter(java.lang.String)
    */
   public void writeFooter(String footer) throws IOException {
     out.write(footer);
@@ -190,7 +190,7 @@ public class ZipFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.FileFormatter#writeRow(java.lang.String)
+   * @see org.apache.lens.lib.query.FileFormatter#writeRow(java.lang.String)
    */
   public void writeRow(String row) throws IOException {
     // close zip entry and add new one, if numRows has crossed max rows in the
@@ -217,7 +217,7 @@ public class ZipFileFormatter extends AbstractFileFormatter {
   /*
    * (non-Javadoc)
    *
-   * @see org.apache.lens.ast.query.AbstractFileFormatter#writeHeader()
+   * @see org.apache.lens.lib.query.AbstractFileFormatter#writeHeader()
    */
   @Override
   public void writeHeader() throws IOException {

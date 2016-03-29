@@ -118,7 +118,7 @@ public abstract class DruidVisitor implements ASTVisitor {
           visitor = new GroupByVisitor(config, hiveConf);
         }
       } else {
-        throw new UnsupportedOperationException("This query is NOT supported in Druid");
+        throw new UnsupportedOperationException("This query is not supported in Druid");
       }
       new ASTTraverserForDruid(
         rootQueryNode,
@@ -150,7 +150,7 @@ public abstract class DruidVisitor implements ASTVisitor {
     if (null != aggregatorFactory) {
       this.getAggregatorFactories().add(aggregatorFactory);
     } else {
-      throw new UnsupportedOperationException("This aggregation is NOT accepted in Druid .." + aggregationType);
+      throw new UnsupportedOperationException("This aggregation is not accepted in Druid .." + aggregationType);
     }
   }
 
@@ -171,7 +171,7 @@ public abstract class DruidVisitor implements ASTVisitor {
 
   @Override
   public void visitAllCols() {
-    throw new UnsupportedOperationException("'*' is NOT supported in druid, select the columns required");
+    throw new UnsupportedOperationException("'*' is not supported in druid, select the columns required");
   }
 
   public abstract DruidQuery getQuery();

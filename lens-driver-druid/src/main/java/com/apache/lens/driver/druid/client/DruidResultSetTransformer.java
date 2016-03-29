@@ -159,7 +159,7 @@ public abstract class DruidResultSetTransformer {
     } else if (queryType.equals(DruidQuery.QueryType.TOPN)) {
       return new TopNResultTransformer(druidResultObject, columnSchema);
     } else {
-      throw new UnsupportedOperationException("This query type is NOT supported in Druid :" + queryType);
+      throw new UnsupportedOperationException("This query type is not supported in Druid :" + queryType);
     }
   }
 

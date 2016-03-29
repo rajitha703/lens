@@ -87,7 +87,7 @@ public class TopNVisitor extends DruidVisitor {
 
   @Override
   public void visitHaving(ASTCriteriaVisitor astCriteriaVisitor) {
-    throw new UnsupportedOperationException("Having NOT valid in a TopN query");
+    throw new UnsupportedOperationException("Having not valid in a TopN query");
   }
 
   @Override

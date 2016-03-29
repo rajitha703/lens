@@ -245,7 +245,7 @@ public class DruidDriver extends AbstractLensDriver {
     try {
       resultSetMap.remove(handle);
     } catch (NullPointerException e) {
-      throw new LensException("The query does NOT exist OR was already purged", e);
+      throw new LensException("The query does not exist or was already purged", e);
     }
   }
 
@@ -258,7 +258,7 @@ public class DruidDriver extends AbstractLensDriver {
       }
       return cancelled;
     } catch (NullPointerException e) {
-      throw new LensException("The query does NOT exist OR was already purged", e);
+      throw new LensException("The query does not exist OR was already purged", e);
     }
   }
 
