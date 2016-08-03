@@ -935,7 +935,7 @@ public final class HQLParser {
     }
   }
 
-  public static class CaseSensitiveAppendMode implements AppendMode{
+  public static class NochangeAppendMode implements AppendMode{
 
     @Override
     public String getString(String input) {
