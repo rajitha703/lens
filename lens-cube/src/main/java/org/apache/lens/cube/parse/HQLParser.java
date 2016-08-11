@@ -923,24 +923,15 @@ public final class HQLParser {
     }
   }
 
-  interface AppendMode{
-    String getString(String input);
-  }
-
-  public static class LowerCaseAppendMode implements AppendMode{
-
-    @Override
-    public String getString(String input) {
-      return input.toLowerCase();
+  enum AppendMode {
+    LOWER_CASE {
+      @Override public String convert(String s) {
+        return s.toLowerCase();
+      }
+    },
+    DEFAULT;
+    public String convert(String s) {
+      return s;
     }
   }
-
-  public static class NochangeAppendMode implements AppendMode{
-
-    @Override
-    public String getString(String input) {
-      return input;
-    }
-  }
-
 }

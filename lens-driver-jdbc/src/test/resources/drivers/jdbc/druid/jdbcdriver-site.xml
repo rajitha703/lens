@@ -59,4 +59,8 @@
         <name>lens.cube.query.partition.where.clause.format</name>
         <value>yyyy-MM-dd HH:mm:ss</value>
     </property>
+    <property>
+        <name>lens.cube.query.between.only.time.range.writer</name>
+        <value>true</value>
+    </property>
 </configuration>
