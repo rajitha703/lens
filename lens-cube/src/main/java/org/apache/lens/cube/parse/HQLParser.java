@@ -343,8 +343,7 @@ public final class HQLParser {
   }
 
   public static void toInfixString(ASTNode root, StringBuilder buf) {
-    AppendMode appendMode = new LowerCaseAppendMode();
-    toInfixString(root, buf, appendMode);
+    toInfixString(root, buf, AppendMode.DEFAULT);
   }
 
   /**
@@ -374,7 +373,7 @@ public final class HQLParser {
         // (example : year as alias) and in such case queries can fail on certain DBs if the alias in not back quoted
         buf.append(" as `").append(rootText).append("`");
       } else {
-        buf.append(rootText == null ? "" : appendMode.getString(rootText));
+        buf.append(rootText == null ? "" : appendMode.convert(rootText));
       }
 
     } else if (TOK_ALLCOLREF == rootType) {
@@ -418,7 +417,7 @@ public final class HQLParser {
       if (MINUS == rootType && root.getChildCount() == 1) {
         // If minus has only one child, then it's a unary operator.
         // Add Operator name first
-        buf.append(appendMode.getString(rootText));
+        buf.append(appendMode.convert(rootText));
         // Operand
         toInfixString((ASTNode) root.getChild(0), buf, appendMode);
       } else {
@@ -426,9 +425,9 @@ public final class HQLParser {
         toInfixString((ASTNode) root.getChild(0), buf, appendMode);
         // Operator name
         if (rootType != DOT) {
-          buf.append(' ').append(appendMode.getString(rootText)).append(' ');
+          buf.append(' ').append(appendMode.convert(rootText)).append(' ');
         } else {
-          buf.append(appendMode.getString(rootText));
+          buf.append(appendMode.convert(rootText));
         }
         // Right operand
         toInfixString((ASTNode) root.getChild(1), buf, appendMode);
@@ -497,7 +496,7 @@ public final class HQLParser {
       // Distinct is a different case.
       String fname = root.getChild(0).getText();
 
-      buf.append(appendMode.getString(fname)).append("( distinct ");
+      buf.append(appendMode.convert(fname)).append("( distinct ");
 
       // Arguments to distinct separated by comma
       for (int i = 1; i < root.getChildCount(); i++) {

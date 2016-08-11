@@ -53,7 +53,7 @@
     </property>
     <property>
         <name>lens.cube.query.time.range.writer.class</name>
-        <value>org.apache.lens.cube.parse.BetweenOnlyTimeRangeWriter</value>
+        <value>org.apache.lens.cube.parse.BetweenTimeRangeWriter</value>
     </property>
     <property>
         <name>lens.cube.query.partition.where.clause.format</name>
