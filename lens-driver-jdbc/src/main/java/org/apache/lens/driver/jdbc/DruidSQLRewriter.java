@@ -236,10 +236,10 @@ public class DruidSQLRewriter implements QueryRewriter {
     getWhereString(whereAST, filters);
 
     // construct query with fact sub query
-    constructQuery(HQLParser.getString(selectAST, new HQLParser.NochangeAppendMode()), filters,
-      HQLParser.getString(groupByAST, new HQLParser.NochangeAppendMode()),
-      HQLParser.getString(havingAST, new HQLParser.NochangeAppendMode()),
-      HQLParser.getString(orderByAST, new HQLParser.NochangeAppendMode()), limit);
+    constructQuery(HQLParser.getString(selectAST, HQLParser.AppendMode.DEFAULT), filters,
+      HQLParser.getString(groupByAST, HQLParser.AppendMode.DEFAULT),
+      HQLParser.getString(havingAST, HQLParser.AppendMode.DEFAULT),
+      HQLParser.getString(orderByAST, HQLParser.AppendMode.DEFAULT), limit);
 
   }
 

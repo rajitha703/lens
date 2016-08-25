@@ -343,7 +343,7 @@ public final class HQLParser {
   }
 
   public static void toInfixString(ASTNode root, StringBuilder buf) {
-    toInfixString(root, buf, AppendMode.DEFAULT);
+    toInfixString(root, buf, AppendMode.LOWER_CASE);
   }
 
   /**
@@ -922,7 +922,7 @@ public final class HQLParser {
     }
   }
 
-  enum AppendMode {
+  public enum AppendMode {
     LOWER_CASE {
       @Override public String convert(String s) {
         return s.toLowerCase();
