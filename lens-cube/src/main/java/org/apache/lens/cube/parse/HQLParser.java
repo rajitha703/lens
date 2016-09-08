@@ -688,7 +688,7 @@ public final class HQLParser {
         // Normal UDF
         String fname = root.getChild(0).getText();
         // Function name
-        buf.append(fname.toLowerCase()).append("(");
+        buf.append(appendMode.convert(fname)).append("(");
         // Arguments separated by comma
         for (int i = 1; i < root.getChildCount(); i++) {
           toInfixString((ASTNode) root.getChild(i), buf, appendMode);
