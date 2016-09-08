@@ -18,6 +18,9 @@
 
 package org.apache.lens.server.scheduler;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.lens.api.scheduler.SchedulerJobHandle;
 import org.apache.lens.api.scheduler.XFrequency;
 import org.apache.lens.api.scheduler.XFrequencyEnum;
@@ -27,6 +30,7 @@ import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.events.LensEventService;
 import org.apache.lens.server.api.events.SchedulerAlarmEvent;
 import org.apache.lens.server.api.health.HealthStatus;
+import org.apache.lens.server.error.LensSchedulerErrorCode;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hive.service.AbstractService;
@@ -35,6 +39,8 @@ import org.joda.time.DateTime;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,10 +54,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AlarmService extends AbstractService implements LensService {
 
-  public static final String NAME = "alarm-service";
+  public static final String NAME = "alarm";
 
   public static final String LENS_JOBS = "LensJobs";
   public static final String ALARM_SERVICE = "AlarmService";
+  private static final String JOB_HANDLE = "jobHandle";
+  private static final String SHOULD_WAIT = "shouldWaitForProcessing";
+  @Getter
+  @Setter
+  private boolean shouldWaitForScheduleEventProcessing = false;
 
   private Scheduler scheduler;
 
@@ -68,10 +79,9 @@ public class AlarmService extends AbstractService implements LensService {
   /**
    * Creates a new instance of AlarmService.
    *
-   * @param name the name
    */
-  public AlarmService(String name) {
-    super(name);
+  public AlarmService() {
+    super(NAME);
   }
 
   @Override
@@ -116,6 +126,15 @@ public class AlarmService extends AbstractService implements LensService {
     }
   }
 
+  public List<JobExecutionContext> getCurrentlyExecutingJobs() {
+    try {
+      return scheduler.getCurrentlyExecutingJobs();
+    } catch (SchedulerException e) {
+      log.error("Failed to get currently executing jobs");
+    }
+    return new ArrayList<>();
+  }
+
   /**
    * This method can be used by any consumer who wants to receive notifications during a time range at a given
    * frequency.
@@ -132,20 +151,21 @@ public class AlarmService extends AbstractService implements LensService {
   public void schedule(DateTime start, DateTime end, XFrequency frequency, String jobHandle) throws LensException {
     // accept the schedule and then keep on sending the notifications for that schedule
     JobDataMap map = new JobDataMap();
-    map.put("jobHandle", jobHandle);
-
+    map.put(JOB_HANDLE, jobHandle);
+    map.put(SHOULD_WAIT, shouldWaitForScheduleEventProcessing);
     JobDetail job = JobBuilder.newJob(LensJob.class).withIdentity(jobHandle, LENS_JOBS).usingJobData(map).build();
 
     Trigger trigger;
     if (frequency.getEnum() != null) { //for enum expression:  create a trigger using calendar interval
       CalendarIntervalScheduleBuilder scheduleBuilder = CalendarIntervalScheduleBuilder.calendarIntervalSchedule()
-          .withInterval(getTimeInterval(frequency.getEnum()), getTimeUnit(frequency.getEnum()))
-          .withMisfireHandlingInstructionIgnoreMisfires();
+        .withInterval(getTimeInterval(frequency.getEnum()), getTimeUnit(frequency.getEnum()))
+        .withMisfireHandlingInstructionIgnoreMisfires();
       trigger = TriggerBuilder.newTrigger().withIdentity(jobHandle, ALARM_SERVICE).startAt(start.toDate())
-          .endAt(end.toDate()).withSchedule(scheduleBuilder).build();
+        .endAt(end.toDate()).withSchedule(scheduleBuilder).build();
     } else { // for cron expression create a cron trigger
       trigger = TriggerBuilder.newTrigger().withIdentity(jobHandle, ALARM_SERVICE).startAt(start.toDate())
-          .endAt(end.toDate()).withSchedule(CronScheduleBuilder.cronSchedule(frequency.getCronExpression())).build();
+        .endAt(end.toDate()).withSchedule(CronScheduleBuilder.cronSchedule(frequency.getCronExpression())
+          .withMisfireHandlingInstructionIgnoreMisfires()).build();
     }
 
     // Tell quartz to run the job using our trigger
@@ -153,7 +173,8 @@ public class AlarmService extends AbstractService implements LensService {
       scheduler.scheduleJob(job, trigger);
     } catch (SchedulerException e) {
       log.error("Error scheduling job with jobHandle: {}", jobHandle);
-      throw new LensException("Failed to schedule job with jobHandle: " + jobHandle, e);
+      throw new LensException(LensSchedulerErrorCode.FAILED_ALARM_SERVICE_OPERATION.getLensErrorInfo(), e, "schedule",
+        jobHandle);
     }
   }
 
@@ -191,8 +212,9 @@ public class AlarmService extends AbstractService implements LensService {
     try {
       return scheduler.deleteJob(JobKey.jobKey(jobHandle.getHandleIdString(), LENS_JOBS));
     } catch (SchedulerException e) {
-      log.error("Failed to remove alarm triggers for job with jobHandle: " + jobHandle, e);
-      throw new LensException("Failed to remove alarm triggers for job with jobHandle: " + jobHandle, e);
+      log.error("Failed to remove alarm triggers for job with jobHandle: {}", jobHandle);
+      throw new LensException(LensSchedulerErrorCode.FAILED_ALARM_SERVICE_OPERATION.getLensErrorInfo(), e, "unschedule",
+        jobHandle.getHandleIdString());
     }
   }
 
@@ -200,8 +222,8 @@ public class AlarmService extends AbstractService implements LensService {
     try {
       return scheduler.checkExists(JobKey.jobKey(handle.getHandleIdString(), LENS_JOBS));
     } catch (SchedulerException e) {
-      log.error("Failed to check the job with jobHandle: " + handle, e);
-      throw new LensException("Failed to check the job with jobHandle: " + handle, e);
+      log.error("Failed to check the job with jobHandle: {}", handle);
+      return false;
     }
   }
 
@@ -209,8 +231,9 @@ public class AlarmService extends AbstractService implements LensService {
     try {
       scheduler.pauseJob(JobKey.jobKey(jobHandle.getHandleIdString(), LENS_JOBS));
     } catch (SchedulerException e) {
-      log.error("Failed to pause alarm triggers for job with jobHandle: " + jobHandle, e);
-      throw new LensException("Failed to pause alarm triggers for job with jobHandle: " + jobHandle, e);
+      log.error("Failed to pause alarm triggers for job with jobHandle: {}", jobHandle);
+      throw new LensException(LensSchedulerErrorCode.FAILED_ALARM_SERVICE_OPERATION.getLensErrorInfo(), e, "pause",
+        jobHandle.getHandleIdString());
     }
   }
 
@@ -218,31 +241,45 @@ public class AlarmService extends AbstractService implements LensService {
     try {
       scheduler.resumeJob(JobKey.jobKey(jobHandle.getHandleIdString(), LENS_JOBS));
     } catch (SchedulerException e) {
-      log.error("Failed to resume alarm triggers for job with jobHandle: " + jobHandle, e);
-      throw new LensException("Failed to resume alarm triggers for job with jobHandle: " + jobHandle, e);
+      log.error("Failed to resume alarm triggers for job with jobHandle: {}", jobHandle);
+      throw new LensException(LensSchedulerErrorCode.FAILED_ALARM_SERVICE_OPERATION.getLensErrorInfo(), e, "resume",
+        jobHandle.getHandleIdString());
     }
   }
 
   public static class LensJob implements Job {
 
+    private void notifyEventService(SchedulerAlarmEvent alarmEvent, boolean shouldWait)
+      throws LensException, InterruptedException {
+      LensEventService eventService = LensServices.get().getService(LensEventService.NAME);
+      if (shouldWait) {
+        eventService.notifyEventSync(alarmEvent);
+      } else {
+        eventService.notifyEvent(alarmEvent);
+      }
+    }
+
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
       JobDataMap data = jobExecutionContext.getMergedJobDataMap();
       DateTime nominalTime = new DateTime(jobExecutionContext.getScheduledFireTime());
-      SchedulerJobHandle jobHandle = SchedulerJobHandle.fromString(data.getString("jobHandle"));
+      SchedulerJobHandle jobHandle = SchedulerJobHandle.fromString(data.getString(JOB_HANDLE));
+      boolean shouldWait = data.getBoolean(SHOULD_WAIT);
       SchedulerAlarmEvent alarmEvent = new SchedulerAlarmEvent(jobHandle, nominalTime,
-          SchedulerAlarmEvent.EventType.SCHEDULE, null);
+        SchedulerAlarmEvent.EventType.SCHEDULE, null);
       try {
-        LensEventService eventService = LensServices.get().getService(LensEventService.NAME);
-        eventService.notifyEvent(alarmEvent);
+        notifyEventService(alarmEvent, shouldWait);
         if (jobExecutionContext.getNextFireTime() == null) {
-          eventService
-              .notifyEvent(new SchedulerAlarmEvent(jobHandle, nominalTime, SchedulerAlarmEvent.EventType.EXPIRE, null));
+          SchedulerAlarmEvent expireEvent = (new SchedulerAlarmEvent(jobHandle, nominalTime,
+            SchedulerAlarmEvent.EventType.EXPIRE, null));
+          notifyEventService(expireEvent, shouldWait);
         }
       } catch (LensException e) {
         log.error("Failed to notify SchedulerAlarmEvent for jobHandle: {} and scheduleTime: {}",
-            jobHandle.getHandleIdString(), nominalTime.toString(), e);
+          jobHandle.getHandleIdString(), nominalTime.toString());
         throw new JobExecutionException("Failed to notify alarmEvent", e);
+      } catch (InterruptedException e) {
+        log.error("Job execution tread interrupted", e);
       }
     }
   }

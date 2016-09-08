@@ -85,16 +85,23 @@ public class TestMetastoreService extends LensJerseyTest {
   @BeforeTest
   public void setUp() throws Exception {
     super.setUp();
+  }
+
+  @BeforeClass
+  public void create() throws Exception {
     cubeObjectFactory = new ObjectFactory();
     metastoreService = LensServices.get().getService(CubeMetastoreService.NAME);
     lensSessionId = metastoreService.openSession("foo", "bar", new HashMap<String, String>());
-
   }
 
   @AfterTest
   public void tearDown() throws Exception {
-    metastoreService.closeSession(lensSessionId);
     super.tearDown();
+  }
+
+  @AfterClass
+  public void drop() throws Exception {
+    metastoreService.closeSession(lensSessionId);
   }
 
   @Override
@@ -1039,10 +1046,13 @@ public class TestMetastoreService extends LensJerseyTest {
 
     XDimension dimension = cubeObjectFactory.createXDimension();
     dimension.setName(dimName);
+
     dimension.setAttributes(new XDimAttributes());
     dimension.setExpressions(new XExpressions());
     dimension.setJoinChains(new XJoinChains());
-    dimension.setProperties(new XProperties());
+    dimension.setProperties(new XProperties().withProperty(
+      new XProperty().withName(MetastoreUtil.getDimTimedDimensionKey(dimName)).withValue("dt"))
+    );
     XDimAttribute xd1 = cubeObjectFactory.createXDimAttribute();
     xd1.setName("col1");
     xd1.setType("STRING");
@@ -1812,6 +1822,13 @@ public class TestMetastoreService extends LensJerseyTest {
     c2.setComment("col2");
     f.getColumns().getColumn().add(c2);
 
+    XColumn c3 = cubeObjectFactory.createXColumn();
+    c3.setName("c3");
+    c3.setType("STRING");
+    c3.setComment("col3");
+    c3.setStartTime("2016-01-01");
+    c3.setEndTime("2017-01-01");
+    f.getColumns().getColumn().add(c3);
 
     Map<String, String> properties = LensUtil.getHashMap("foo", "bar");
     f.getProperties().getProperty().addAll(JAXBUtils.xPropertiesFromMap(properties));
@@ -1863,6 +1880,11 @@ public class TestMetastoreService extends LensJerseyTest {
           break;
         }
       }
+
+      //Check for column with start time
+      Map<String, String> props = JAXBUtils.mapFromXProperties(gotFact.getProperties());
+      assertEquals(props.get(MetastoreConstants.FACT_COL_START_TIME_PFX.concat("c3")), "2016-01-01");
+      assertEquals(props.get(MetastoreConstants.FACT_COL_END_TIME_PFX.concat("c3")), "2017-01-01");
 
       assertTrue(foundC1);
       assertEquals(cf.getProperties().get("foo"), "bar");
