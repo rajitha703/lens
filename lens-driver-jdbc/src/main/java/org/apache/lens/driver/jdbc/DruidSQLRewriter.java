@@ -20,7 +20,8 @@ package org.apache.lens.driver.jdbc;
 
 import static org.apache.hadoop.hive.ql.parse.HiveParser.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.TreeSet;
 
 import org.apache.lens.cube.parse.CubeSemanticAnalyzer;
 import org.apache.lens.cube.parse.HQLParser;
@@ -42,7 +43,6 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
   /**
    * Whether to resolve native tables or not. In case the query has sub query, the outer query may not
    * require native table resolution
-   *
    */
   private boolean resolveNativeTables;
 
@@ -98,7 +98,7 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
     this.fromAST = HQLParser.findNodeByPath(ast, TOK_FROM);
 
   }
-  
+
   /**
    * Builds the query.
    *
@@ -163,12 +163,12 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
   /**
    * Construct final query using all trees
    *
-   * @param selecttree  the selecttree
-   * @param whereFilters   the wheretree
-   * @param groupbytree the groupbytree
-   * @param havingtree  the havingtree
-   * @param orderbytree the orderbytree
-   * @param limit       the limit
+   * @param selecttree   the selecttree
+   * @param whereFilters the wheretree
+   * @param groupbytree  the groupbytree
+   * @param havingtree   the havingtree
+   * @param orderbytree  the orderbytree
+   * @param limit        the limit
    */
   private void constructQuery(
     String selecttree, ArrayList<String> whereFilters, String groupbytree,
