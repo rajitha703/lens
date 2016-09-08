@@ -60,7 +60,7 @@ public class TestDruidSQLRewriter {
   /*
   * Star schema used for the queries below
   *
-  * create table sales_fact (time_key varchar, dollars_sold double, units_sold:int);
+  * create table sales_fact (time_key varchar,item_key varchar, dollars_sold double, units_sold int);
   * /
   *
  /**

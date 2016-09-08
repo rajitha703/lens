@@ -98,24 +98,7 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
     this.fromAST = HQLParser.findNodeByPath(ast, TOK_FROM);
 
   }
-
-  /*
-   * Reset the instance variables if input query is union of multiple select queries
-   */
-  public void reset() {
-    selectAST = null;
-    fromAST = null;
-    whereAST = null;
-    groupByAST = null;
-    havingAST = null;
-    orderByAST = null;
-    limit = null;
-  }
-
-  /*
-   * Construct the rewritten query using trees
-   */
-
+  
   /**
    * Builds the query.
    *
@@ -274,21 +257,4 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
       || type == TOK_FULLOUTERJOIN || type == TOK_LEFTSEMIJOIN || type == TOK_UNIQUEJOIN);
   }
 
-  /**
-   * Replace with underlying storage.
-   *
-   * @param metastoreConf the metastore configuration
-   */
-  protected void replaceWithUnderlyingStorage(HiveConf metastoreConf) {
-    replaceDBAndTableNames(metastoreConf, fromAST);
-    if (aliasToNativeTableInfo.isEmpty()) {
-      return;
-    }
-    replaceColumnNames(selectAST);
-    replaceColumnNames(fromAST);
-    replaceColumnNames(whereAST);
-    replaceColumnNames(groupByAST);
-    replaceColumnNames(orderByAST);
-    replaceColumnNames(havingAST);
-  }
 }
