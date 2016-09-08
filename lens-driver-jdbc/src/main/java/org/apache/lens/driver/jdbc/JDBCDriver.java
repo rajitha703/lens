@@ -980,7 +980,6 @@ public class JDBCDriver extends AbstractLensDriver {
    * @param listener      the listener
    * @throws LensException the lens exception
    */
-  @Override
   public void registerForCompletionNotification(QueryHandle handle, long timeoutMillis,
     QueryCompletionListener listener) throws LensException {
     checkConfigured();

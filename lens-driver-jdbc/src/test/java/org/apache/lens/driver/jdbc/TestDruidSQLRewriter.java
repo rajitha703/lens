@@ -328,6 +328,7 @@ public class TestDruidSQLRewriter {
   public void testReplaceColumnMapping() throws Exception {
     SessionState.start(hconf);
     String testDB = "testrcm";
+    Hive.get().dropDatabase(testDB, true, true, true);
 
     // Create test table
     Database database = new Database();

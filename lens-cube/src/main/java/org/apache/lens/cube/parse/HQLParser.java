@@ -543,7 +543,7 @@ public final class HQLParser {
         if (root.getChild(i).getType() == KW_LOCAL) {
           local = true;
         } else {
-          toInfixString((ASTNode) root.getChild(i), sb);
+          toInfixString((ASTNode) root.getChild(i), sb, appendMode);
         }
       }
       buf.append(local ? " local": "").append(" directory ").append(sb);
@@ -570,7 +570,7 @@ public final class HQLParser {
     // special handling for CASE udf
     if (findNodeByPath(root, KW_CASE) != null) {
       buf.append("case ");
-      toInfixString((ASTNode) root.getChild(1), buf);
+      toInfixString((ASTNode) root.getChild(1), buf, appendMode);
       // each of the conditions
       ArrayList<Node> caseChildren = root.getChildren();
       int from = 2;
@@ -587,7 +587,7 @@ public final class HQLParser {
       // check if there is an ELSE node
       if (nchildren % 2 == 1) {
         buf.append(" else ");
-        toInfixString((ASTNode) caseChildren.get(nchildren - 1), buf);
+        toInfixString((ASTNode) caseChildren.get(nchildren - 1), buf, appendMode);
       }
 
       buf.append(" end");
@@ -619,12 +619,12 @@ public final class HQLParser {
 
     } else if (findNodeByPath(root, TOK_ISNULL) != null) {
       // IS NULL operator
-      toInfixString((ASTNode) root.getChild(1), buf);
+      toInfixString((ASTNode) root.getChild(1), buf, appendMode);
       buf.append(" is null");
 
     } else if (findNodeByPath(root, TOK_ISNOTNULL) != null) {
       // IS NOT NULL operator
-      toInfixString((ASTNode) root.getChild(1), buf);
+      toInfixString((ASTNode) root.getChild(1), buf, appendMode);
       buf.append(" is not null");
 
     } else if (root.getChild(0).getType() == Identifier
@@ -651,7 +651,7 @@ public final class HQLParser {
     } else if (findNodeByPath(root, KW_IN) != null) {
       // IN operator
 
-      toInfixString((ASTNode) root.getChild(1), buf);
+      toInfixString((ASTNode) root.getChild(1), buf, appendMode);
 
       // check if this is NOT In
       ASTNode rootParent = (ASTNode) root.getParent();
@@ -680,7 +680,7 @@ public final class HQLParser {
         // cast expression maps to the following ast
         // KW_CAST LPAREN expression KW_AS primitiveType RPAREN -> ^(TOK_FUNCTION primitiveType expression)
         buf.append("cast(");
-        toInfixString((ASTNode) root.getChild(1), buf);
+        toInfixString((ASTNode) root.getChild(1), buf, appendMode);
         buf.append(" as ");
         toInfixString((ASTNode) root.getChild(0), buf, appendMode);
         buf.append(")");
