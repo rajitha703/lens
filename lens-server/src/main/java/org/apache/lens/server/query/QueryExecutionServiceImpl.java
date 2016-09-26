@@ -2277,6 +2277,7 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
     long timeoutMillis, Configuration conf) throws LensException {
     QueryHandle handle = submitQuery(ctx);
     long timeOutTime = ctx.getSubmissionTime() + timeoutMillis;
+    log.info("query {} is executed with a timeout of {} and will timeout by {}", handle, timeoutMillis, timeOutTime);
     QueryHandleWithResultSet result = new QueryHandleWithResultSet(handle);
 
     boolean isQueued = true;
@@ -2303,25 +2304,24 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
     QueryCompletionListenerImpl listener = new QueryCompletionListenerImpl(handle);
     long totalWaitTime = timeOutTime - System.currentTimeMillis();
 
-    if (totalWaitTime > 0 && !queryCtx.getStatus().executed() && !queryCtx.getStatus().finished()) {
+    if (System.currentTimeMillis() < timeOutTime
+      && !queryCtx.getStatus().executed() && !queryCtx.getStatus().finished()) {
       log.info("Registering for query {} completion notification", ctx.getQueryHandleString());
       queryCtx.getSelectedDriver().registerForCompletionNotification(ctx, totalWaitTime, listener);
       try {
         // We will wait for a few millis at a time until we reach max required wait time and also check the state
         // each time we come out of the wait.
         // This is done because the registerForCompletionNotification and query execution completion can happen
-        // parallely especailly in case of drivers like JDBC and in that case completion notification may not be
-        //  received by this listener. So its better to break the wait into smaller ones.
+        // parallely especially in case of drivers like JDBC and in that case completion notification may not be
+        // received by this listener. So its better to break the wait into smaller ones.
         long waitMillisPerCheck = totalWaitTime/10;
-        waitMillisPerCheck = (waitMillisPerCheck > 500) ? 500 : waitMillisPerCheck; // Lets keep max as 500
-        long totalWaitMillisSoFar = 0;
+        waitMillisPerCheck = (waitMillisPerCheck > 500) ? 500 : waitMillisPerCheck; // Lets keep max as 0.5 sec
         synchronized (listener) {
-          while (totalWaitMillisSoFar < totalWaitTime
+          while (System.currentTimeMillis() < timeOutTime
             && !listener.querySuccessful
             && !queryCtx.getStatus().executed()
             && !queryCtx.getStatus().finished()) {
             listener.wait(waitMillisPerCheck);
-            totalWaitMillisSoFar += waitMillisPerCheck;
             if (!listener.querySuccessful) {
               //update ths status in case query is not successful yet
               queryCtx = getUpdatedQueryContext(sessionHandle, handle);
@@ -2388,9 +2388,12 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
    */
   private void addQueryToCancellationPool(QueryContext queryCtx, Configuration config, long timeoutMillis) {
     if (config.getBoolean(CANCEL_QUERY_ON_TIMEOUT, DEFAULT_CANCEL_QUERY_ON_TIMEOUT)) {
-      log.info("Query {} will be cancelled as it could not be completed within the specified timeout interval {}",
-        queryCtx.getQueryHandle(), timeoutMillis);
+      log.info("Query {} could not be completed within the specified timeout interval. It will be cancelled",
+        queryCtx.getQueryHandleString());
       queryCancellationPool.submit(new CancelQueryTask(queryCtx.getQueryHandle()));
+    } else {
+      log.info("Query {} could not be completed within the specified timeout interval. Query cancellation is disabled",
+        queryCtx.getQueryHandleString());
     }
   }
 
@@ -2559,6 +2562,54 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
   /*
    * (non-Javadoc)
    *
+   * @see org.apache.lens.server.api.query.QueryExecutionService#getAllQueryDetails(
+   * org.apache.lens.api.LensSessionHandle, java.lang.String, java.lang.String,
+   * java.lang.String, java.lang.String, long, long)
+   */
+  @Override
+  public List<LensQuery> getAllQueryDetails(LensSessionHandle sessionHandle, String states, String userName,
+    String driver, String queryName, String fromDate, String toDate) throws LensException {
+    long fromTime = -1;
+    long toTime = Long.MAX_VALUE;
+    Date now = new Date();
+    if (fromDate != null) {
+      fromTime = DateUtil.resolveDate(fromDate, now).getTime();
+    }
+    if (toDate != null) {
+      toTime = DateUtil.resolveDate(toDate, now).getTime();
+    }
+    validateTimeRange(fromTime, toTime);
+    try {
+      acquire(sessionHandle);
+
+      if (StringUtils.isBlank(userName)) {
+        userName = getSession(sessionHandle).getLoggedInUser();
+      }
+      Set<Status> statuses = getStatuses(states);
+      List<QueryHandle> inMemoryHandles = getQueriesInMemory(statuses, userName, driver, queryName,
+        fromTime, toTime);
+      Set<LensQuery> result = new HashSet<>();
+      for (QueryHandle handle : inMemoryHandles) {
+        QueryContext ctx = allQueries.get(handle);
+        if (ctx == null) {
+          continue;
+        }
+        result.add(ctx.toLensQuery());
+      }
+
+      List<LensQuery> persistedQueries = getPersistedQueries(userName, driver, queryName,
+        fromTime, toTime, statuses);
+      result.addAll(persistedQueries);
+
+      return new ArrayList<>(result);
+    } finally {
+      release(sessionHandle);
+    }
+  }
+
+  /*
+   * (non-Javadoc)
+   *
    * @see org.apache.lens.server.api.query.QueryExecutionService#getAllQueries(org.apache.lens.api.LensSessionHandle,
    * java.lang.String, java.lang.String, java.lang.String, java.lang.String, long, long)
    */
@@ -2575,78 +2626,130 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
       toTime = DateUtil.resolveDate(toDate, now).getTime();
     }
     validateTimeRange(fromTime, toTime);
-    userName = UtilityMethods.removeDomain(userName);
-    Set<Status> statuses;
+
     try {
       acquire(sessionHandle);
-      try {
-        if (StringUtils.isNotBlank(states)) {
-          statuses = Sets.newHashSet();
-          for(String state: states.split(",")) {
-            statuses.add(Status.valueOf(state.trim().toUpperCase()));
-          }
-        } else {
-          statuses = Sets.newHashSet(Status.values());
-        }
-      } catch (IllegalArgumentException e) {
-        throw new BadRequestException("Bad state argument passed, possible values are " + Status.values(), e);
-      }
-      boolean filterByQueryName = StringUtils.isNotBlank(queryName);
-      if (filterByQueryName) {
-        queryName = queryName.toLowerCase();
-      }
 
       if (StringUtils.isBlank(userName)) {
         userName = getSession(sessionHandle).getLoggedInUser();
       }
-      boolean filterByDriver = StringUtils.isNotBlank(driver);
+      Set<Status> statuses = getStatuses(states);
+      List<QueryHandle> result = getQueriesInMemory(statuses, userName, driver, queryName,
+        fromTime, toTime);
+      List<QueryHandle> persistedQueries = getPersistedQueryHandles(userName, driver, queryName,
+        fromTime, toTime, statuses);
 
-      List<QueryHandle> all = new ArrayList<QueryHandle>(allQueries.keySet());
-      Iterator<QueryHandle> itr = all.iterator();
-      while (itr.hasNext()) {
-        QueryHandle q = itr.next();
-        QueryContext context = allQueries.get(q);
-        long querySubmitTime = context.getSubmissionTime();
-        if ((!statuses.contains(context.getStatus().getStatus()))
-          || (filterByQueryName && !context.getQueryName().toLowerCase().contains(queryName))
-          || (filterByDriver && !context.getSelectedDriver().getFullyQualifiedName().equalsIgnoreCase(driver))
-          || (!"all".equalsIgnoreCase(userName) && !userName.equalsIgnoreCase(context.getSubmittedUser()))
-          || (!(fromTime <= querySubmitTime && querySubmitTime < toTime))) {
-          itr.remove();
-        }
-      }
-
-      // Unless user wants to get queries in 'non finished' state, get finished queries from DB as well
-      List<Status> finishedStatusesQueried = null;
-      if (statuses.size() != Status.values().length) {
-        finishedStatusesQueried = Lists.newArrayList();
-        for (Status status: statuses) {
-          switch(status) {
-          case CANCELED:
-          case SUCCESSFUL:
-          case FAILED:
-            finishedStatusesQueried.add(status);
-            break;
-          default:
-            break;
-          }
-        }
-      }
-      if (finishedStatusesQueried == null || !finishedStatusesQueried.isEmpty()) {
-        if ("all".equalsIgnoreCase(userName)) {
-          userName = null;
-        }
-        List<QueryHandle> persistedQueries = lensServerDao.findFinishedQueries(finishedStatusesQueried, userName,
-          driver, queryName, fromTime, toTime);
-        if (persistedQueries != null && !persistedQueries.isEmpty()) {
-          log.info("Adding persisted queries {}", persistedQueries.size());
-          all.addAll(persistedQueries);
-        }
-      }
-      return all;
+      HashSet<QueryHandle> deduplicatedResults = new HashSet<>(result);
+      deduplicatedResults.addAll(persistedQueries);
+      return new ArrayList<>(deduplicatedResults);
     } finally {
       release(sessionHandle);
     }
+  }
+
+  private List<LensQuery> getPersistedQueries(String userName, String driver, String queryName,
+    long fromTime, long toTime, Set<Status> statuses) throws LensException {
+    // Unless user wants to get queries in 'non finished' state, get finished queries from DB as well
+    List<Status> finishedStatusesQueried = finishedStatuses(statuses);
+    if (finishedStatusesQueried == null || !finishedStatusesQueried.isEmpty()) {
+      if ("all".equalsIgnoreCase(userName)) {
+        userName = null;
+      }
+      List<FinishedLensQuery> results = lensServerDao.findFinishedQueryDetails(finishedStatusesQueried,
+        userName, driver, queryName, fromTime, toTime);
+      List<LensQuery> persistedQueries = new ArrayList<>();
+      for (FinishedLensQuery finishedLensQuery : results) {
+        persistedQueries.add(finishedLensQuery.toQueryContext(conf, drivers.values()).toLensQuery());
+      }
+      if (!persistedQueries.isEmpty()) {
+        log.info("Adding persisted queries {}", persistedQueries.size());
+        return persistedQueries;
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  private List<Status> finishedStatuses(Set<Status> statuses) {
+    List<Status> finishedStatusesQueried = null;
+    if (statuses.size() != Status.values().length) {
+      finishedStatusesQueried = Lists.newArrayList();
+      for (Status status: statuses) {
+        switch(status) {
+        case CANCELED:
+        case SUCCESSFUL:
+        case FAILED:
+          finishedStatusesQueried.add(status);
+          break;
+        default:
+          break;
+        }
+      }
+    }
+    return finishedStatusesQueried;
+  }
+
+  private List<QueryHandle> getPersistedQueryHandles(String userName, String driver, String queryName,
+    long fromTime, long toTime, Set<Status> statuses) throws LensException {
+    // Unless user wants to get queries in 'non finished' state, get finished queries from DB as well
+    List<Status> finishedStatusesQueried = finishedStatuses(statuses);
+    if (finishedStatusesQueried == null || !finishedStatusesQueried.isEmpty()) {
+      if ("all".equalsIgnoreCase(userName)) {
+        userName = null;
+      }
+      List<QueryHandle> persistedQueries = lensServerDao.findFinishedQueries(finishedStatusesQueried, userName,
+        driver, queryName, fromTime, toTime);
+      if (persistedQueries != null && !persistedQueries.isEmpty()) {
+        log.info("Adding persisted queries {}", persistedQueries.size());
+        return persistedQueries;
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  private List<QueryHandle> getQueriesInMemory(Set<Status> statuses, String userName, String driver,
+    String queryName, long fromTime, long toTime) throws LensException {
+
+    userName = UtilityMethods.removeDomain(userName);
+    boolean filterByQueryName = StringUtils.isNotBlank(queryName);
+    if (filterByQueryName) {
+      queryName = queryName.toLowerCase();
+    }
+
+    boolean filterByDriver = StringUtils.isNotBlank(driver);
+
+    List<QueryHandle> all = new ArrayList<QueryHandle>(allQueries.keySet());
+    Iterator<QueryHandle> itr = all.iterator();
+    while (itr.hasNext()) {
+      QueryHandle q = itr.next();
+      QueryContext context = allQueries.get(q);
+      long querySubmitTime = context.getSubmissionTime();
+      if ((!statuses.contains(context.getStatus().getStatus()))
+        || (filterByQueryName && !context.getQueryName().toLowerCase().contains(queryName))
+        || (filterByDriver && !context.getSelectedDriver().getFullyQualifiedName().equalsIgnoreCase(driver))
+        || (!"all".equalsIgnoreCase(userName) && !userName.equalsIgnoreCase(context.getSubmittedUser()))
+        || (!(fromTime <= querySubmitTime && querySubmitTime < toTime))) {
+        itr.remove();
+      }
+    }
+    return all;
+  }
+
+  private Set<Status> getStatuses(String states) {
+    Set<Status> statuses;
+    try {
+      if (StringUtils.isNotBlank(states)) {
+        statuses = Sets.newHashSet();
+        for(String state: states.split(",")) {
+          statuses.add(Status.valueOf(state.trim().toUpperCase()));
+        }
+      } else {
+        statuses = Sets.newHashSet(Status.values());
+      }
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException("Bad state argument passed, possible values are "
+        + Arrays.toString(Status.values()), e);
+    }
+    return statuses;
   }
 
   /*
