@@ -761,8 +761,9 @@ public class JDBCDriver extends AbstractLensDriver {
     try {
       conn = calledForEstimate ? getEstimateConnection() : getConnection();
       stmt = conn.prepareStatement(rewrittenQuery);
-      if (stmt.getWarnings() != null) {
-        throw new LensException(stmt.getWarnings());
+      if(!pContext.getDriverConf(this).getBoolean(JDBC_VALIDATE_SKIP_WARNINGS,
+        DEFAULT_JDBC_VALIDATE_SKIP_WARNINGS) && stmt.getWarnings() != null){
+          throw new LensException(stmt.getWarnings());
       }
     } catch (SQLException sql) {
       handleJDBCSQLException(sql);

@@ -79,14 +79,6 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
       this.whereAST = qb.getParseInfo().getWhrForClause(clauseName);
     }
 
-    if (qb.getParseInfo().getHavingForClause(clauseName) != null) {
-      this.havingAST = qb.getParseInfo().getHavingForClause(clauseName);
-    }
-
-    if (qb.getParseInfo().getOrderByForClause(clauseName) != null) {
-      this.orderByAST = qb.getParseInfo().getOrderByForClause(clauseName);
-    }
-
     if (qb.getParseInfo().getGroupByForClause(clauseName) != null) {
       this.groupByAST = qb.getParseInfo().getGroupByForClause(clauseName);
     }
@@ -118,9 +110,7 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
 
     // construct query with fact sub query
     constructQuery(HQLParser.getString(selectAST, HQLParser.AppendMode.DEFAULT), filters,
-      HQLParser.getString(groupByAST, HQLParser.AppendMode.DEFAULT),
-      HQLParser.getString(havingAST, HQLParser.AppendMode.DEFAULT),
-      HQLParser.getString(orderByAST, HQLParser.AppendMode.DEFAULT), limit);
+      HQLParser.getString(groupByAST, HQLParser.AppendMode.DEFAULT), limit);
 
   }
 
@@ -166,13 +156,10 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
    * @param selecttree   the selecttree
    * @param whereFilters the wheretree
    * @param groupbytree  the groupbytree
-   * @param havingtree   the havingtree
-   * @param orderbytree  the orderbytree
    * @param limit        the limit
    */
   private void constructQuery(
-    String selecttree, ArrayList<String> whereFilters, String groupbytree,
-    String havingtree, String orderbytree, String limit) {
+    String selecttree, ArrayList<String> whereFilters, String groupbytree, String limit) {
 
     log.info("In construct query ..");
 
@@ -188,12 +175,7 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
     if (StringUtils.isNotBlank(groupbytree)) {
       rewrittenQuery.append(" group by ").append(groupbytree);
     }
-    if (StringUtils.isNotBlank(havingtree)) {
-      rewrittenQuery.append(" having ").append(havingtree);
-    }
-    if (StringUtils.isNotBlank(orderbytree)) {
-      rewrittenQuery.append(" order by ").append(orderbytree);
-    }
+
     if (StringUtils.isNotBlank(limit)) {
       rewrittenQuery.append(" limit ").append(limit);
     }
@@ -237,6 +219,16 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
     if (currNode.getToken().getType() == TOK_UNIONALL) {
       log.warn("Union queries are not supported by {} Query : {}", this, this.query);
       throw new LensException("Union queries are not supported by " + this + " Query : " + this.query);
+    }
+
+    if (HQLParser.findNodeByPath(currNode, HiveParser.TOK_INSERT, HiveParser.TOK_HAVING) != null) {
+      log.warn("Having queries are not supported by {} Query : {}", this, this.query);
+      throw new LensException("Having queries are not supported by " + this + " Query : " + this.query);
+    }
+
+    if (HQLParser.findNodeByPath(currNode, HiveParser.TOK_INSERT, HiveParser.TOK_ORDERBY) != null) {
+      log.warn("Order by queries are not supported by {} Query : {}", this, this.query);
+      throw new LensException("Order by queries are not supported by " + this + " Query : " + this.query);
     }
 
     String rewritternQueryText = rewrittenQuery.toString();

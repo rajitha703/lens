@@ -28,7 +28,7 @@
     </property>
     <property>
         <name>lens.driver.jdbc.db.uri</name>
-        <value>jdbc:mysql://127.0.0.1:3307/plyql1</value>
+        <value>jdbc:mysql://127.0.0.1:8900/plyql1</value>
     </property>
     <property>
         <name>lens.driver.jdbc.db.user</name>
@@ -36,16 +36,12 @@
     </property>
     <property>
         <name>lens.cube.query.driver.supported.storages</name>
-        <value>mydb</value>
+        <value>uh1_user</value>
         <final>true</final>
     </property>
     <property>
         <name>lens.driver.jdbc.query.rewriter</name>
         <value>org.apache.lens.driver.jdbc.DruidSQLRewriter</value>
-    </property>
-    <property>
-        <name>lens.driver.jdbc.validate.through.prepare</name>
-        <value>false</value>
     </property>
     <property>
         <name>lens.driver.jdbc.explain.keyword</name>
@@ -61,6 +57,14 @@
     </property>
     <property>
         <name>lens.cube.query.between.only.time.range.writer</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>lens.cube.query.time.range.exclusive</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>lens.driver.jdbc.validate.skip.warnings</name>
         <value>true</value>
     </property>
 </configuration>

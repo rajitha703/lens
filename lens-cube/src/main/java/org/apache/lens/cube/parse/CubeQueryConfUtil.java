@@ -105,6 +105,8 @@ public final class CubeQueryConfUtil {
   public static final String TIME_RANGE_WRITER_CLASS = "lens.cube.query.time.range.writer.class";
   public static final boolean DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER = false;
   public static final String BETWEEN_ONLY_TIME_RANGE_WRITER = "lens.cube.query.between.only.time.range.writer";
+  public static final boolean DEFAULT_TIME_RANGE_EXCLUSIVE = false;
+  public static final String TIME_RANGE_EXCLUSIVE = "lens.cube.query.time.range.exclusive";
   public static final Class<? extends TimeRangeWriter> DEFAULT_TIME_RANGE_WRITER = ORTimeRangeWriter.class
     .asSubclass(TimeRangeWriter.class);
   public static final String PART_WHERE_CLAUSE_DATE_FORMAT = "lens.cube.query.partition.where.clause.format";

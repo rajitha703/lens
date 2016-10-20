@@ -18,6 +18,8 @@
  */
 package org.apache.lens.cube.parse;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -40,6 +42,10 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
     //Flag to check if only between range needs to be used
     boolean useBetweenOnly = cubeQueryContext.getConf().getBoolean(CubeQueryConfUtil.BETWEEN_ONLY_TIME_RANGE_WRITER,
       CubeQueryConfUtil.DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER);
+
+    //Flag to check if timerange behavior is exclusive for driver
+    boolean timeRangeExclusive = cubeQueryContext.getConf().getBoolean(CubeQueryConfUtil.TIME_RANGE_EXCLUSIVE,
+      CubeQueryConfUtil.DEFAULT_TIME_RANGE_EXCLUSIVE);
 
     StringBuilder partStr = new StringBuilder();
     if (!useBetweenOnly && rangeParts.size() == 1) {
@@ -74,6 +80,21 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
 
       FactPartition start = parts.first();
       FactPartition end = parts.last();
+
+      if(timeRangeExclusive) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(start.getPartSpec());
+        cal.add(Calendar.DATE, -1);
+        Date previousDate = cal.getTime();
+        cal.setTime(end.getPartSpec());
+        cal.add(Calendar.DATE, 1);
+        Date nextDate = cal.getTime();
+
+        start = new FactPartition(start.getPartCol(), previousDate, start.getPeriod(), start
+          .getContainingPart(), start.getPartFormat());
+        end = new FactPartition(start.getPartCol(), nextDate, start.getPeriod(), start
+          .getContainingPart(), start.getPartFormat());
+      }
 
       String partCol = start.getPartCol();
       if (cubeQueryContext != null && !cubeQueryContext.shouldReplaceTimeDimWithPart()) {
