@@ -157,13 +157,11 @@ public class TestDruidSQLRewriter {
   public void testRewrittenQuery() throws LensException {
 
     String query =
-      "select fact.time_key as `Time Key`, sum(fact.dollars_sold) from sales_fact fact group by fact.time_key order"
-        + " by dollars_sold  ";
-
+      "select fact.time_key as `Time Key`, sum(fact.dollars_sold) from sales_fact fact group by fact.time_key ";
     SessionState.start(hconf);
     String actual = qtest.rewrite(query, conf, hconf);
     String expected = "select ( fact . time_key ) as \"Time Key\" , sum(( fact . dollars_sold )) from sales_fact "
-      + "fact group by ( fact . time_key ) order by dollars_sold asc";
+      + "fact group by ( fact . time_key ) ";
     compareQueries(actual, expected);
   }
 
@@ -190,8 +188,7 @@ public class TestDruidSQLRewriter {
         + "where fact.item_key in (select item_key from test.item_dim idim where idim.item_name = 'item_1') "
         + "and fact.location_key in (select location_key from test.location_dim ldim where "
         + "ldim.location_name = 'loc_1') "
-        + "group by time_dim.day_of_week "
-        + "order by dollars_sold";
+        + "group by time_dim.day_of_week ";
 
     SessionState.start(hconf);
 
@@ -206,7 +203,7 @@ public class TestDruidSQLRewriter {
   @Test
   public void testUnionQueryFail() {
     String query = "select a,sum(b)as b from ( select a,b from tabl1 where a<=10  union all select a,b from tabl2 where"
-      + " a>10 and a<=20 union all select a,b from tabl3 where a>20 )unionResult group by a order by b desc limit 10";
+      + " a>10 and a<=20 union all select a,b from tabl3 where a>20 )unionResult group by a limit 10";
 
     SessionState.start(hconf);
     try {
@@ -372,7 +369,7 @@ public class TestDruidSQLRewriter {
       createTable(hconf, testDB, "mytable", "testDB", "testTable_1", false, columnMap);
 
       String query = "SELECT t1.id, t1.name, sum(t1.dollars_sold), sum(t1.units_sold) FROM " + testDB
-        + ".mytable t1 WHERE t1.id = 100 GROUP BY t1.id HAVING count(t1.id) > 2 ORDER BY t1.id";
+        + ".mytable t1 WHERE t1.id = 100 GROUP BY t1.id ";
 
       DruidSQLRewriter rewriter = new DruidSQLRewriter();
       rewriter.init(conf);
@@ -384,7 +381,7 @@ public class TestDruidSQLRewriter {
       System.out.println("Actual : " + actual);
       String expected =
         "select (t1.id1), (t1.name1), sum((t1.Dollars_Sold)), sum((t1.Units_Sold)) from testDB.testTable_1 t1 where ("
-          + "(t1.id1) = 100) group by (t1.id1) having (count((t1.id1)) > 2) order by t1.id1 asc";
+          + "(t1.id1) = 100) group by (t1.id1) ";
 
       compareQueries(actual, expected);
 
