@@ -158,8 +158,7 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
    * @param groupbytree  the groupbytree
    * @param limit        the limit
    */
-  private void constructQuery(
-    String selecttree, ArrayList<String> whereFilters, String groupbytree, String limit) {
+  private void constructQuery(String selecttree, ArrayList<String> whereFilters, String groupbytree, String limit) {
 
     log.info("In construct query ..");
 

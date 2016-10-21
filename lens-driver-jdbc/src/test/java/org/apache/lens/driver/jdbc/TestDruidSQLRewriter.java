@@ -217,6 +217,32 @@ public class TestDruidSQLRewriter {
     }
   }
 
+  @Test
+  public void testOrderByQueryFail() {
+    String query = "select a,b from tabl1 where a<=10 group by a order by b desc limit 10";
+
+    SessionState.start(hconf);
+    try {
+      qtest.rewrite(query, conf, hconf);
+      Assert.fail("The invalid query did NOT suffer any exception");
+    } catch (LensException e) {
+      System.out.println("Exception as expected in Union query..");
+    }
+  }
+
+  @Test
+  public void testHavingQueryFail() {
+    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 limit 10";
+
+    SessionState.start(hconf);
+    try {
+      qtest.rewrite(query, conf, hconf);
+      Assert.fail("The invalid query did NOT suffer any exception");
+    } catch (LensException e) {
+      System.out.println("Exception as expected in Union query..");
+    }
+  }
+
   /**
    * Test replace db name.
    *

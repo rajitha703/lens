@@ -81,13 +81,13 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
       FactPartition start = parts.first();
       FactPartition end = parts.last();
 
-      if(timeRangeExclusive) {
+      if (timeRangeExclusive) {
         Calendar cal = Calendar.getInstance();
         cal.setTime(start.getPartSpec());
-        cal.add(Calendar.DATE, -1);
+        cal.add(end.getPeriod().calendarField(), -1);
         Date previousDate = cal.getTime();
         cal.setTime(end.getPartSpec());
-        cal.add(Calendar.DATE, 1);
+        cal.add(end.getPeriod().calendarField(), 1);
         Date nextDate = cal.getTime();
 
         start = new FactPartition(start.getPartCol(), previousDate, start.getPeriod(), start
