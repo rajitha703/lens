@@ -62,11 +62,11 @@ public abstract class TestTimeRangeWriter {
     return context;
   }
 
-  protected CubeQueryContext getMockedCubeContextForBounds(String startBound, String endBound) {
+  protected CubeQueryContext getMockedCubeContextForBounds(String startBoundType, String endBoundType) {
     CubeQueryContext context = Mockito.mock(CubeQueryContext.class);
     Configuration configuration = new Configuration();
-    configuration.set(CubeQueryConfUtil.START_DATE_BOUND, startBound);
-    configuration.set(CubeQueryConfUtil.END_DATE_BOUND, endBound);
+    configuration.set(CubeQueryConfUtil.START_DATE_BOUND_TYPE, startBoundType);
+    configuration.set(CubeQueryConfUtil.END_DATE_BOUND_TYPE, endBoundType);
     Mockito.when(context.getConf()).thenReturn(configuration);
     Mockito.when(context.shouldReplaceTimeDimWithPart()).thenReturn(true);
     return context;

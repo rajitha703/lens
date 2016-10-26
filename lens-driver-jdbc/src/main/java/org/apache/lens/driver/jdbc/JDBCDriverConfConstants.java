@@ -103,16 +103,16 @@ public final class JDBCDriverConfConstants {
   public static final boolean DEFAULT_JDBC_VALIDATE_SKIP_WARNINGS = false;
 
   /** The Constant JDBC_HAVING_SUPPORT. */
-  public static final String JDBC_HAVING_IS_SUPPORTED = JDBC_DRIVER_PFX + "having.is.supported";
+  public static final String JDBC_IS_HAVING_SUPPORTED = JDBC_DRIVER_PFX + "is.having.supported";
 
   /** The Constant JDBC_ORDERBY_SUPPORT. */
-  public static final String JDBC_ORDERBY_IS_SUPPORTED = JDBC_DRIVER_PFX + "orderby.is.supported";
+  public static final String JDBC_IS_ORDERBY_SUPPORTED = JDBC_DRIVER_PFX + "is.orderby.supported";
 
   /** The Constant Default JDBC_HAVING_SUPPORT. */
-  public static final boolean DEFAULT_JDBC_HAVING_IS_SUPPORTED = true;
+  public static final boolean DEFAULT_JDBC_IS_HAVING_SUPPORTED = true;
 
   /** The Constant Default JDBC_ORDERBY_SUPPORT. */
-  public static final boolean DEFAULT_JDBC_ORDERBY_IS_SUPPORTED = true;
+  public static final boolean DEFAULT_JDBC_IS_ORDERBY_SUPPORTED = true;
 
   public static final String JDBC_ENABLE_RESULTSET_STREAMING_RETRIEVAL =
     JDBC_DRIVER_PFX + "enable.resultset.streaming.retrieval";

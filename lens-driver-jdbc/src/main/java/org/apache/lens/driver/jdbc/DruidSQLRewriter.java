@@ -243,10 +243,10 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
     rewrittenQuery.setLength(0);
     reset();
     this.ast = currNode;
-    isHavingSupported = conf.getBoolean(JDBCDriverConfConstants.JDBC_HAVING_IS_SUPPORTED,
-      JDBCDriverConfConstants.DEFAULT_JDBC_HAVING_IS_SUPPORTED);
-    isOrderBySupported = conf.getBoolean(JDBCDriverConfConstants.JDBC_ORDERBY_IS_SUPPORTED,
-      JDBCDriverConfConstants.DEFAULT_JDBC_ORDERBY_IS_SUPPORTED);
+    isHavingSupported = conf.getBoolean(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED,
+      JDBCDriverConfConstants.DEFAULT_JDBC_IS_HAVING_SUPPORTED);
+    isOrderBySupported = conf.getBoolean(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED,
+      JDBCDriverConfConstants.DEFAULT_JDBC_IS_ORDERBY_SUPPORTED);
 
     ASTNode fromNode = HQLParser.findNodeByPath(currNode, TOK_FROM);
     if (fromNode != null) {

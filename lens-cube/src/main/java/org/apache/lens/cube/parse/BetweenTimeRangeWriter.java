@@ -45,10 +45,10 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
       CubeQueryConfUtil.DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER);
 
     //Fetch the date start and end bounds from config
-    BoundType startBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.START_DATE_BOUND,
-      CubeQueryConfUtil.DEFAULT_START_BOUND));
-    BoundType endBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.END_DATE_BOUND,
-      CubeQueryConfUtil.DEFAULT_END_BOUND));
+    BoundType startBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.START_DATE_BOUND_TYPE,
+      CubeQueryConfUtil.DEFAULT_START_BOUND_TYPE));
+    BoundType endBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.END_DATE_BOUND_TYPE,
+      CubeQueryConfUtil.DEFAULT_END_BOUND_TYPE));
 
     StringBuilder partStr = new StringBuilder();
     if (!useBetweenOnly && rangeParts.size() == 1) {
@@ -85,15 +85,11 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
       FactPartition end = parts.last();
 
       if (startBound.equals(BoundType.OPEN)) {
-        Date previousDate = start.previous();
-        start = new FactPartition(start.getPartCol(), previousDate, start.getPeriod(), start
-          .getContainingPart(), start.getPartFormat());
+        start = start.previous();
       }
 
       if (endBound.equals(BoundType.OPEN)) {
-        Date nextDate = end.next();
-        end = new FactPartition(end.getPartCol(), nextDate, end.getPeriod(), end
-          .getContainingPart(), end.getPartFormat());
+        end = end.next();
       }
 
       String partCol = start.getPartCol();

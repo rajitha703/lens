@@ -46,12 +46,16 @@ import org.apache.hadoop.hive.ql.session.SessionState;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class TestDruidSQLRewriter {
+
+  public static final String TRUE = "true";
+  public static final String FALSE = "false";
 
   HiveConf hconf = new HiveConf();
   Configuration conf = new Configuration();
@@ -214,43 +218,52 @@ public class TestDruidSQLRewriter {
     }
   }
 
-  @Test
-  public void testHavingOrderByQueryTest1() throws LensException {
+  @DataProvider
+  public Object[][] getBoundTypes() {
+    //Rows - Number of times your test has to be repeated.
+    //Columns - Number of parameters in test data.
+    int startDateOffset = -2;
+    int endDateOffset = -1;
+    Object[][] data = new Object[3][2];
 
-    conf.set("lens.driver.jdbc.having.is.supported" , "true");
-    conf.set("lens.driver.jdbc.orderby.is.supported" , "true");
+    // 1st row
+    data[0][0] = TRUE;
+    data[0][1] = FALSE;
+
+    // 2nd row
+    data[1][0] = FALSE;
+    data[1][1] = TRUE;
+
+    // 3rd row
+    data[2][0] = FALSE;
+    data[2][1] = FALSE;
+
+    return data;
+  }
+
+  @Test
+  public void testHavingOrderByQueryTest() throws LensException {
+
+    conf.set(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED, TRUE);
+    conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, TRUE);
 
     String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
 
     SessionState.start(hconf);
     String actual3 = qtest.rewrite(query, conf, hconf);
-    System.out.println("Actual : "+ actual3);
+
     String expected3 = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) order by a desc "
       + "limit 10";
     compareQueries(expected3, actual3);
 
   }
 
-  @Test
-  public void testHavingOrderByQueryTest2() {
+  @Test(dataProvider = "getData")
+  public void testHavingOrderByQueryTestFail(String isHavingSupported, String isOrderBySupported) {
 
-    conf.set("lens.driver.jdbc.having.is.supported" , "false");
-    conf.set("lens.driver.jdbc.orderby.is.supported" , "false");
-    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 limit 10";
+    conf.set(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED, isHavingSupported);
+    conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, isOrderBySupported);
 
-    SessionState.start(hconf);
-    try {
-      qtest.rewrite(query, conf, hconf);
-      Assert.fail("The invalid query did NOT suffer any exception");
-    } catch (LensException e) {
-      System.out.println("Exception as expected in Union query..");
-    }
-  }
-
-  @Test
-  public void testHavingOrderByQueryTest3() {
-    conf.set("lens.driver.jdbc.having.is.supported" , "true");
-    conf.set("lens.driver.jdbc.orderby.is.supported" , "false");
     String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
 
     SessionState.start(hconf);
@@ -258,22 +271,7 @@ public class TestDruidSQLRewriter {
       qtest.rewrite(query, conf, hconf);
       Assert.fail("The invalid query did NOT suffer any exception");
     } catch (LensException e) {
-      System.out.println("Exception as expected in Union query..");
-    }
-  }
-
-  @Test
-  public void testHavingOrderByQueryTest4() {
-    conf.set("lens.driver.jdbc.having.is.supported" , "true");
-    conf.set("lens.driver.jdbc.orderby.is.supported" , "false");
-    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
-
-    SessionState.start(hconf);
-    try {
-      qtest.rewrite(query, conf, hconf);
-      Assert.fail("The invalid query did NOT suffer any exception");
-    } catch (LensException e) {
-      System.out.println("Exception as expected in Union query..");
+      System.out.println("Exception as expected in Having/Orderby query..");
     }
   }
 
@@ -432,13 +430,12 @@ public class TestDruidSQLRewriter {
   /**
    * Creates the table.
    *
-   * @param db     the db
-   * @param table  the table
-   * @param udb    the udb
-   * @param utable the utable
+   * @param db             the db
+   * @param table          the table
+   * @param udb            the udb
+   * @param utable         the utable
    * @param setCustomSerde whether to set custom serde or not
-   * @param columnMapping columnmapping for the table
-   *
+   * @param columnMapping  columnmapping for the table
    * @throws Exception the exception
    */
   void createTable(

@@ -36,7 +36,7 @@
     </property>
     <property>
         <name>lens.cube.query.driver.supported.storages</name>
-        <value>uh1_user</value>
+        <value>mydb</value>
         <final>true</final>
     </property>
     <property>
@@ -54,29 +54,5 @@
     <property>
         <name>lens.cube.query.partition.where.clause.format</name>
         <value>yyyy-MM-dd HH:mm:ss</value>
-    </property>
-    <property>
-        <name>lens.cube.query.between.only.time.range.writer</name>
-        <value>true</value>
-    </property>
-    <property>
-        <name>lens.cube.query.start.date.bound</name>
-        <value>OPEN</value>
-    </property>
-    <property>
-        <name>lens.cube.query.end.date.bound</name>
-        <value>OPEN</value>
-    </property>
-    <property>
-        <name>lens.driver.jdbc.having.is.supported</name>
-        <value>false</value>
-    </property>
-    <property>
-        <name>lens.driver.jdbc.orderby.is.supported</name>
-        <value>false</value>
-    </property>
-    <property>
-        <name>lens.driver.jdbc.validate.skip.warnings</name>
-        <value>true</value>
     </property>
 </configuration>
