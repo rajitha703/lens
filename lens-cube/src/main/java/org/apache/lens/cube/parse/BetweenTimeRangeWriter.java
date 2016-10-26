@@ -27,6 +27,8 @@ import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.FactPartition;
 import org.apache.lens.server.api.error.LensException;
 
+import com.google.common.collect.BoundType;
+
 
 /**
  * Writes partitions queried in timerange as between clause.
@@ -43,9 +45,11 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
     boolean useBetweenOnly = cubeQueryContext.getConf().getBoolean(CubeQueryConfUtil.BETWEEN_ONLY_TIME_RANGE_WRITER,
       CubeQueryConfUtil.DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER);
 
-    //Flag to check if timerange behavior is exclusive for driver
-    boolean timeRangeExclusive = cubeQueryContext.getConf().getBoolean(CubeQueryConfUtil.TIME_RANGE_EXCLUSIVE,
-      CubeQueryConfUtil.DEFAULT_TIME_RANGE_EXCLUSIVE);
+    //Fetch the date start and end bounds from config
+    BoundType startBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.START_DATE_BOUND,
+      CubeQueryConfUtil.DEFAULT_START_BOUND));
+    BoundType endBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.END_DATE_BOUND,
+      CubeQueryConfUtil.DEFAULT_END_BOUND));
 
     StringBuilder partStr = new StringBuilder();
     if (!useBetweenOnly && rangeParts.size() == 1) {
@@ -81,17 +85,14 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
       FactPartition start = parts.first();
       FactPartition end = parts.last();
 
-      if (timeRangeExclusive) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(start.getPartSpec());
-        cal.add(end.getPeriod().calendarField(), -1);
-        Date previousDate = cal.getTime();
-        cal.setTime(end.getPartSpec());
-        cal.add(end.getPeriod().calendarField(), 1);
-        Date nextDate = cal.getTime();
-
+      if (startBound.equals(BoundType.OPEN)) {
+        Date previousDate = start.previous();
         start = new FactPartition(start.getPartCol(), previousDate, start.getPeriod(), start
           .getContainingPart(), start.getPartFormat());
+      }
+
+      if (endBound.equals(BoundType.OPEN)) {
+        Date nextDate = start.next();
         end = new FactPartition(start.getPartCol(), nextDate, start.getPeriod(), start
           .getContainingPart(), start.getPartFormat());
       }

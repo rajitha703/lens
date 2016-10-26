@@ -86,6 +86,20 @@ public class FactPartition implements Comparable<FactPartition> {
     }
   }
 
+  public Date previous(){
+    Calendar cal = Calendar.getInstance();
+    cal.setTime(this.getPartSpec());
+    cal.add(this.getPeriod().calendarField(), -1);
+    return cal.getTime();
+  }
+
+  public Date next(){
+    Calendar cal = Calendar.getInstance();
+    cal.setTime(this.getPartSpec());
+    cal.add(this.getPeriod().calendarField(), 1);
+    return cal.getTime();
+  }
+
   public String getPartString() {
     return period.format(partSpec);
   }

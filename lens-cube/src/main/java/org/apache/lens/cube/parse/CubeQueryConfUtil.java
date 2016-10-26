@@ -26,6 +26,8 @@ import org.apache.lens.cube.metadata.UpdatePeriod;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
+import com.google.common.collect.BoundType;
+
 /**
  * Contains all configurations of cube query rewriting.
  */
@@ -105,8 +107,10 @@ public final class CubeQueryConfUtil {
   public static final String TIME_RANGE_WRITER_CLASS = "lens.cube.query.time.range.writer.class";
   public static final boolean DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER = false;
   public static final String BETWEEN_ONLY_TIME_RANGE_WRITER = "lens.cube.query.between.only.time.range.writer";
-  public static final boolean DEFAULT_TIME_RANGE_EXCLUSIVE = false;
-  public static final String TIME_RANGE_EXCLUSIVE = "lens.cube.query.time.range.exclusive";
+  public static final String DEFAULT_START_BOUND = "CLOSED";
+  public static final String DEFAULT_END_BOUND = "CLOSED";
+  public static final String START_DATE_BOUND = "lens.cube.query.start.date.bound";
+  public static final String END_DATE_BOUND = "lens.cube.query.end.date.bound";
   public static final Class<? extends TimeRangeWriter> DEFAULT_TIME_RANGE_WRITER = ORTimeRangeWriter.class
     .asSubclass(TimeRangeWriter.class);
   public static final String PART_WHERE_CLAUSE_DATE_FORMAT = "lens.cube.query.partition.where.clause.format";

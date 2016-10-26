@@ -228,8 +228,57 @@ public class TestDruidSQLRewriter {
   }
 
   @Test
-  public void testHavingQueryFail() {
+  public void testHavingOrderByQueryTest1() throws LensException {
+
+    conf.set("lens.driver.jdbc.having.is.supported" , "true");
+    conf.set("lens.driver.jdbc.orderby.is.supported" , "true");
+
+    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
+
+    SessionState.start(hconf);
+    String actual3 = qtest.rewrite(query, conf, hconf);
+    System.out.println("Actual : "+ actual3);
+    String expected3 = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) order by a desc limit 10";
+    compareQueries(expected3, actual3);
+
+  }
+
+  @Test
+  public void testHavingOrderByQueryTest2() {
+
+    conf.set("lens.driver.jdbc.having.is.supported" , "false");
+    conf.set("lens.driver.jdbc.orderby.is.supported" , "false");
     String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 limit 10";
+
+    SessionState.start(hconf);
+    try {
+      qtest.rewrite(query, conf, hconf);
+      Assert.fail("The invalid query did NOT suffer any exception");
+    } catch (LensException e) {
+      System.out.println("Exception as expected in Union query..");
+    }
+  }
+
+  @Test
+  public void testHavingOrderByQueryTest3() {
+    conf.set("lens.driver.jdbc.having.is.supported" , "true");
+    conf.set("lens.driver.jdbc.orderby.is.supported" , "false");
+    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
+
+    SessionState.start(hconf);
+    try {
+      qtest.rewrite(query, conf, hconf);
+      Assert.fail("The invalid query did NOT suffer any exception");
+    } catch (LensException e) {
+      System.out.println("Exception as expected in Union query..");
+    }
+  }
+
+  @Test
+  public void testHavingOrderByQueryTest4() {
+    conf.set("lens.driver.jdbc.having.is.supported" , "true");
+    conf.set("lens.driver.jdbc.orderby.is.supported" , "false");
+    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
 
     SessionState.start(hconf);
     try {

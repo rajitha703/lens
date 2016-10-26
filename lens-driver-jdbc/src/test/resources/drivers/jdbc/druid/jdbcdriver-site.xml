@@ -60,8 +60,20 @@
         <value>true</value>
     </property>
     <property>
-        <name>lens.cube.query.time.range.exclusive</name>
-        <value>true</value>
+        <name>lens.cube.query.start.date.bound</name>
+        <value>OPEN</value>
+    </property>
+    <property>
+        <name>lens.cube.query.end.date.bound</name>
+        <value>OPEN</value>
+    </property>
+    <property>
+        <name>lens.driver.jdbc.having.is.supported</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>lens.driver.jdbc.orderby.is.supported</name>
+        <value>false</value>
     </property>
     <property>
         <name>lens.driver.jdbc.validate.skip.warnings</name>
