@@ -238,7 +238,8 @@ public class TestDruidSQLRewriter {
     SessionState.start(hconf);
     String actual3 = qtest.rewrite(query, conf, hconf);
     System.out.println("Actual : "+ actual3);
-    String expected3 = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) order by a desc limit 10";
+    String expected3 = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) order by a desc "
+      + "limit 10";
     compareQueries(expected3, actual3);
 
   }

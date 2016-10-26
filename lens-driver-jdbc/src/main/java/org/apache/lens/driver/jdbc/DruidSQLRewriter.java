@@ -41,11 +41,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DruidSQLRewriter extends ColumnarSQLRewriter {
 
-  /** Is Having supported. */
+  /**
+   * Is Having supported.
+   */
   @Getter
   protected boolean isHavingSupported;
 
-  /** Is OrderBy supported. */
+  /**
+   * Is OrderBy supported.
+   */
   @Getter
   protected boolean isOrderBySupported;
 
@@ -128,14 +132,14 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
     String havingTree = null;
     String orderbyTree = null;
 
-    if(isHavingSupported) {
-      havingTree =  HQLParser.getString(havingAST, HQLParser.AppendMode.DEFAULT);
+    if (isHavingSupported) {
+      havingTree = HQLParser.getString(havingAST, HQLParser.AppendMode.DEFAULT);
     }
 
-    if(isOrderBySupported) {
+    if (isOrderBySupported) {
       orderbyTree = HQLParser.getString(orderByAST, HQLParser.AppendMode.DEFAULT);
     }
-      // construct query with fact sub query
+    // construct query with fact sub query
     constructQuery(HQLParser.getString(selectAST, HQLParser.AppendMode.DEFAULT), filters,
       HQLParser.getString(groupByAST, HQLParser.AppendMode.DEFAULT), havingTree, orderbyTree, limit);
 
@@ -187,7 +191,8 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
    * @param orderbyTree  the orderbytree
    * @param limit        the limit
    */
-  private void constructQuery(String selectTree, ArrayList<String> whereFilters, String groupbyTree, String
+  private void constructQuery(
+    String selectTree, ArrayList<String> whereFilters, String groupbyTree, String
     havingTree, String orderbyTree, String limit) {
 
     log.info("In construct query ..");
@@ -259,12 +264,14 @@ public class DruidSQLRewriter extends ColumnarSQLRewriter {
       throw new LensException("Union queries are not supported by " + this + " Query : " + this.query);
     }
 
-    if (!isHavingSupported &&  HQLParser.findNodeByPath(currNode, HiveParser.TOK_INSERT, HiveParser.TOK_HAVING) != null) {
+    if (!isHavingSupported
+      && HQLParser.findNodeByPath(currNode, HiveParser.TOK_INSERT, HiveParser.TOK_HAVING) != null) {
       log.warn("Having queries are not supported by {} Query : {}", this, this.query);
       throw new LensException("Having queries are not supported by " + this + " Query : " + this.query);
     }
 
-    if (!isOrderBySupported && HQLParser.findNodeByPath(currNode, HiveParser.TOK_INSERT, HiveParser.TOK_ORDERBY) != null) {
+    if (!isOrderBySupported
+      && HQLParser.findNodeByPath(currNode, HiveParser.TOK_INSERT, HiveParser.TOK_ORDERBY) != null) {
       log.warn("Order by queries are not supported by {} Query : {}", this, this.query);
       throw new LensException("Order by queries are not supported by " + this + " Query : " + this.query);
     }
