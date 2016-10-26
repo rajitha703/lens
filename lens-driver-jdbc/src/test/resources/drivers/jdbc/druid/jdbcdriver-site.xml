@@ -36,7 +36,7 @@
     </property>
     <property>
         <name>lens.cube.query.driver.supported.storages</name>
-        <value>mydb</value>
+        <value>uh1_user</value>
         <final>true</final>
     </property>
     <property>

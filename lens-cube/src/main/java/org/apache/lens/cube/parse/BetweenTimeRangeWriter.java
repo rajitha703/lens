@@ -91,9 +91,9 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
       }
 
       if (endBound.equals(BoundType.OPEN)) {
-        Date nextDate = start.next();
-        end = new FactPartition(start.getPartCol(), nextDate, start.getPeriod(), start
-          .getContainingPart(), start.getPartFormat());
+        Date nextDate = end.next();
+        end = new FactPartition(end.getPartCol(), nextDate, end.getPeriod(), end
+          .getContainingPart(), end.getPartFormat());
       }
 
       String partCol = start.getPartCol();
