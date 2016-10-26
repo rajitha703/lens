@@ -26,8 +26,6 @@ import org.apache.lens.cube.metadata.UpdatePeriod;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
-import com.google.common.collect.BoundType;
-
 /**
  * Contains all configurations of cube query rewriting.
  */
