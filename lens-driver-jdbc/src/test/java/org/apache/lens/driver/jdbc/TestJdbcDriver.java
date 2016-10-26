@@ -308,22 +308,6 @@ public class TestJdbcDriver {
    * @throws Exception the exception
    */
   @Test
-  public void testPrepareSkipWarnings() throws Exception {
-    String query2 = "SELECT * FROM estimate_test2"; // Select query against non existing table
-    try {
-      driver.estimate(createExplainContext(query2, baseConf));
-      Assert.fail("Running estimate on a non existing table.");
-    } catch (LensException ex) {
-      Assert.assertEquals(LensUtil.getCauseMessage(ex), "user lacks privilege or object not found: ESTIMATE_TEST2");
-    }
-  }
-
-  /**
-   * Test estimate failing
-   *
-   * @throws Exception the exception
-   */
-  @Test
   public void testEstimateGauges() throws Exception {
     createTable("estimate_test_gauge", driver.getEstimateConnection()); // Create table
     insertData("estimate_test_gauge", driver.getEstimateConnection()); // Insert some data into table
