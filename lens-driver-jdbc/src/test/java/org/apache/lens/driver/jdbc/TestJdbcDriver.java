@@ -678,7 +678,7 @@ public class TestJdbcDriver {
     final String query = "SELECT * from prepare_test3";
 
     PreparedQueryContext pContext = new PreparedQueryContext(query, "SA", baseConf, drivers);
-    pContext.getDriverConf(driver).setBoolean(JDBC_VALIDATE_SKIP_WARNINGS,true);
+    pContext.getDriverConf(driver).setBoolean(JDBC_VALIDATE_SKIP_WARNINGS, true);
     //run validate
     driver.validate(pContext);
     //run prepare
