@@ -106,25 +106,21 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
 
     Object[][] data = new Object[4][4];
 
-    // 1st row
     data[0][0] = OPEN;
     data[0][1] = OPEN;
     data[0][2] = startDateOffset - 1;
     data[0][3] = endDateOffset + 1;
 
-    // 2nd row
     data[1][0] = OPEN;
     data[1][1] = CLOSED;
     data[1][2] = startDateOffset - 1;
     data[1][3] = endDateOffset;
 
-    // 3rd row
     data[2][0] = CLOSED;
     data[2][1] = OPEN;
     data[2][2] = startDateOffset;
     data[2][3] = endDateOffset + 1;
 
-    // 4th row
     data[3][0] = CLOSED;
     data[3][1] = CLOSED;
     data[3][2] = startDateOffset;

@@ -220,21 +220,14 @@ public class TestDruidSQLRewriter {
 
   @DataProvider
   public Object[][] getBoundTypes() {
-    //Rows - Number of times your test has to be repeated.
-    //Columns - Number of parameters in test data.
-    int startDateOffset = -2;
-    int endDateOffset = -1;
     Object[][] data = new Object[3][2];
 
-    // 1st row
     data[0][0] = TRUE;
     data[0][1] = FALSE;
 
-    // 2nd row
     data[1][0] = FALSE;
     data[1][1] = TRUE;
 
-    // 3rd row
     data[2][0] = FALSE;
     data[2][1] = FALSE;
 
