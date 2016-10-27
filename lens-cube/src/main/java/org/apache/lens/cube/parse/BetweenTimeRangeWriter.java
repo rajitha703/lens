@@ -18,7 +18,6 @@
  */
 package org.apache.lens.cube.parse;
 
-import java.util.Date;
 import java.util.Set;
 import java.util.TreeSet;
 

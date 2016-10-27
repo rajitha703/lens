@@ -39,8 +39,8 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
   public static final String CLOSED = "CLOSED";
   public static final String OPEN = "OPEN";
 
-  public static final int startDateOffset = -2;
-  public static final int endDateOffset = -1;
+  public static final int startDateOffset = 1;
+  public static final int endDateOffset = 2;
 
   @Override
   public TimeRangeWriter getTimerangeWriter() {
@@ -130,8 +130,8 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
   }
 
   @Test(dataProvider = "getBoundTypes")
-  public void testBetweenBoundTypes(String startBoundType, String endBoundType, int testStartOffset, int testEndOffset) throws
-    LensException {
+  public void testBetweenBoundTypes(String startBoundType, String endBoundType, int testStartOffset, int testEndOffset)
+    throws LensException {
     Set<FactPartition> answeringParts = new LinkedHashSet<FactPartition>();
     answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, startDateOffset), DAILY, null, null));
     answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, endDateOffset), DAILY, null, null));
@@ -153,12 +153,12 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
     String expected = null;
     if (format == null) {
       expected =
-        getBetweenClause("test", "dt", getDateWithOffset(DAILY, testStartOffset), getDateWithOffset(DAILY, testEndOffset), DAILY
-          .format());
+        getBetweenClause("test", "dt", getDateWithOffset(DAILY, testStartOffset),
+          getDateWithOffset(DAILY, testEndOffset), DAILY.format());
     } else {
       expected =
-        getBetweenClause("test", "dt", getDateWithOffset(DAILY, testStartOffset), getDateWithOffset(DAILY, testEndOffset),
-          format);
+        getBetweenClause("test", "dt", getDateWithOffset(DAILY, testStartOffset),
+          getDateWithOffset(DAILY, testEndOffset), format);
     }
     Assert.assertEquals(expected, whereClause);
   }
