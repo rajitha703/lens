@@ -670,12 +670,12 @@ public class TestJdbcDriver {
    */
   @Test
   public void testPrepareSkipWarnings() throws Exception {
-    createTable("prepare_test");
-    createTable("prepare_test", driver.getEstimateConnection());
-    insertData("prepare_test");
-    insertData("prepare_test", driver.getEstimateConnection());
+    createTable("prepare_test3");
+    createTable("prepare_test3", driver.getEstimateConnection());
+    insertData("prepare_test3");
+    insertData("prepare_test3", driver.getEstimateConnection());
 
-    final String query = "SELECT * from prepare_test";
+    final String query = "SELECT * from prepare_test3";
 
     PreparedQueryContext pContext = new PreparedQueryContext(query, "SA", baseConf, drivers);
     pContext.getDriverConf(driver).setBoolean(JDBC_VALIDATE_SKIP_WARNINGS,true);
