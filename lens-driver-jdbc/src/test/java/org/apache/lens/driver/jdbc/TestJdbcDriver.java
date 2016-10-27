@@ -856,6 +856,7 @@ public class TestJdbcDriver {
 
   public static int sleep(int t) {
     try {
+      log.info("Sleeping for {} seconds", t);
       Thread.sleep(t * 1000);
     } catch (InterruptedException ie) {
       // ignore
@@ -900,7 +901,7 @@ public class TestJdbcDriver {
     QueryHandle handle = context.getQueryHandle();
     // without wait query may not be launched.
     if (waitBeforeCancel) {
-      Thread.sleep(100);
+      Thread.sleep(1000);
     }
     boolean isCancelled = driver.cancelQuery(handle);
     driver.updateStatus(context);

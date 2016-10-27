@@ -291,7 +291,7 @@ public class JDBCDriver extends AbstractLensDriver {
             }
             if (queryContext.isClosed()) {
               log.info("Ignored exception on already closed query : {} - {}",
-                queryContext.getLensContext().getQueryHandle(), e.getMessage());
+                queryContext.getLensContext().getQueryHandle(), e.getMessage(), e);
             } else {
               log.error("Error executing SQL query: {} reason: {}", queryContext.getLensContext().getQueryHandle(),
                 e.getMessage(), e);
