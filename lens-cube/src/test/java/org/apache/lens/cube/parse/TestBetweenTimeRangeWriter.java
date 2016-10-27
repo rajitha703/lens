@@ -39,8 +39,8 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
   public static final String CLOSED = "CLOSED";
   public static final String OPEN = "OPEN";
 
-  public static final int startDateOffset = 1;
-  public static final int endDateOffset = 2;
+  public static final int START_DATE_OFFSET = 1;
+  public static final int END_DATE_OFFSET = 2;
 
   @Override
   public TimeRangeWriter getTimerangeWriter() {
@@ -108,23 +108,23 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
 
     data[0][0] = OPEN;
     data[0][1] = OPEN;
-    data[0][2] = startDateOffset - 1;
-    data[0][3] = endDateOffset + 1;
+    data[0][2] = START_DATE_OFFSET - 1;
+    data[0][3] = END_DATE_OFFSET + 1;
 
     data[1][0] = OPEN;
     data[1][1] = CLOSED;
-    data[1][2] = startDateOffset - 1;
-    data[1][3] = endDateOffset;
+    data[1][2] = START_DATE_OFFSET - 1;
+    data[1][3] = END_DATE_OFFSET;
 
     data[2][0] = CLOSED;
     data[2][1] = OPEN;
-    data[2][2] = startDateOffset;
-    data[2][3] = endDateOffset + 1;
+    data[2][2] = START_DATE_OFFSET;
+    data[2][3] = END_DATE_OFFSET + 1;
 
     data[3][0] = CLOSED;
     data[3][1] = CLOSED;
-    data[3][2] = startDateOffset;
-    data[3][3] = endDateOffset;
+    data[3][2] = START_DATE_OFFSET;
+    data[3][3] = END_DATE_OFFSET;
 
     return data;
   }
@@ -133,16 +133,16 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
   public void testBetweenBoundTypes(String startBoundType, String endBoundType, int testStartOffset, int testEndOffset)
     throws LensException {
     Set<FactPartition> answeringParts = new LinkedHashSet<FactPartition>();
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, startDateOffset), DAILY, null, null));
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, endDateOffset), DAILY, null, null));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, null));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, null));
     String whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
         "test", answeringParts);
     validateBetweenOpenClose(whereClause, null, testStartOffset, testEndOffset);
 
     answeringParts = new LinkedHashSet<>();
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, startDateOffset), DAILY, null, DB_FORMAT));
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, endDateOffset), DAILY, null, DB_FORMAT));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, DB_FORMAT));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, DB_FORMAT));
     whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
         "test", answeringParts);
