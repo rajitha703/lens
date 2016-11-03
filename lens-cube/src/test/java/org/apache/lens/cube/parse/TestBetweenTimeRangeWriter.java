@@ -23,6 +23,7 @@ import static org.apache.lens.cube.metadata.DateFactory.*;
 import static org.apache.lens.cube.metadata.UpdatePeriod.DAILY;
 
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -140,6 +141,7 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
         "test", answeringParts);
     validateBetweenBoundTypes(whereClause, null, testStartOffset, testEndOffset);
 
+    DateFormat DB_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     answeringParts = new LinkedHashSet<>();
     answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, DB_FORMAT));
     answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, DB_FORMAT));
