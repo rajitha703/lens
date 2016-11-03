@@ -141,17 +141,18 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
         "test", answeringParts);
     validateBetweenBoundTypes(whereClause, null, testStartOffset, testEndOffset);
 
-    DateFormat DB_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+    DateFormat dbFormat = new SimpleDateFormat("yyyy-MM-dd");
     answeringParts = new LinkedHashSet<>();
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, DB_FORMAT));
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, DB_FORMAT));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, dbFormat));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, dbFormat));
     whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
         "test", answeringParts);
-    validateBetweenBoundTypes(whereClause, DB_FORMAT, testStartOffset, testEndOffset);
+    validateBetweenBoundTypes(whereClause, dbFormat, testStartOffset, testEndOffset);
   }
 
-  private void validateBetweenBoundTypes(String whereClause, DateFormat format, int testStartOffset, int testEndOffset) {
+  private void validateBetweenBoundTypes(String whereClause, DateFormat format, int testStartOffset, int testEndOffset)
+  {
     String expected = null;
     if (format == null) {
       expected =
