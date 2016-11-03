@@ -160,12 +160,14 @@ public class TestDruidSQLRewriter {
   @Test
   public void testRewrittenQuery() throws LensException {
 
+    conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, TRUE);
     String query =
-      "select fact.time_key as `Time Key`, sum(fact.dollars_sold) from sales_fact fact group by fact.time_key ";
+      "select fact.time_key as `Time Key`, sum(fact.dollars_sold) from sales_fact fact group by fact.time_key order " +
+        "by dollars_sold";
     SessionState.start(hconf);
     String actual = qtest.rewrite(query, conf, hconf);
     String expected = "select ( fact . time_key ) as \"Time Key\" , sum(( fact . dollars_sold )) from sales_fact "
-      + "fact group by ( fact . time_key ) ";
+      + "fact group by ( fact . time_key ) order by dollars_sold asc";
     compareQueries(actual, expected);
   }
 
@@ -219,7 +221,7 @@ public class TestDruidSQLRewriter {
   }
 
   @DataProvider
-  public Object[][] getBoundTypes() {
+  public Object[][] getHavingOrderByDataFail() {
     Object[][] data = new Object[3][2];
 
     data[0][0] = TRUE;
@@ -234,24 +236,43 @@ public class TestDruidSQLRewriter {
     return data;
   }
 
-  @Test
-  public void testHavingOrderByQueryTest() throws LensException {
+  @DataProvider
+  public Object[][] getHavingOrderByDataPass() {
 
-    conf.set(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED, TRUE);
-    conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, TRUE);
+    Object[][] data = new Object[3][4];
 
-    String query = "select a,sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
+    data[0][0] = TRUE;
+    data[0][1] = TRUE;
+    data[0][2] = "select a, sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 order by a desc limit 10";
+    data[0][3] = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) order by a desc limit 10";
 
-    SessionState.start(hconf);
-    String actual3 = qtest.rewrite(query, conf, hconf);
+    data[1][0] = TRUE;
+    data[1][1] = FALSE;
+    data[1][2] = "select a, sum(b) from tabl1 where a<=10 group by a having sum(b) > 10 limit 10";
+    data[1][3] = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) limit 10";
 
-    String expected3 = "select a, sum(b) from tabl1 where (a <= 10) group by a having (sum(b) > 10) order by a desc "
-      + "limit 10";
-    compareQueries(expected3, actual3);
+    data[2][0] = FALSE;
+    data[2][1] = TRUE;
+    data[2][2] = "select a, sum(b) from tabl1 where a<=10 group by a order by a desc limit 10";
+    data[2][3] = "select a, sum(b) from tabl1 where (a <= 10) group by a order by a desc limit 10";
 
+    return data;
   }
 
-  @Test(dataProvider = "getData")
+
+  @Test(dataProvider = "getHavingOrderByDataPass")
+  public void testHavingOrderByQueryTest(String isHavingSupported, String isOrderBySupported, String inputQuery, String expectedQuery)
+    throws LensException {
+
+    conf.set(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED, isHavingSupported);
+    conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, isOrderBySupported);
+
+    SessionState.start(hconf);
+    String actualQuery = qtest.rewrite(inputQuery, conf, hconf);
+    compareQueries(expectedQuery, actualQuery);
+  }
+
+  @Test(dataProvider = "getHavingOrderByDataFail")
   public void testHavingOrderByQueryTestFail(String isHavingSupported, String isOrderBySupported) {
 
     conf.set(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED, isHavingSupported);

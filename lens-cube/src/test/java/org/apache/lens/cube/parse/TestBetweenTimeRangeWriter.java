@@ -138,7 +138,7 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
     String whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
         "test", answeringParts);
-    validateBetweenOpenClose(whereClause, null, testStartOffset, testEndOffset);
+    validateBetweenBoundTypes(whereClause, null, testStartOffset, testEndOffset);
 
     answeringParts = new LinkedHashSet<>();
     answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, DB_FORMAT));
@@ -146,10 +146,10 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
     whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
         "test", answeringParts);
-    validateBetweenOpenClose(whereClause, DB_FORMAT, testStartOffset, testEndOffset);
+    validateBetweenBoundTypes(whereClause, DB_FORMAT, testStartOffset, testEndOffset);
   }
 
-  private void validateBetweenOpenClose(String whereClause, DateFormat format, int testStartOffset, int testEndOffset) {
+  private void validateBetweenBoundTypes(String whereClause, DateFormat format, int testStartOffset, int testEndOffset) {
     String expected = null;
     if (format == null) {
       expected =

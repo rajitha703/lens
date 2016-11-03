@@ -86,19 +86,14 @@ public class FactPartition implements Comparable<FactPartition> {
     }
   }
 
-  public FactPartition previous(){
-    Calendar cal = Calendar.getInstance();
-    cal.setTime(this.getPartSpec());
-    cal.add(this.getPeriod().calendarField(), -1);
+  public FactPartition previous() throws LensException {
+    return new FactPartition(getPartCol(), getTimePartition().previous(), getContainingPart(), getStorageTables());
 
-    return new FactPartition(getPartCol(), cal.getTime(), getPeriod(), getContainingPart(), getPartFormat());
   }
 
-  public FactPartition next(){
-    Calendar cal = Calendar.getInstance();
-    cal.setTime(this.getPartSpec());
-    cal.add(this.getPeriod().calendarField(), 1);
-    return new FactPartition(getPartCol(), cal.getTime(), getPeriod(), getContainingPart(), getPartFormat());
+  public FactPartition next() throws LensException {
+    return new FactPartition(getPartCol(), getTimePartition().next(), getContainingPart(), getStorageTables());
+
   }
 
   public String getPartString() {
