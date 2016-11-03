@@ -162,8 +162,8 @@ public class TestDruidSQLRewriter {
 
     conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, TRUE);
     String query =
-      "select fact.time_key as `Time Key`, sum(fact.dollars_sold) from sales_fact fact group by fact.time_key order " +
-        "by dollars_sold";
+      "select fact.time_key as `Time Key`, sum(fact.dollars_sold) from sales_fact fact group by fact.time_key order "
+        + "by dollars_sold";
     SessionState.start(hconf);
     String actual = qtest.rewrite(query, conf, hconf);
     String expected = "select ( fact . time_key ) as \"Time Key\" , sum(( fact . dollars_sold )) from sales_fact "
@@ -261,8 +261,8 @@ public class TestDruidSQLRewriter {
 
 
   @Test(dataProvider = "getHavingOrderByDataPass")
-  public void testHavingOrderByQueryTest(String isHavingSupported, String isOrderBySupported, String inputQuery, String expectedQuery)
-    throws LensException {
+  public void testHavingOrderByQueryTest(String isHavingSupported, String isOrderBySupported, String inputQuery,
+                                         String expectedQuery) throws LensException {
 
     conf.set(JDBCDriverConfConstants.JDBC_IS_HAVING_SUPPORTED, isHavingSupported);
     conf.set(JDBCDriverConfConstants.JDBC_IS_ORDERBY_SUPPORTED, isOrderBySupported);
