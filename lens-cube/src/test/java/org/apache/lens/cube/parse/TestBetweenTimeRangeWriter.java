@@ -43,6 +43,23 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
   public static final int START_DATE_OFFSET = 1;
   public static final int END_DATE_OFFSET = 2;
 
+  public static final DateFormat DAY_DB_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+
+  private static Set<FactPartition> answeringParts;
+  private static Set<FactPartition> answeringPartsWithFormat;
+
+  static {
+    answeringParts = new LinkedHashSet<FactPartition>();
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, null));
+    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, null));
+
+    answeringPartsWithFormat = new LinkedHashSet<>();
+    answeringPartsWithFormat.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null,
+      DAY_DB_FORMAT));
+    answeringPartsWithFormat.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null,
+      DAY_DB_FORMAT));
+
+  }
   @Override
   public TimeRangeWriter getTimerangeWriter() {
     return new BetweenTimeRangeWriter();
@@ -105,50 +122,45 @@ public class TestBetweenTimeRangeWriter extends TestTimeRangeWriter {
   @DataProvider
   public Object[][] getBoundTypes() {
 
-    Object[][] data = new Object[4][4];
+    Object[][] data = new Object[4][2];
 
     data[0][0] = OPEN;
     data[0][1] = OPEN;
-    data[0][2] = START_DATE_OFFSET - 1;
-    data[0][3] = END_DATE_OFFSET + 1;
 
     data[1][0] = OPEN;
     data[1][1] = CLOSED;
-    data[1][2] = START_DATE_OFFSET - 1;
-    data[1][3] = END_DATE_OFFSET;
 
     data[2][0] = CLOSED;
     data[2][1] = OPEN;
-    data[2][2] = START_DATE_OFFSET;
-    data[2][3] = END_DATE_OFFSET + 1;
 
     data[3][0] = CLOSED;
     data[3][1] = CLOSED;
-    data[3][2] = START_DATE_OFFSET;
-    data[3][3] = END_DATE_OFFSET;
 
     return data;
   }
 
   @Test(dataProvider = "getBoundTypes")
-  public void testBetweenBoundTypes(String startBoundType, String endBoundType, int testStartOffset, int testEndOffset)
+  public void testBetweenBoundTypes(String startBoundType, String endBoundType)
     throws LensException {
-    Set<FactPartition> answeringParts = new LinkedHashSet<FactPartition>();
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, null));
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, null));
     String whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
         "test", answeringParts);
+
+    int testStartOffset = START_DATE_OFFSET;
+    int testEndOffset = END_DATE_OFFSET;
+    if (startBoundType.equals(OPEN)) {
+      testStartOffset = START_DATE_OFFSET - 1;
+    }
+    if (endBoundType.equals(OPEN)) {
+      testEndOffset = END_DATE_OFFSET + 1;
+    }
     validateBetweenBoundTypes(whereClause, null, testStartOffset, testEndOffset);
 
-    DateFormat dbFormat = new SimpleDateFormat("yyyy-MM-dd");
-    answeringParts = new LinkedHashSet<>();
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, START_DATE_OFFSET), DAILY, null, dbFormat));
-    answeringParts.add(new FactPartition("dt", getDateWithOffset(DAILY, END_DATE_OFFSET), DAILY, null, dbFormat));
     whereClause =
       getTimerangeWriter().getTimeRangeWhereClause(getMockedCubeContextForBounds(startBoundType, endBoundType),
-        "test", answeringParts);
-    validateBetweenBoundTypes(whereClause, dbFormat, testStartOffset, testEndOffset);
+        "test", answeringPartsWithFormat);
+
+    validateBetweenBoundTypes(whereClause, DAY_DB_FORMAT, testStartOffset, testEndOffset);
   }
 
   private void validateBetweenBoundTypes(String whereClause, DateFormat format, int testStartOffset, int testEndOffset)
