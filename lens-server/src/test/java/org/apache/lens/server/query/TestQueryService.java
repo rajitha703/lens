@@ -18,16 +18,20 @@
  */
 package org.apache.lens.server.query;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_XML_TYPE;
 import static javax.ws.rs.core.Response.Status.*;
 
 import static org.apache.lens.server.LensServerTestUtil.DB_WITH_JARS;
 import static org.apache.lens.server.LensServerTestUtil.DB_WITH_JARS_2;
 import static org.apache.lens.server.api.LensServerAPITestUtil.getLensConf;
+import static org.apache.lens.server.api.user.MockDriverQueryHook.*;
 import static org.apache.lens.server.common.RestAPITestUtil.*;
 
 import static org.testng.Assert.*;
 
 import java.io.*;
+import java.net.URLEncoder;
+import java.sql.*;
 import java.util.*;
 
 import javax.ws.rs.NotFoundException;
@@ -63,9 +67,10 @@ import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.query.QueryExecutionService;
 import org.apache.lens.server.api.session.SessionService;
 import org.apache.lens.server.common.ErrorResponseExpectedData;
+import org.apache.lens.server.common.RestAPITestUtil;
 import org.apache.lens.server.common.TestDataUtils;
 import org.apache.lens.server.common.TestResourceFile;
-import org.apache.lens.server.error.LensExceptionMapper;
+import org.apache.lens.server.error.GenericExceptionMapper;
 import org.apache.lens.server.session.HiveSessionService;
 import org.apache.lens.server.session.LensSessionImpl;
 
@@ -74,12 +79,14 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.io.IOUtils;
 
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.TestProperties;
+import org.junit.Assert;
 import org.testng.annotations.*;
 
 import com.codahale.metrics.MetricRegistry;
@@ -108,8 +115,9 @@ public class TestQueryService extends LensJerseyTest {
     @Override
     public Set<Class<?>> getClasses() {
       final Set<Class<?>> classes = super.getClasses();
-      classes.add(LensExceptionMapper.class);
+      classes.add(GenericExceptionMapper.class);
       classes.add(LensJAXBContextResolver.class);
+      classes.add(TestQueryNotifictaionResource.class);
       return classes;
     }
   }
@@ -122,16 +130,42 @@ public class TestQueryService extends LensJerseyTest {
   @BeforeTest
   public void setUp() throws Exception {
     super.setUp();
+  }
+
+  @BeforeClass
+  public void create() throws Exception {
     queryService = LensServices.get().getService(QueryExecutionService.NAME);
     metricsSvc = LensServices.get().getService(MetricsService.NAME);
     Map<String, String> sessionconf = new HashMap<>();
     sessionconf.put("test.session.key", "svalue");
-    lensSessionId = queryService.openSession("foo@localhost", "bar", sessionconf); // @localhost should be removed
-    // automatically
+    // @localhost should be removed automatically
+    lensSessionId = queryService.openSession("foo@localhost", "bar", sessionconf);
+
+    //Create Hive table and load data
     createTable(TEST_TABLE);
     loadData(TEST_TABLE, TestResourceFile.TEST_DATA2_FILE.getValue());
+
+    //Create HSQLDB table and load data
+    createHSQLTableAndLoadData();
   }
 
+  private void createHSQLTableAndLoadData() throws SQLException {
+    Connection conn = DriverManager.getConnection("jdbc:hsqldb:mem:jdbcTestDB;MODE=MYSQL", "sa", "");
+    String createTableCmd = "create table " + TEST_JDBC_TABLE + " (ID integer, IDSTR varchar(10))";
+    String loadTableCmd = "Insert into " + TEST_JDBC_TABLE + " values "
+      + "(1, 'one'), (NULL, 'two'), (3, NULL), (NULL, NULL), (5, '')";
+    Statement statement = conn.createStatement();
+    int result = statement.executeUpdate(createTableCmd);
+    System.out.print(result);
+    conn.commit();
+    result = statement.executeUpdate(loadTableCmd);
+    System.out.print(result);
+    statement.close();
+    conn.commit();
+    conn.close();
+  }
+
+  /*
   /*
    * (non-Javadoc)
    *
@@ -139,6 +173,11 @@ public class TestQueryService extends LensJerseyTest {
    */
   @AfterTest
   public void tearDown() throws Exception {
+    super.tearDown();
+  }
+
+  @AfterClass
+  public void drop() throws Exception {
     dropTable(TEST_TABLE);
     queryService.closeSession(lensSessionId);
     for (LensDriver driver : queryService.getDrivers()) {
@@ -146,7 +185,6 @@ public class TestQueryService extends LensJerseyTest {
         assertFalse(((HiveDriver) driver).hasLensSession(lensSessionId));
       }
     }
-    super.tearDown();
   }
 
   /*
@@ -163,6 +201,8 @@ public class TestQueryService extends LensJerseyTest {
 
   /** The test table. */
   public static final String TEST_TABLE = "TEST_TABLE";
+
+  public static final String TEST_JDBC_TABLE = "TEST_JDBC_TABLE";
 
   /**
    * Creates the table.
@@ -247,10 +287,49 @@ public class TestQueryService extends LensJerseyTest {
     LensQuery lensQuery = executeAndWaitForQueryToFinish(target(), lensSessionId, "select fail from non_exist",
       Optional.<LensConf>absent(), Optional.of(Status.FAILED), mt);
     assertTrue(lensQuery.getSubmissionTime() > 0);
-    assertEquals(lensQuery.getLaunchTime(), 0);
+    assertTrue(lensQuery.getLaunchTime() > 0);
     assertEquals(lensQuery.getDriverStartTime(), 0);
     assertEquals(lensQuery.getDriverFinishTime(), 0);
     assertTrue(lensQuery.getFinishTime() > 0);
+  }
+
+  /**
+   * Test multiple launches and failure in execute operation.
+   *
+   * @throws InterruptedException the interrupted exception
+   */
+  @Test(dataProvider = "mediaTypeData")
+  public void testMultipleLaunches(MediaType mt) throws Exception {
+    QueryHandle handle = executeAndGetHandle(target(), Optional.of(lensSessionId),
+      Optional.of("select wait,fail from non_exist"),
+      Optional.<LensConf>absent(), mt);
+    // launch one more.
+    QueryHandle handle2 = executeAndGetHandle(target(), Optional.of(lensSessionId),
+      Optional.of("select wait,fail2 from non_exist"),
+      Optional.<LensConf>absent(), mt);
+    assertNotEquals(handle, handle2);
+    // put a small sleep sothat querysubmitter picks handle2
+    Thread.sleep(50);
+    assertTrue(queryService.getQueryContext(handle).isLaunching());
+    assertTrue(queryService.getQueryContext(handle2).isLaunching());
+    assertTrue(queryService.getLaunchingQueriesCount() > 1);
+    waitForQueryToFinish(target(), lensSessionId, handle, mt);
+    waitForQueryToFinish(target(), lensSessionId, handle2, mt);
+  }
+
+  @Test
+  public void testPriorityOnMockQuery() throws Exception {
+    String query = "select mock, fail from " + TEST_TABLE;
+    QueryContext ctx = queryService.createContext(query, null, new LensConf(), new Configuration(), 5000L);
+    ctx.setLensSessionIdentifier(lensSessionId.getPublicId().toString());
+    queryService.acquire(lensSessionId);
+    try {
+      queryService.rewriteAndSelect(ctx);
+    } finally {
+      queryService.release(lensSessionId);
+    }
+    assertNotNull(ctx.getSelectedDriver());
+    assertEquals(ctx.getPriority(), Priority.NORMAL);
   }
 
   // test with execute async post, get all queries, get query context,
@@ -271,19 +350,24 @@ public class TestQueryService extends LensJerseyTest {
     long finishedQueries = metricsSvc.getFinishedQueries();
 
     int noOfQueriesBeforeExecution = queryService.allQueries.size();
+    long before = System.currentTimeMillis();
     QueryHandle theHandle = executeAndGetHandle(target(), Optional.of(lensSessionId), Optional.of("select ID from "
       + TEST_TABLE), Optional.<LensConf>absent(), mt);
-
-    // Get all queries
-    // XML
-    List<QueryHandle> allQueriesXML = target.queryParam("sessionid", lensSessionId).request(MediaType.APPLICATION_XML)
-      .get(new GenericType<List<QueryHandle>>() {});
-    assertTrue(allQueriesXML.size() >= 1);
 
     List<QueryHandle> allQueries = target.queryParam("sessionid", lensSessionId).request(mt)
       .get(new GenericType<List<QueryHandle>>() {});
     assertTrue(allQueries.size() >= 1);
     assertTrue(allQueries.contains(theHandle));
+    // time filter
+    allQueries = target.queryParam("sessionid", lensSessionId).queryParam("fromDate", before)
+      .queryParam("toDate", "now").request(mt).get(new GenericType<List<QueryHandle>>() {});
+    assertEquals(allQueries.size(), 1);
+    assertTrue(allQueries.contains(theHandle));
+
+    // status filter
+    allQueries = target.queryParam("sessionid", lensSessionId).queryParam("state", "SUCCESSFUL, CANCELED")
+      .request(mt).get(new GenericType<List<QueryHandle>>() {});
+    assertTrue(allQueries.size() >= 1);
 
     String queryXML = target.path(theHandle.toString()).queryParam("sessionid", lensSessionId)
       .request(MediaType.APPLICATION_XML).get(String.class);
@@ -653,6 +737,8 @@ public class TestQueryService extends LensJerseyTest {
       new GenericType<LensAPIResult<QueryHandle>>() {}).getData();
 
     assertNotNull(handle);
+    QueryContext ctx = queryService.getUpdatedQueryContext(lensSessionId, handle);
+    assertEquals(ctx.getSelectedDriverConf().get(KEY_POST_SELECT), VALUE_POST_SELECT);
 
     // Get query
     LensQuery lensQuery = target.path(handle.toString()).queryParam("sessionid", lensSessionId).request(mt)
@@ -681,12 +767,18 @@ public class TestQueryService extends LensJerseyTest {
       }*/
       Thread.sleep(1000);
     }
+    assertEquals(ctx.getSelectedDriverConf().get(KEY_PRE_LAUNCH), VALUE_PRE_LAUNCH);
+    assertEquals(ctx.getSelectedDriverConf().get(PRE_REWRITE), PRE_REWRITE);
+    assertEquals(ctx.getSelectedDriverConf().get(POST_REWRITE), POST_REWRITE);
+    assertEquals(ctx.getSelectedDriverConf().get(PRE_ESTIMATE), PRE_ESTIMATE);
+    assertEquals(ctx.getSelectedDriverConf().get(POST_ESTIMATE), POST_ESTIMATE);
     assertTrue(lensQuery.getSubmissionTime() > 0);
     assertTrue(lensQuery.getLaunchTime() > 0);
     assertTrue(lensQuery.getDriverStartTime() > 0);
     assertTrue(lensQuery.getDriverFinishTime() > 0);
     assertTrue(lensQuery.getFinishTime() > 0);
-    QueryContext ctx = queryService.getUpdatedQueryContext(lensSessionId, lensQuery.getQueryHandle());
+    ctx = queryService.getUpdatedQueryContext(lensSessionId, lensQuery.getQueryHandle());
+
     assertNotNull(ctx.getPhase1RewrittenQuery());
     assertEquals(ctx.getPhase1RewrittenQuery(), ctx.getUserQuery()); //Since there is no rewriter in this test
     assertEquals(lensQuery.getStatus().getStatus(), QueryStatus.Status.SUCCESSFUL);
@@ -800,7 +892,9 @@ public class TestQueryService extends LensJerseyTest {
     if (fs.getFileStatus(actualPath).isDir()) {
       assertTrue(isDir);
       for (FileStatus fstat : fs.listStatus(actualPath)) {
-        addRowsFromFile(actualRows, fs, fstat.getPath());
+        if (!fstat.isDirectory()) {
+          addRowsFromFile(actualRows, fs, fstat.getPath());
+        }
       }
     } else {
       assertFalse(isDir);
@@ -1235,7 +1329,7 @@ public class TestQueryService extends LensJerseyTest {
   @Test(dataProvider = "mediaTypeData")
   public void testExecuteWithTimeoutQuery(MediaType mt) throws IOException, InterruptedException {
     final WebTarget target = target().path("queryapi/queries");
-
+    //1. Validate Persistent result
     final FormDataMultiPart mp = new FormDataMultiPart();
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), lensSessionId,
       mt));
@@ -1253,6 +1347,7 @@ public class TestQueryService extends LensJerseyTest {
     assertNotNull(result.getResult());
     validatePersistentResult((PersistentQueryResult) result.getResult(), result.getQueryHandle(), true, false);
 
+    //2. Validate InMemory result
     final FormDataMultiPart mp2 = new FormDataMultiPart();
     LensConf conf = new LensConf();
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_INDRIVER, "false");
@@ -1267,6 +1362,27 @@ public class TestQueryService extends LensJerseyTest {
       mt));
 
     validateInmemoryResultForTimeoutQuery(target, mp2, mt);
+  }
+
+  @Test
+  public void testAutoCancelOnTimeOut() throws Exception {
+    queryService.pauseQuerySubmitter(true);
+    //First query will not be queued. @see QueryExecutionServiceImpl.QuerySubmitter.run
+    queryService.executeAsync(lensSessionId, "select 1 from " + TEST_TABLE, new LensConf(), "dummyQuery");
+
+    //Second query after pause will be queued
+    QueryHandleWithResultSet result = queryService.execute(lensSessionId, "select ID, IDSTR from "+ TEST_TABLE, 100,
+      new LensConf(),  "testQuery");
+    assertNotNull(result.getQueryHandle());
+    assertTrue(result.getStatus().queued());
+    int checkCtr = 0;
+    boolean cancelled = false;
+    while (!cancelled && checkCtr++ < 100) { //Max 10 secs wait
+      Thread.sleep(100); //wait for query to get auto cancelled
+      cancelled = queryService.getUpdatedQueryContext(lensSessionId, result.getQueryHandle()).getStatus().cancelled();
+    }
+    assertTrue(cancelled); //auto cancelled beyond timeout
+    queryService.pauseQuerySubmitter(false);
   }
 
   private void validateInmemoryResultForTimeoutQuery(WebTarget target, FormDataMultiPart mp, MediaType mt) {
@@ -1286,52 +1402,75 @@ public class TestQueryService extends LensJerseyTest {
     }
   }
   /**
-   * Data provider for test case {@link #testExecuteWithTimeoutAndPreFetechAndServerPersistence()}
-   * @return
+   * Data provider for test case
+   * {@link #testExecuteWithTimeoutAndPreFetchAndServerPersistence(long, int, boolean, long, String, int)}
    */
   @DataProvider
   public Object[][] executeWithTimeoutAndPreFetechAndServerPersistenceDP() {
-    //Columns: timeOutMillis, preFetchRows, isStreamingResultAvailable, deferPersistenceByMillis
+    String query5RowsHive = "select ID, IDSTR from " + TEST_TABLE;
+    String query0RowsHive = "select ID, IDSTR from " + TEST_TABLE + " where ID=99";
+
+    String query5RowsJdbc = "select ID, IDSTR from " + TEST_JDBC_TABLE;
+    String query0RowsJdbc = "select ID, IDSTR from " + TEST_JDBC_TABLE + " where ID=99";
+
+    //Columns: timeOutMillis, preFetchRows, isStreamingResultAvailable, deferPersistenceByMillis,query,rows in result
     return new Object[][] {
-      {30000, 5, true, 0}, //result has 5 rows & all 5 rows are requested to be pre-fetched
-      {30000, 10, true, 6000}, //result has 5 rows & 10 rows are requested to be pre-fetched.
-      {30000, 2, false, 4000}, //result has 5 rows & 2 rows are requested to be pre-fetched. Will not stream
-      {10, 5, false, 0}, //result has 5 rows & 5 rows requested. Timeout is less (10ms). Will not stream
+      {30000, 5, true, 0, query5RowsHive, 5}, //All 5 rows are requested to be pre-fetched
+      {30000, 10, true, 6000, query5RowsHive, 5}, //10 rows are requested to be pre-fetched.
+      {30000, 2, false, 4000, query5RowsHive, 5}, //2 rows are requested to be pre-fetched. Will not stream
+      {10, 5, false, 0, query5RowsHive, 5}, //5 rows requested. Timeout is less (10ms). Will not stream
+      {30000, 5, true, 0, query0RowsHive, 0}, //Result has no rows
+      {30000, 5, true, 0, query5RowsJdbc, 5}, //All 5 rows are requested to be pre-fetched
+      {30000, 10, true, 6000, query5RowsJdbc, 5}, //10 rows are requested to be pre-fetched.
+      {30000, 2, false, 4000, query5RowsJdbc, 5}, //2 rows are requested to be pre-fetched. Will not stream
+      {10, 5, false, 0, query5RowsJdbc, 5}, //5 rows requested. Timeout is less (10ms). Will not stream
+      {30000, 5, true, 0, query0RowsJdbc, 0}, //Result has no rows
     };
+  }
+
+  @Test
+  public void testExecuteAsyncJDBCQuery() throws InterruptedException {
+    String query = "select ID, IDSTR from " + TEST_JDBC_TABLE;
+    QueryHandle handle = RestAPITestUtil.executeAndGetHandle(target(), Optional.of(lensSessionId), Optional.of(query),
+      Optional.of(getLensConf(LensConfConstants.QUERY_PERSISTENT_RESULT_SET, false)), APPLICATION_XML_TYPE);
+    // fetch results so that it can be purged
+    InMemoryQueryResult queryResult = RestAPITestUtil.getLensQueryResult(target(), lensSessionId, handle,
+      InMemoryQueryResult.class, APPLICATION_XML_TYPE);
+    assertEquals(queryResult.getRows().size(), 5);
   }
 
   /**
    * @param timeOutMillis : wait time for execute with timeout api
    * @param preFetchRows : number of rows to pre-fetch in case of InMemoryResultSet
    * @param isStreamingResultAvailable : whether the execute call is expected to return InMemoryQueryResult
-   * @param ttlMillis : The time window for which pre-fetched InMemoryResultSet will be available for sure.
    * @param deferPersistenceByMillis : The time in millis by which Result formatter will be deferred by.
    * @throws IOException
    * @throws InterruptedException
    */
   @Test(dataProvider = "executeWithTimeoutAndPreFetechAndServerPersistenceDP")
-  public void testExecuteWithTimeoutAndPreFetechAndServerPersistence(long timeOutMillis, int preFetchRows,
-      boolean isStreamingResultAvailable, long deferPersistenceByMillis) throws Exception {
+  public void testExecuteWithTimeoutAndPreFetchAndServerPersistence(long timeOutMillis, int preFetchRows,
+      boolean isStreamingResultAvailable, long deferPersistenceByMillis, String query, int rowsInResult)
+    throws Exception {
     final WebTarget target = target().path("queryapi/queries");
 
     final FormDataMultiPart mp = new FormDataMultiPart();
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), lensSessionId,
-        MediaType.APPLICATION_XML_TYPE));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), "select ID, IDSTR from "
-        + TEST_TABLE));
+        APPLICATION_XML_TYPE));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), query));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "execute_with_timeout"));
     // Set a timeout value enough for tests
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("timeoutmillis").build(), timeOutMillis + ""));
     LensConf conf = new LensConf();
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_SET, "true");
+    conf.addProperty(LensConfConstants.CANCEL_QUERY_ON_TIMEOUT, "false");
     conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_INDRIVER, "false");
     conf.addProperty(LensConfConstants.PREFETCH_INMEMORY_RESULTSET, "true");
     conf.addProperty(LensConfConstants.PREFETCH_INMEMORY_RESULTSET_ROWS, preFetchRows);
     conf.addProperty(LensConfConstants.QUERY_OUTPUT_FORMATTER, DeferredInMemoryResultFormatter.class.getName());
     conf.addProperty("deferPersistenceByMillis", deferPersistenceByMillis); // property used for test only
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
-        MediaType.APPLICATION_XML_TYPE));
-    QueryHandleWithResultSet result =target.request(MediaType.APPLICATION_XML_TYPE)
+        APPLICATION_XML_TYPE));
+    QueryHandleWithResultSet result = target.request(APPLICATION_XML_TYPE)
             .post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE),
                 new GenericType<LensAPIResult<QueryHandleWithResultSet>>() {}).getData();
     QueryHandle handle = result.getQueryHandle();
@@ -1345,21 +1484,25 @@ public class TestQueryService extends LensJerseyTest {
           "Check if timeoutmillis need to be increased based on query status " + result.getStatus());
       assertEquals(result.getResultMetadata().getColumns().size(), 2);
       assertNotNull(result.getResult());
-      validateInmemoryResult((InMemoryQueryResult) result.getResult());
-    } else if (timeOutMillis > 20000) { // timeout is sufficient for query to finish
-      assertTrue(result.getResult() instanceof PersistentQueryResult);
+      if (rowsInResult > 0) {
+        validateInmemoryResult((InMemoryQueryResult) result.getResult());
+      } else {
+        assertEquals(((InMemoryQueryResult) result.getResult()).getRows().size(), 0);
+      }
     } else {
-      assertNull(result.getResult()); // Query execution not finished yet
+      // IF timeout is sufficient for query to finish , we should receive PersistentQueryResult
+      // Else we will get null result
+      assertTrue(result.getResult()==null || result.getResult() instanceof PersistentQueryResult);
     }
 
-    waitForQueryToFinish(target(), lensSessionId, handle, Status.SUCCESSFUL, MediaType.APPLICATION_XML_TYPE);
+    waitForQueryToFinish(target(), lensSessionId, handle, Status.SUCCESSFUL, APPLICATION_XML_TYPE);
 
     // Test Persistent Result
     validatePersistedResult(handle, target(), lensSessionId, new String[][] { { "ID", "INT" }, { "IDSTR", "STRING" } },
-        false, true, MediaType.APPLICATION_XML_TYPE);
+        false, true, APPLICATION_XML_TYPE);
   }
 
-  private static class DeferredInMemoryResultFormatter extends FileSerdeFormatter {
+  public static class DeferredInMemoryResultFormatter extends FileSerdeFormatter {
     /**
      * Defer init so that this output formatter takes significant time.
      */
@@ -1370,7 +1513,7 @@ public class TestQueryService extends LensJerseyTest {
     }
   }
 
-  private static class DeferredPersistentResultFormatter extends FilePersistentFormatter {
+  public static class DeferredPersistentResultFormatter extends FilePersistentFormatter {
     /**
      * Defer init so that this output formatter takes significant time.
      */
@@ -1446,8 +1589,7 @@ public class TestQueryService extends LensJerseyTest {
     assertNull(conf.get("lens.server.persist.location"));
 
     // Test server config. Hive configs overriden should be set
-    assertFalse(Boolean.parseBoolean(queryService.getHiveConf().get("hive.server2.log.redirection.enabled")));
-    assertEquals(queryService.getHiveConf().get("hive.server2.query.log.dir"), "target/query-logs");
+    assertFalse(queryService.getHiveConf().getBoolVar(HiveConf.ConfVars.HIVE_SERVER2_LOGGING_OPERATION_ENABLED));
 
     final String query = "select ID from " + TEST_TABLE;
     QueryContext ctx = new QueryContext(query, null, queryConf, conf, queryService.getDrivers());
@@ -1542,7 +1684,7 @@ public class TestQueryService extends LensJerseyTest {
 
     // Add a jar in the session
     File testJarFile = new File("target/testjars/test2.jar");
-    sessionService.addResourceToAllServices(sessionHandle, "jar", "file://" + testJarFile.getAbsolutePath());
+    sessionService.addResource(sessionHandle, "jar", "file://" + testJarFile.getAbsolutePath());
 
     log.info("@@@ Opened session " + sessionHandle.getPublicId() + " with database " + DB_WITH_JARS);
     LensSessionImpl session = sessionService.getSession(sessionHandle);
@@ -1611,7 +1753,7 @@ public class TestQueryService extends LensJerseyTest {
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), lensSessionId,
       mt));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(),
-      "cube sdfelect ID from cube_nonexist"));
+      "sdfelect ID from cube_nonexist"));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "estimate"));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
       mt));
@@ -1622,7 +1764,7 @@ public class TestQueryService extends LensJerseyTest {
 
     LensErrorTO expectedLensErrorTO = LensErrorTO.composedOf(
       LensCubeErrorCode.SYNTAX_ERROR.getLensErrorInfo().getErrorCode(),
-      "Syntax Error: line 1:5 cannot recognize input near 'sdfelect' 'ID' 'from' in select clause",
+      "Syntax Error: line 1:0 cannot recognize input near 'sdfelect' 'ID' 'from'",
       TestDataUtils.MOCK_STACK_TRACE);
     ErrorResponseExpectedData expectedData = new ErrorResponseExpectedData(BAD_REQUEST, expectedLensErrorTO);
 
@@ -1774,5 +1916,109 @@ public class TestQueryService extends LensJerseyTest {
   @AfterMethod
   private void waitForPurge() throws InterruptedException {
     waitForPurge(0, queryService.finishedQueries);
+  }
+
+
+  @Test(dataProvider = "mediaTypeData")
+  public void testFinishedNotification(MediaType mt) throws Exception {
+    try {
+      String query = "select ID, IDSTR, count(*) from " + TEST_TABLE + " group by ID, IDSTR";
+      String endpoint = getBaseUri() + "/queryapi/notifictaion/finished";
+      String encodedHttpEndPoint1 = endpoint + "?access_token=" + URLEncoder.encode("ABC123", "UTF-8");
+      System.out.println("encodedHttpEndPoint1 :" + encodedHttpEndPoint1);
+      String encodedHttpEndPoint2 = endpoint + "?access_token=" + URLEncoder.encode("ABC123", "UTF-8") + "&data="
+        + URLEncoder.encode("x<>yz,\"abc", "UTF-8");
+      System.out.println("encodedHttpEndPoint2 :" + encodedHttpEndPoint2);
+      LensConf conf = new LensConf();
+      conf.addProperty(LensConfConstants.QUERY_HTTP_NOTIFICATION_TYPE_FINISHED, "true");
+      conf.addProperty(LensConfConstants.QUERY_HTTP_NOTIFICATION_MEDIATYPE, mt);
+      conf.addProperty(LensConfConstants.QUERY_HTTP_NOTIFICATION_URLS, encodedHttpEndPoint1 + " , "
+        + encodedHttpEndPoint2);
+
+      //Test for SUCCESSFUL FINISH notification
+      QueryHandle handle1 = queryService.executeAsync(lensSessionId, query, conf,
+        "testHttpNotificationQuerySuccessful");
+
+      //TEST for CANCELLED FINISH notification
+      conf.addProperty(LensConfConstants.QUERY_PERSISTENT_RESULT_SET, "true");
+      conf.addProperty(LensConfConstants.QUERY_OUTPUT_FORMATTER, DeferredPersistentResultFormatter.class.getName());
+      conf.addProperty("deferPersistenceByMillis", 5000); // defer persistence for 5 secs
+      QueryHandle handle2 = queryService.executeAsync(lensSessionId, query, conf, "testHttpNotificationQueryCanceled");
+      queryService.cancelQuery(lensSessionId, handle2);
+
+      //Test for FAILED FINISH notification
+      conf.addProperty(LensConfConstants.QUERY_OUTPUT_FORMATTER, "wrong.formatter");
+      QueryHandle handle3 = queryService.executeAsync(lensSessionId, query, conf, "testHttpNotificationQueryFailed");
+
+      for (QueryHandle handle : new QueryHandle[]{handle1, handle2, handle3}) {
+        LensQuery lensQuery = queryService.getQuery(lensSessionId, handle);
+        while (!lensQuery.getStatus().finished()) {
+          Thread.sleep(100);
+          lensQuery = queryService.getQuery(lensSessionId, handle);
+        }
+        assertTrue(lensQuery.getQueryName().toUpperCase().contains(lensQuery.getStatus().getStatus().name()),
+          "Query finished with wrong status: " + lensQuery);
+        log.info("query {} finished", lensQuery);
+      }
+      // sleep more to allow notifications to go
+      Thread.sleep(3000);
+      assertEquals(TestQueryNotifictaionResource.getFinishedCount(), 6);
+      assertEquals(TestQueryNotifictaionResource.getSuccessfulCount(), 2);
+      assertEquals(TestQueryNotifictaionResource.getCancelledCount(), 2);
+      assertEquals(TestQueryNotifictaionResource.getFailedCount(), 2);
+      assertEquals(TestQueryNotifictaionResource.getAccessTokenCount(), 6);
+      assertEquals(TestQueryNotifictaionResource.getDataCount(), 3);
+    } finally {
+      TestQueryNotifictaionResource.clearState();
+    }
+  }
+
+  @Test
+  public void testGetQueryDetails() throws IOException, InterruptedException, LensException {
+
+    UUID queryName = UUID.randomUUID();
+    WebTarget target = target().path("queryapi/queries");
+    final FormDataMultiPart mp = new FormDataMultiPart();
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), lensSessionId,
+      APPLICATION_XML_TYPE));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), "select ID, IDSTR from "
+      + TEST_TABLE));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "execute_with_timeout"));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("timeoutmillis").build(), "300000"));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("queryName").build(), queryName.toString()));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
+      APPLICATION_XML_TYPE));
+
+    QueryHandleWithResultSet result = target.request(APPLICATION_XML_TYPE)
+      .post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE),
+        new GenericType<LensAPIResult<QueryHandleWithResultSet>>() {}).getData();
+    assertNotNull(result.getQueryHandle());
+    assertNotNull(result.getResult());
+
+    target = target().path("queryapi/queries/detail");
+    List<LensQuery> results = target.queryParam("queryName", queryName)
+      .queryParam("sessionid", lensSessionId)
+      .request(APPLICATION_XML_TYPE)
+      .get(new GenericType<List<LensQuery>>(){});
+    Assert.assertNotNull(results);
+    Assert.assertEquals(1, results.size());
+    Assert.assertEquals(queryName.toString(), results.get(0).getQueryName());
+    Assert.assertEquals(result.getQueryHandle(), results.get(0).getQueryHandle());
+  }
+
+  @Test
+  public void testQueryTimeoutOnWaitingQuery() throws Exception {
+    String query = "select mock, fail, autocancel from " + TEST_TABLE;
+    LensConf lconf = new LensConf();
+    lconf.addProperty(LensConfConstants.QUERY_TIMEOUT_MILLIS, 300);
+    QueryHandle handle = executeAndGetHandle(target(), Optional.of(lensSessionId), Optional.of(query),
+      Optional.of(lconf), defaultMT);
+    // query should have been cancelled, as query timeout is 300 millis
+    waitForQueryToFinish(target(), lensSessionId, handle, Status.CANCELED, defaultMT);
+    LensQuery lensQuery = getLensQuery(target(), lensSessionId, handle, defaultMT);
+    assertTrue((lensQuery.getFinishTime() - lensQuery.getLaunchTime()) >= 300, "Query time is "
+      + (lensQuery.getFinishTime() - lensQuery.getLaunchTime()));
+    assertTrue((lensQuery.getFinishTime() - lensQuery.getLaunchTime()) < 400, "Query time is "
+      + (lensQuery.getFinishTime() - lensQuery.getLaunchTime()));
   }
 }

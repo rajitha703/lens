@@ -26,6 +26,7 @@ import java.util.Date;
 
 import org.apache.lens.api.ToXMLString;
 import org.apache.lens.api.util.PathValidator;
+import org.apache.lens.cli.config.LensCliConfigConstants;
 import org.apache.lens.client.LensClient;
 import org.apache.lens.client.LensClientSingletonWrapper;
 
@@ -40,6 +41,7 @@ import org.springframework.shell.core.ExecutionProcessor;
 import org.springframework.shell.event.ParseResult;
 
 import com.google.common.collect.Sets;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -47,8 +49,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class BaseLensCommand implements ExecutionProcessor {
-  public static final String LENS_CLI_PREFIX = "lens.cli.";
-  public static final String JSON_PRETTY_SUFFIX = "json.pretty";
 
   /** The mapper. */
   protected ObjectMapper mapper;
@@ -57,8 +57,7 @@ public class BaseLensCommand implements ExecutionProcessor {
   protected DefaultPrettyPrinter pp;
 
   /** The is connection active. */
-  protected boolean isConnectionActive;
-
+  protected static boolean isConnectionActive;
   public static final String DATE_FMT = "yyyy-MM-dd'T'HH:mm:ss:SSS";
 
   private LensClient lensClient = null;
@@ -75,7 +74,7 @@ public class BaseLensCommand implements ExecutionProcessor {
     return DATE_PARSER.get().format(dt);
   }
 
-  private void registerShutDownHook() {
+  static {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       public void run() {
         closeClientConnection();
@@ -86,10 +85,10 @@ public class BaseLensCommand implements ExecutionProcessor {
   /**
    * Close client connection.
    */
-  protected synchronized void closeClientConnection() {
+  protected static synchronized void closeClientConnection() {
     if (isConnectionActive) {
       log.debug("Request for stopping lens cli received");
-      lensClient.closeConnection();
+      getClientWrapper().getClient().closeConnection();
       isConnectionActive = false;
     }
   }
@@ -98,7 +97,6 @@ public class BaseLensCommand implements ExecutionProcessor {
    * Instantiates a new base lens command.
    */
   public BaseLensCommand() {
-    registerShutDownHook();
     mapper = new ObjectMapper();
     mapper.setSerializationInclusion(Inclusion.NON_NULL);
     mapper.setSerializationInclusion(Inclusion.NON_DEFAULT);
@@ -120,13 +118,13 @@ public class BaseLensCommand implements ExecutionProcessor {
   }
 
   public void setClient(LensClient client) {
-    isConnectionActive = true;
     lensClient = client;
   }
 
   public LensClient getClient() {
     if (lensClient == null) {
       setClient(getClientWrapper().getClient());
+      isConnectionActive = true;
     }
     return lensClient;
   }
@@ -149,7 +147,8 @@ public class BaseLensCommand implements ExecutionProcessor {
       String json = mapper.writer(pp).writeValueAsString(data);
       JsonNode tree = mapper.valueToTree(data);
       System.out.println(tree);
-      if (getClient().getConf().getBoolean(LENS_CLI_PREFIX + JSON_PRETTY_SUFFIX, false)) {
+      if (getClient().getConf().getBoolean(LensCliConfigConstants.PRINT_PRETTY_JSON,
+          LensCliConfigConstants.DEFAULT_PRINT_PRETTY_JSON)) {
         return json;
       }
       return json.replaceAll("\\[ \\{", "\n\n ").replaceAll("\\{", "").replaceAll("}", "").replaceAll("\\[", "")

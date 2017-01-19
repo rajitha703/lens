@@ -25,10 +25,14 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.lens.api.LensConf;
 import org.apache.lens.api.query.*;
 import org.apache.lens.api.result.PrettyPrintable;
 import org.apache.lens.cli.commands.annotations.UserDocumentation;
+import org.apache.lens.cli.config.LensCliConfigConstants;
 import org.apache.lens.client.LensClient;
+import org.apache.lens.client.LensClient.LensClientResultSetWithStats;
+import org.apache.lens.client.LensClientResultSet;
 import org.apache.lens.client.exceptions.LensAPIException;
 import org.apache.lens.client.exceptions.LensBriefErrorException;
 import org.apache.lens.client.model.BriefError;
@@ -107,16 +111,29 @@ public class LensQueryCommands extends BaseLensCommand {
 
     try {
       if (async) {
-        QueryHandle queryHandle = getClient().executeQueryAsynch(sql, queryName).getData();
+        QueryHandle queryHandle = getClient().executeQueryAsynch(sql, queryName, new LensConf());
         return queryHandle.getHandleIdString();
       } else {
-        return formatResultSet(getClient().getResults(sql, queryName));
+        LensClientResultSetWithStats resultWithStats;
+        long timeOutMillis = getClient().getConf().getLong(LensCliConfigConstants.QUERY_EXECUTE_TIMEOUT_MILLIS,
+            LensCliConfigConstants.DEFAULT_QUERY_EXECUTE_TIMEOUT_MILLIS);
+        LensClient.getCliLogger().info("Executing query with timeout of {} milliseconds", timeOutMillis);
+        QueryHandleWithResultSet result = getClient().executeQueryWithTimeout(sql, queryName, timeOutMillis,
+          new LensConf());
+        if (result.getResult() == null) {
+          //Query not finished yet. Wait till it finishes and get result.
+          LensClient.getCliLogger().info("Couldn't complete query execution within timeout. Waiting for completion");
+          resultWithStats = getClient().getSyncResults(result.getQueryHandle());
+        } else {
+          LensClientResultSet clientResultSet = new LensClientResultSet(result.getResultMetadata(), result.getResult());
+          resultWithStats =
+              new LensClientResultSetWithStats(clientResultSet, getClient().getQueryDetails(result.getQueryHandle()));
+        }
+        return formatResultSet(resultWithStats);
       }
     } catch (final LensAPIException e) {
-
       BriefError briefError = new BriefError(e.getLensAPIErrorCode(), e.getLensAPIErrorMessage());
       cliOutput = new IdBriefErrorTemplate(IdBriefErrorTemplateKey.REQUEST_ID, e.getLensAPIRequestId(), briefError);
-
     } catch (final LensBriefErrorException e) {
       cliOutput = e.getIdBriefErrorTemplate();
     }
@@ -252,10 +269,8 @@ public class LensQueryCommands extends BaseLensCommand {
     @CliOption(key = {"name"}, mandatory = false, help = "<query-name>") String queryName,
     @CliOption(key = {"user"}, mandatory = false, help = "<user-who-submitted-query>") String user,
     @CliOption(key = {"driver"}, mandatory = false, help = "<driver-where-query-ran>") String driver,
-    @CliOption(key = {"fromDate"}, mandatory = false, unspecifiedDefaultValue = "-1", help
-      = "<submission-time-is-after>") long fromDate,
-    @CliOption(key = {"toDate"}, mandatory = false, unspecifiedDefaultValue = "" + Long.MAX_VALUE, help
-      = "<submission-time-is-before>") long toDate) {
+    @CliOption(key = {"fromDate"}, mandatory = false, help = "<submission-time-is-after>") String fromDate,
+    @CliOption(key = {"toDate"}, mandatory = false, help = "<submission-time-is-before>") String toDate) {
     List<QueryHandle> handles = getClient().getQueries(state, queryName, user, driver, fromDate, toDate);
     if (handles != null && !handles.isEmpty()) {
       return Joiner.on("\n").skipNulls().join(handles).concat("\n").concat("Total number of queries: "
@@ -363,10 +378,8 @@ public class LensQueryCommands extends BaseLensCommand {
   public String getAllPreparedQueries(
     @CliOption(key = {"name"}, mandatory = false, help = "<query-name>") String queryName,
     @CliOption(key = {"user"}, mandatory = false, help = "<user-who-submitted-query>") String userName,
-    @CliOption(key = {"fromDate"}, mandatory = false, unspecifiedDefaultValue = "-1", help
-      = "<submission-time-is-after>") long fromDate,
-    @CliOption(key = {"toDate"}, mandatory = false, unspecifiedDefaultValue = "" + Long.MAX_VALUE, help
-      = "<submission-time-is-before>") long toDate) {
+    @CliOption(key = {"fromDate"}, mandatory = false, help = "<submission-time-is-after>") String fromDate,
+    @CliOption(key = {"toDate"}, mandatory = false, help = "<submission-time-is-before>") String toDate) {
     List<QueryPrepareHandle> handles = getClient().getPreparedQueries(userName, queryName, fromDate, toDate);
     if (handles != null && !handles.isEmpty()) {
       return Joiner.on("\n").skipNulls().join(handles);
@@ -436,17 +449,17 @@ public class LensQueryCommands extends BaseLensCommand {
     @CliOption(key = {"async"}, mandatory = false, unspecifiedDefaultValue = "false",
       specifiedDefaultValue = "true", help = "<async>") boolean async,
     @CliOption(key = {"name"}, mandatory = false, help = "<query-name>") String queryName) {
-    if (async) {
-      QueryHandle handle = getClient().executePrepared(QueryPrepareHandle.fromString(phandle), queryName);
-      return handle.getHandleId().toString();
-    } else {
-      try {
-        LensClient.LensClientResultSetWithStats result = getClient().getResultsFromPrepared(
-          QueryPrepareHandle.fromString(phandle), queryName);
+    try {
+      if (async) {
+        QueryHandle handle = getClient().executePrepared(QueryPrepareHandle.fromString(phandle), queryName);
+        return handle.getHandleId().toString();
+      } else {
+        LensClient.LensClientResultSetWithStats result =
+            getClient().getResultsFromPrepared(QueryPrepareHandle.fromString(phandle), queryName);
         return formatResultSet(result);
-      } catch (Throwable t) {
-        return t.getMessage();
       }
+    } catch (Throwable t) {
+      return t.getMessage();
     }
   }
 
@@ -464,7 +477,7 @@ public class LensQueryCommands extends BaseLensCommand {
   public String prepare(@CliOption(key = {"", "query"}, mandatory = true, help = "<query-string>") String sql,
     @CliOption(key = {"name"}, mandatory = false, help = "<query-name>") String queryName)
     throws UnsupportedEncodingException, LensAPIException {
-    return getClient().prepare(sql, queryName).getData().toString();
+    return getClient().prepare(sql, queryName, new LensConf()).getData().toString();
   }
 
   /**
@@ -488,7 +501,7 @@ public class LensQueryCommands extends BaseLensCommand {
     throws UnsupportedEncodingException, LensAPIException {
     PrettyPrintable cliOutput;
     try {
-      QueryPlan plan = getClient().explainAndPrepare(sql, queryName).getData();
+      QueryPlan plan = getClient().explainAndPrepare(sql, queryName, new LensConf()).getData();
       return plan.getPlanString() + "\n" + "Prepare handle:" + plan.getPrepareHandle();
     } catch (final LensAPIException e) {
       BriefError briefError = new BriefError(e.getLensAPIErrorCode(), e.getLensAPIErrorMessage());

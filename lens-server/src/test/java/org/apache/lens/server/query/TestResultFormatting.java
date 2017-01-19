@@ -52,9 +52,7 @@ import org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe;
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -79,10 +77,14 @@ public class TestResultFormatting extends LensJerseyTest {
   @BeforeTest
   public void setUp() throws Exception {
     super.setUp();
+  }
+
+  @BeforeClass
+  public void create() throws Exception {
     queryService = LensServices.get().getService(QueryExecutionService.NAME);
     lensSessionId = queryService.openSession("foo", "bar", new HashMap<String, String>());
     createTable(testTable, target(), lensSessionId,
-      "(ID INT, IDSTR STRING, IDARR ARRAY<INT>, IDSTRARR ARRAY<STRING>)", defaultMT);
+        "(ID INT, IDSTR STRING, IDARR ARRAY<INT>, IDSTRARR ARRAY<STRING>)", defaultMT);
     loadDataFromClasspath(testTable, TestResourceFile.TEST_DATA2_FILE.getValue(), target(), lensSessionId, defaultMT);
   }
 
@@ -93,9 +95,13 @@ public class TestResultFormatting extends LensJerseyTest {
    */
   @AfterTest
   public void tearDown() throws Exception {
+    super.tearDown();
+  }
+
+  @AfterClass
+  public void drop() throws Exception {
     dropTable(testTable, target(), lensSessionId, defaultMT);
     queryService.closeSession(lensSessionId);
-    super.tearDown();
   }
 
   /*
@@ -216,10 +222,10 @@ public class TestResultFormatting extends LensJerseyTest {
     while (!stat.finished()) {
       ctx = target.path(handle.toString()).queryParam("sessionid", lensSessionId).request(mt).get(LensQuery.class);
       stat = ctx.getStatus();
-      Thread.sleep(1000);
+      Thread.sleep(100);
     }
 
-    assertEquals(ctx.getStatus().getStatus(), status);
+    assertEquals(ctx.getStatus().getStatus(), status, String.valueOf(ctx));
 
     if (status.equals(QueryStatus.Status.SUCCESSFUL)) {
       QueryContext qctx = queryService.getQueryContext(handle);
@@ -254,6 +260,11 @@ public class TestResultFormatting extends LensJerseyTest {
       assertTrue(ctx.getDriverFinishTime() > 0);
       assertTrue(ctx.getFinishTime() > 0);
       assertEquals(ctx.getStatus().getStatus(), QueryStatus.Status.FAILED);
+      assertFalse(ctx.getStatus().isResultSetAvailable());
+      // status message could be null if the query is purged
+      assertTrue(ctx.getStatus().getStatusMessage()== null
+        || ctx.getStatus().getStatusMessage().equals(ResultFormatter.ERROR_MESSAGE));
+      assertEquals(ctx.getStatus().getErrorMessage(), "Class NonexistentSerde.class not found");
     }
   }
 

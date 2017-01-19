@@ -62,11 +62,11 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class QueryStatus extends ToYAMLString implements Serializable {
 
+
   /**
    * The Constant serialVersionUID.
    */
   private static final long serialVersionUID = 1L;
-
   /**
    * The Enum Status.
    */
@@ -81,26 +81,39 @@ public class QueryStatus extends ToYAMLString implements Serializable {
 
     /**
      * The queued.
+     * At this point the query is queued by the server and it waiting to be launched. The launch may be controlled by
+     * multiple factors like query throttling, quota, etc
      */
     QUEUED,
 
     /**
      * The launched.
+     * At this point the query is launched for execution.
      */
     LAUNCHED,
 
     /**
      * The running.
+     * At this point the query starts running on chosen driver
      */
     RUNNING,
 
     /**
      * The executed.
+     * At this point execution is finished by driver, but server may still have some more operations pending
+     * like result persistence, if enabled.
      */
     EXECUTED,
 
     /**
+     * This state is when depending on retry policy, either the query moves to QUEUED (in case retries are to be done),
+     * or to FAILED.
+     */
+    FAILING,
+
+    /**
      * The successful.
+     * At this point all operations related to the query are finished successfully by driver and server.
      */
     SUCCESSFUL,
 
@@ -116,6 +129,7 @@ public class QueryStatus extends ToYAMLString implements Serializable {
 
     /**
      * The closed.
+     * At this point the query is purged by the server. Persistent result will still be available to the user
      */
     CLOSED
   }
@@ -169,7 +183,7 @@ public class QueryStatus extends ToYAMLString implements Serializable {
   @Setter
   private String errorMessage;
 
-  @XmlElement
+  @Getter
   private LensErrorTO lensErrorTO;
 
   public boolean finished() {
@@ -197,6 +211,18 @@ public class QueryStatus extends ToYAMLString implements Serializable {
     return status.equals(Status.FAILED);
   }
 
+  public boolean failing() {
+    return status.equals(Status.FAILING);
+  }
+
+  public boolean cancelled() {
+    return status.equals(Status.CANCELED);
+  }
+
+  public boolean executed() {
+    return status.equals(Status.EXECUTED);
+  }
+
 
   /**
    * Checks if is valid transition.
@@ -216,7 +242,7 @@ public class QueryStatus extends ToYAMLString implements Serializable {
     case QUEUED:
       switch (newState) {
       case LAUNCHED:
-      case FAILED:
+      case FAILING:
       case CANCELED:
         return true;
       }
@@ -226,7 +252,7 @@ public class QueryStatus extends ToYAMLString implements Serializable {
       case LAUNCHED:
       case RUNNING:
       case CANCELED:
-      case FAILED:
+      case FAILING:
       case EXECUTED:
         return true;
       }
@@ -235,7 +261,7 @@ public class QueryStatus extends ToYAMLString implements Serializable {
       switch (newState) {
       case RUNNING:
       case CANCELED:
-      case FAILED:
+      case FAILING:
       case EXECUTED:
         return true;
       }
@@ -244,8 +270,15 @@ public class QueryStatus extends ToYAMLString implements Serializable {
       switch (newState) {
       case EXECUTED:
       case SUCCESSFUL:
-      case FAILED:
+      case FAILING:
       case CANCELED:
+        return true;
+      }
+      break;
+    case FAILING:
+      switch(newState) {
+      case QUEUED:
+      case FAILED:
         return true;
       }
       break;
@@ -255,6 +288,7 @@ public class QueryStatus extends ToYAMLString implements Serializable {
       if (Status.CLOSED.equals(newState)) {
         return true;
       }
+      break;
     default:
       // fall-through
     }
@@ -277,5 +311,9 @@ public class QueryStatus extends ToYAMLString implements Serializable {
 
   public String getLensErrorTOErrorMsg() {
     return (this.lensErrorTO != null) ? this.lensErrorTO.getMessage() : null;
+  }
+
+  public static QueryStatus getQueuedStatus() {
+    return new QueryStatus(0.0, null, Status.QUEUED, "Query is queued", false, null, null, null);
   }
 }

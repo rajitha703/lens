@@ -22,15 +22,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Application;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -39,6 +38,9 @@ import org.apache.lens.api.APIResult.Status;
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
 import org.apache.lens.api.StringList;
+import org.apache.lens.api.jaxb.LensJAXBContextResolver;
+import org.apache.lens.api.query.QueryHandle;
+import org.apache.lens.api.session.UserSessionInfo;
 import org.apache.lens.server.LensJerseyTest;
 import org.apache.lens.server.LensServerConf;
 import org.apache.lens.server.LensServices;
@@ -50,9 +52,9 @@ import org.apache.lens.server.common.LenServerTestException;
 import org.apache.lens.server.common.LensServerTestFileUtils;
 import org.apache.lens.server.common.RestAPITestUtil;
 import org.apache.lens.server.common.TestResourceFile;
+import org.apache.lens.server.error.GenericExceptionMapper;
 
 import org.apache.commons.io.FileUtils;
-
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.ql.metadata.Hive;
@@ -63,6 +65,8 @@ import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.TestProperties;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeClass;
+
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -83,11 +87,14 @@ public class TestSessionResource extends LensJerseyTest {
    */
   @BeforeTest
   public void setUp() throws Exception {
-    metricsSvc = LensServices.get().getService(MetricsService.NAME);
-    LensServices.get().getLogSegregationContext().setLogSegregationId("logid");
     super.setUp();
   }
 
+  @BeforeClass
+  public void create() throws Exception {
+    metricsSvc = LensServices.get().getService(MetricsService.NAME);
+    LensServices.get().getLogSegregationContext().setLogSegregationId("logid");
+  }
   /*
    * (non-Javadoc)
    *
@@ -107,7 +114,15 @@ public class TestSessionResource extends LensJerseyTest {
   protected Application configure() {
     enable(TestProperties.LOG_TRAFFIC);
     enable(TestProperties.DUMP_ENTITY);
-    return new SessionApp();
+    return new SessionApp() {
+      @Override
+      public Set<Class<?>> getClasses() {
+        final Set<Class<?>> classes = super.getClasses();
+        classes.add(GenericExceptionMapper.class);
+        classes.add(LensJAXBContextResolver.class);
+        return classes;
+      }
+    };
   }
 
   @Test
@@ -291,7 +306,7 @@ public class TestSessionResource extends LensJerseyTest {
     StringList listResourcesAfterDeletion = resourcetarget.path("list").queryParam("sessionid", handle)
       .request(mt).get(StringList.class);
     Assert.assertTrue(listResourcesAfterDeletion.getElements() == null
-      || listResourcesAfterDeletion.getElements().isEmpty());
+      || listResourcesAfterDeletion.getElements().isEmpty(), " Found :" + listResourcesAfterDeletion.getElements());
 
     // close session
     result = target.queryParam("sessionid", handle).request(mt).delete(APIResult.class);
@@ -368,63 +383,6 @@ public class TestSessionResource extends LensJerseyTest {
   }
 
   @Test(dataProvider = "mediaTypeData")
-  public void testServerMustRestartOnManualDeletionOfAddedResources(MediaType mt)
-    throws IOException, LensException, LenServerTestException {
-
-    /* Begin: Setup */
-
-    /* Add a resource jar to current working directory */
-    File jarFile = new File(TestResourceFile.TEST_RESTART_ON_RESOURCE_MOVE_JAR.getValue());
-    FileUtils.touch(jarFile);
-
-    /* Add the created resource jar to lens server */
-    LensSessionHandle sessionHandle = openSession("foo", "bar", new LensConf(), mt);
-    addResource(sessionHandle, "jar", jarFile.getPath(), mt);
-
-    /* Delete resource jar from current working directory */
-    LensServerTestFileUtils.deleteFile(jarFile);
-
-    /* End: Setup */
-
-    /* Verification Steps: server should restart without exceptions */
-    restartLensServer();
-    HiveSessionService service = LensServices.get().getService(SessionService.NAME);
-    service.closeSession(sessionHandle);
-  }
-
-  private LensSessionHandle openSession(final String userName, final String passwd, final LensConf conf, MediaType mt) {
-
-    final WebTarget target = target().path("session");
-    final FormDataMultiPart mp = new FormDataMultiPart();
-
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("username").build(), userName));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("password").build(), passwd));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionconf").fileName("sessionconf").build(),
-        conf, mt));
-
-    return target.request(mt).post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE),
-      LensSessionHandle.class);
-
-  }
-
-  private void addResource(final LensSessionHandle lensSessionHandle, final String resourceType,
-    final String resourcePath, MediaType mt) {
-    final WebTarget target = target().path("session/resources");
-    final FormDataMultiPart mp = new FormDataMultiPart();
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), lensSessionHandle,
-      mt));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("type").build(), resourceType));
-    mp.bodyPart(
-      new FormDataBodyPart(FormDataContentDisposition.name("path").build(), resourcePath));
-    APIResult result = target.path("add").request(mt)
-      .put(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE), APIResult.class);
-
-    if (!result.getStatus().equals(Status.SUCCEEDED)) {
-      throw new RuntimeException("Could not add resource:" + result);
-    }
-  }
-
-  @Test(dataProvider = "mediaTypeData")
   public void testOpenSessionWithDatabase(MediaType mt) throws Exception {
     // TEST1 - Check if call with database parameter sets current database
     // Create the test DB
@@ -470,6 +428,21 @@ public class TestSessionResource extends LensJerseyTest {
     } catch (NotFoundException nfe) {
       // PASS
     }
+  }
+
+  /**
+   * Test multiple closeSession invocations for a session
+   */
+  @Test(dataProvider = "mediaTypeData")
+  public void testCloseSessionMultipleTimes(MediaType mt) throws Exception {
+    HiveSessionService sessionService = LensServices.get().getService(SessionService.NAME);
+
+    LensSessionHandle sessionHandle = sessionService.openSession("foo@localhost", "bar", new HashMap<String, String>());
+    Assert.assertNotNull(sessionHandle, "Expected session to be opened");
+    sessionService.getSession(sessionHandle).addToActiveQueries(QueryHandle.fromString(UUID.randomUUID().toString()));
+    // Closing multiple times should not cause any issues
+    sessionService.closeSession(sessionHandle);
+    sessionService.closeSession(sessionHandle);
   }
 
   /**
@@ -607,5 +580,23 @@ public class TestSessionResource extends LensJerseyTest {
 
     result = target.queryParam("sessionid", lensSessionHandle1).request(mt).delete(APIResult.class);
     Assert.assertTrue(metricsSvc.getTotalClosedSessions() >= 2);
+  }
+
+  @Test(dataProvider = "mediaTypeData")
+  public void testSessionList(MediaType mt) {
+    final WebTarget target = target().path("session").path("sessions");
+    Response res = target.request().get(Response.class);
+    List<UserSessionInfo> sessionsList = res.readEntity(new GenericType<List<UserSessionInfo>>() {
+    });
+    int size = sessionsList.size();
+    //Create a new session
+    FormDataMultiPart mp = getMultiFormData("foo", "bar", mt);
+    LensSessionHandle lensSessionHandle = target().path("session").request(mt)
+      .post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE), LensSessionHandle.class);
+    res = target.request().get(Response.class);
+    sessionsList = res.readEntity(new GenericType<List<UserSessionInfo>>() {
+    });
+    Assert.assertEquals(sessionsList.size(), size + 1);
+    target().path("session").queryParam("sessionid", lensSessionHandle).request(mt).delete(APIResult.class);
   }
 }

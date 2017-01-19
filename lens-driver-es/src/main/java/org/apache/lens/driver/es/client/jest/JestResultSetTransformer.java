@@ -26,8 +26,8 @@ import org.apache.lens.server.api.driver.DefaultResultSet;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.hadoop.hive.serde2.thrift.Type;
 import org.apache.hive.service.cli.ColumnDescriptor;
-import org.apache.hive.service.cli.Type;
 import org.apache.hive.service.cli.TypeDescriptor;
 
 import com.google.common.collect.Lists;

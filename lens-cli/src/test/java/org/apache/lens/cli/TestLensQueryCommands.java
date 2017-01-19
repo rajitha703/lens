@@ -23,6 +23,8 @@ import static org.testng.Assert.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.*;
 
@@ -30,18 +32,25 @@ import javax.ws.rs.BadRequestException;
 import javax.xml.datatype.DatatypeFactory;
 
 import org.apache.lens.api.APIResult;
+import org.apache.lens.api.LensConf;
 import org.apache.lens.api.metastore.*;
+import org.apache.lens.api.query.LensQuery;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryStatus;
 import org.apache.lens.cli.commands.LensCubeCommands;
 import org.apache.lens.cli.commands.LensDimensionTableCommands;
 import org.apache.lens.cli.commands.LensQueryCommands;
+import org.apache.lens.cli.config.LensCliConfigConstants;
 import org.apache.lens.client.LensClient;
+import org.apache.lens.client.model.ProxyLensQuery;
 import org.apache.lens.driver.hive.TestHiveDriver;
+import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.query.TestQueryService.DeferredInMemoryResultFormatter;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.Path;
 
+import org.testng.Assert;
 import org.testng.annotations.*;
 
 import lombok.extern.slf4j.Slf4j;
@@ -52,15 +61,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TestLensQueryCommands extends LensCliApplicationTest {
 
-  /** The explain plan. */
-  private static String explainPlan = "TOK_QUERY\n" + "   TOK_FROM\n" + "      TOK_TABREF\n" + "         TOK_TABNAME\n"
-    + "            local_dim_table\n" + "         test_dim\n" + "   TOK_INSERT\n" + "      TOK_DESTINATION\n"
-    + "         TOK_DIR\n" + "            TOK_TMP_FILE\n" + "      TOK_SELECT\n" + "         TOK_SELEXPR\n"
-    + "            .\n" + "               TOK_TABLE_OR_COL\n" + "                  test_dim\n"
-    + "               id\n" + "         TOK_SELEXPR\n" + "            .\n" + "               TOK_TABLE_OR_COL\n"
-    + "                  test_dim\n" + "               name\n" + "      TOK_WHERE\n" + "         =\n"
-    + "            .\n" + "               TOK_TABLE_OR_COL\n" + "                  test_dim\n"
-    + "               dt\n" + "            'latest'";
   private File resDir;
 
   @BeforeClass
@@ -92,6 +92,46 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     return qCom;
   }
 
+  @DataProvider(name = "executeSyncQueryDP")
+  private Object[][] executeSyncQueryDP() {
+    //Streaming not enabled. InMemory ResultSet Expected
+    LensClient client1 = new LensClient();
+    client1.setConnectionParam("lens.query.enable.persistent.resultset.indriver", "false");
+    client1.setConnectionParam("lens.query.enable.persistent.resultset", "false");
+    client1.setConnectionParam("lens.query.enable.metrics.per.query", "true");
+    client1.getConf().setLong(LensCliConfigConstants.QUERY_EXECUTE_TIMEOUT_MILLIS, 100);
+    LensQueryCommands qCom1 = new LensQueryCommands();
+    qCom1.setClient(client1);
+
+    //Streaming case. Query execution and formatting finishes fast.
+    //InMemory result set Excepted.
+    LensClient client2 = new LensClient();
+    client2.setConnectionParam("lens.query.enable.persistent.resultset.indriver", "false");
+    client2.setConnectionParam("lens.query.enable.persistent.resultset", "true");
+    client2.getConf().setLong(LensCliConfigConstants.QUERY_EXECUTE_TIMEOUT_MILLIS, 20000);
+    LensQueryCommands qCom2 = new LensQueryCommands();
+    qCom2.setClient(client2);
+
+    //Streaming case. Query execution finishes fast, but server takes long time to format result.
+    //InMemory ResultSet Excepted.
+    //Wait for query to be successful (i,e finish both execution and formatting)
+    LensClient client3 = new LensClient();
+    client3.setConnectionParam("lens.query.enable.persistent.resultset.indriver", "false");
+    client3.setConnectionParam("lens.query.enable.persistent.resultset", "true");
+    client3.setConnectionParam(LensConfConstants.QUERY_OUTPUT_FORMATTER,
+        DeferredInMemoryResultFormatter.class.getName());
+    client3.setConnectionParam("deferPersistenceByMillis", "5000"); // property used for test only
+    client3.getConf().setLong(LensCliConfigConstants.QUERY_EXECUTE_TIMEOUT_MILLIS, 20000);
+    LensQueryCommands qCom3 = new LensQueryCommands();
+    qCom3.setClient(client3);
+
+    return new Object[][] {
+      { qCom1, "cube select id,name from test_dim", true, false },
+      { qCom1, "cube select id,name1 from invalid_test_dim", false, true }, // this query should fail;
+      { qCom2, "cube select id,name from test_dim", true, true },
+      { qCom3, "cube select id,name from test_dim", true, true }, };
+  }
+
   private void closeClientConnection(LensQueryCommands queryCommands) {
     queryCommands.getClient().closeConnection();
   }
@@ -99,13 +139,51 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
   /**
    * Test execute sync query
    */
-  @Test(dataProvider = "queryCommands")
-  public void executeSyncQuery(LensQueryCommands qCom) {
-    assertEquals(qCom.getAllPreparedQueries("all", "", -1, -1), "No prepared queries");
-    String sql = "cube select id,name from test_dim";
-    String result = qCom.executeQuery(sql, false, "testQuery2");
-    assertTrue(result.contains("1\tfirst"), result);
-    closeClientConnection(qCom);
+  @Test(dataProvider = "executeSyncQueryDP")
+  public void executeSyncQuery(LensQueryCommands qCom, String sql, boolean shouldPass, boolean closeConn)
+    throws Exception{
+    assertEquals(qCom.getAllPreparedQueries("all", "", null, null), "No prepared queries");
+    String successfulQueries = qCom.getAllQueries("SUCCESSFUL", null, "all", null, null, null);
+    int noOfSuccQueriesSoFar;
+    if (successfulQueries.contains("No queries")) {
+      noOfSuccQueriesSoFar = 0;
+    } else {
+      noOfSuccQueriesSoFar = Integer.parseInt(successfulQueries.substring(successfulQueries.lastIndexOf(": ") + 2));
+    }
+    try {
+      String result = qCom.executeQuery(sql, false, "testQuerySync");
+      if (shouldPass) {
+        assertTrue(result.contains("1\tfirst"), result);
+      } else {
+        assertTrue(result.contains("Error"));
+        if (closeConn) {
+          closeClientConnection(qCom);
+        }
+        return;
+      }
+    } catch (Exception e) {
+      if (closeConn) {
+        closeClientConnection(qCom);
+      }
+      if (shouldPass) {
+        fail("Unexpected failure", e);
+      } else {
+        return; //simulated failure scenario
+      }
+    }
+    // Wait for query to reach successful state
+    int chkCount = 0;
+    while (!qCom.getAllQueries("SUCCESSFUL", null, "all", null, null, null).contains(
+        "Total number of queries: " + (noOfSuccQueriesSoFar + 1))) {
+      Thread.sleep(100);
+      chkCount++;
+      if (chkCount > 100) {
+        fail("Unable to get successful status for query even after 100 checks");
+      }
+    }
+    if (closeConn) {
+      closeClientConnection(qCom);
+    }
   }
 
   /**
@@ -118,11 +196,11 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
   public void preparedQuery(LensQueryCommands qCom) throws Exception {
     long submitTime = System.currentTimeMillis();
     String sql = "cube select id, name from test_dim";
-    String result = qCom.getAllPreparedQueries("testPreparedName", "all", submitTime, Long.MAX_VALUE);
+    String result = qCom.getAllPreparedQueries("testPreparedName", "all", String.valueOf(submitTime), null);
 
     assertEquals(result, "No prepared queries");
     final String qh = qCom.prepare(sql, "testPreparedName");
-    result = qCom.getAllPreparedQueries("testPreparedName", "all", submitTime, System.currentTimeMillis());
+    result = qCom.getAllPreparedQueries("testPreparedName", "all", String.valueOf(submitTime), "now");
     assertEquals(qh, result);
 
     result = qCom.getPreparedStatus(qh);
@@ -137,7 +215,7 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     String handle = qCom.executePreparedQuery(qh, true, "testPrepQuery2");
     log.debug("Perpared query handle is   " + handle);
     while (!qCom.getClient().getQueryStatus(handle).finished()) {
-      Thread.sleep(5000);
+      Thread.sleep(100);
     }
     String status = qCom.getStatus(handle);
     log.debug("Prepared Query Status is  " + status);
@@ -147,30 +225,31 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     result = qCom.getQueryResults(handle, null, true);
     log.debug("Prepared Query Result is  " + result);
     assertTrue(result.contains("1\tfirst"));
-    //Wait for query to purge. Purger runs every second
-    Thread.sleep(3000);
+    //Wait for query to purge. Purger runs every 100 millis
+    Thread.sleep(300);
     //Fetch again. Should not get resultset
     result = qCom.getQueryResults(handle, null, true);
     log.debug("Prepared Query Result is  " + result);
-    assertTrue(result.contains("Resultset not available for the query"), "Query is not purged yet " + handle);
+    assertTrue(result.contains("Failed"), "Query is not purged yet " + handle);
 
     result = qCom.destroyPreparedQuery(qh);
 
     log.debug("destroy result is " + result);
     assertEquals("Successfully destroyed " + qh, result);
-    result = qCom.getAllPreparedQueries("testPreparedName", "all", submitTime, Long.MAX_VALUE);
+    result = qCom.getAllPreparedQueries("testPreparedName", "all", String.valueOf(submitTime), null);
 
     assertEquals(result, "No prepared queries");
 
     final String qh2 = qCom.explainAndPrepare(sql, "testPrepQuery3");
-    assertTrue(qh2.contains(explainPlan));
-    String handles = qCom.getAllPreparedQueries("testPrepQuery3", "all", -1, Long.MAX_VALUE);
+    assertExplainOutput(qh2);
+    String handles = qCom.getAllPreparedQueries("testPrepQuery3", "all", null, null);
     assertFalse(handles.contains("No prepared queries"), handles);
 
-    String handles2 = qCom.getAllPreparedQueries("testPrepQuery3", "all", -1, submitTime - 1);
+    String handles2 = qCom.getAllPreparedQueries("testPrepQuery3", "all", null, String.valueOf(submitTime - 1));
     assertFalse(handles2.contains(qh), handles2);
     result = qCom.destroyPreparedQuery(handles);
     assertEquals("Successfully destroyed " + handles, result);
+
     closeClientConnection(qCom);
   }
 
@@ -203,7 +282,8 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     String result = qCom.explainQuery(sql, null);
 
     log.debug(result);
-    assertTrue(result.contains(explainPlan));
+    assertExplainOutput(result);
+
     closeClientConnection(qCom);
   }
 
@@ -223,6 +303,8 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
 
     result = qCom.explainAndPrepare(sql, "");
     assertTrue(result.contains("Explain FAILED:"));
+
+    closeClientConnection(qCom);
   }
 
   /**
@@ -239,7 +321,7 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     String qh = qCom.executeQuery(sql, true, "testQuery1");
     String user = qCom.getClient().getLensStatement(new QueryHandle(UUID.fromString(qh)))
         .getQuery().getSubmittedUser();
-    String result = qCom.getAllQueries("", "testQuery1", user, "", -1, Long.MAX_VALUE);
+    String result = qCom.getAllQueries("", "testQuery1", user, "", null, null);
     // this is because previous query has run two query handle will be there
     assertTrue(result.contains(qh), result);
     assertTrue(result.contains("Total number of queries"));
@@ -253,12 +335,12 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
         String details = qCom.getDetails(null);
         assertTrue(details.contains("Driver Query:"));
       }
-      Thread.sleep(1000);
+      Thread.sleep(100);
       queryStatus = qCom.getClient().getQueryStatus(qh);
     }
 
     // Check that query name searching is 'ilike'
-    String result2 = qCom.getAllQueries("", "query", "all", "", -1, Long.MAX_VALUE);
+    String result2 = qCom.getAllQueries("", "query", "all", "", null, null);
     assertTrue(result2.contains(qh), result2);
     assertTrue(qCom.getStatus(qh).contains("Status: SUCCESSFUL"));
     String details = qCom.getDetails(qh);
@@ -269,10 +351,10 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
 
     // Kill query is not tested as there is no deterministic way of killing a query
 
-    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", -1, Long.MAX_VALUE);
+    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", null, null);
     assertTrue(result.contains(qh), result);
 
-    result = qCom.getAllQueries("FAILED", "", "all", "", -1, Long.MAX_VALUE);
+    result = qCom.getAllQueries("FAILED", "", "all", "", null, null);
     if (!result.contains("No queries")) {
       // Make sure valid query handles are returned
       String[] handles = StringUtils.split(result, "\n");
@@ -286,37 +368,37 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     String queryName = qCom.getClient().getLensStatement(new QueryHandle(UUID.fromString(qh))).getQuery()
             .getQueryName();
     assertTrue("testQuery1".equalsIgnoreCase(queryName), queryName);
-    result = qCom.getAllQueries("", "", "", "", submitTime, System.currentTimeMillis());
+    result = qCom.getAllQueries("", "", "", "", String.valueOf(submitTime), "now");
     assertTrue(result.contains(qh), result);
 
-    result = qCom.getAllQueries("", "fooBar", "all", "", submitTime, System.currentTimeMillis());
+    result = qCom.getAllQueries("", "fooBar", "all", "", String.valueOf(submitTime), "now");
     assertTrue(result.contains("No queries"), result);
 
-    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", submitTime, System.currentTimeMillis());
+    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", String.valueOf(submitTime), "now");
     assertTrue(result.contains(qh));
 
-    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", submitTime - 5000, submitTime - 1);
+    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", String.valueOf(submitTime - 5000),
+      String.valueOf(submitTime - 1));
     // should not give query since its not in the range
     assertFalse(result.contains(qh));
 
     // Filters on driver
-    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "hive/hive1", submitTime,
-      System.currentTimeMillis());
+    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "hive/hive1", String.valueOf(submitTime), "now");
     assertTrue(result.contains(qh));
 
-    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "DummyDriver", submitTime, System.currentTimeMillis());
+    result = qCom.getAllQueries("SUCCESSFUL", "", "all", "DummyDriver", String.valueOf(submitTime), "now");
     assertFalse(result.contains(qh));
 
     try {
       // Should fail with bad request since fromDate > toDate
-      result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", submitTime + 5000, submitTime);
+      result = qCom.getAllQueries("SUCCESSFUL", "", "all", "", String.valueOf(submitTime + 5000),
+        String.valueOf(submitTime));
       fail("Call should have failed with BadRequestException, instead got " + result);
     } catch (BadRequestException exc) {
       // pass
     }
 
     System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-    closeClientConnection(qCom);
   }
 
   private String readFile(String path) throws FileNotFoundException {
@@ -324,10 +406,8 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
   }
 
   /**
-   * Sets the up.
-   *
-   * @param client the new up
-   * @throws Exception the exception
+   * Sets up query command instances and adds partitions to a table.
+   * @throws Exception
    */
   @BeforeClass
   public void setup() throws Exception {
@@ -336,10 +416,10 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     command.setClient(client);
 
     log.debug("Starting to test cube commands");
-    URL cubeSpec = TestLensQueryCommands.class.getClassLoader().getResource("sample-cube.xml");
+    URL cubeSpec = TestLensQueryCommands.class.getClassLoader().getResource("schema/cubes/base/sample-cube.xml");
     command.createCube(new File(cubeSpec.toURI()));
     TestLensDimensionCommands.createDimension();
-    TestLensDimensionTableCommands.addDim1Table("dim_table", "dim_table.xml", "local");
+    TestLensDimensionTableCommands.addDim1Table("dim_table", "schema/dimtables/dim_table.xml", "local");
 
     // Add partition
     URL dataDir = TestLensQueryCommands.class.getClassLoader().getResource("dim2-part");
@@ -370,9 +450,6 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     LensDimensionTableCommands dimTableCmd = new LensDimensionTableCommands();
     dimTableCmd.setClient(client);
     dimTableCmd.dropDimensionTable("dim_table", true);
-
-    // close client connection
-    client.closeConnection();
   }
 
   /**
@@ -385,6 +462,7 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
   public void showPersistentResultSet(LensQueryCommands qCom) throws Exception {
     System.out.println("@@PERSISTENT_RESULT_TEST-------------");
     qCom.getClient().setConnectionParam("lens.query.enable.persistent.resultset", "true");
+    qCom.getClient().setConnectionParam("lens.query.prefetch.inmemory.resultset", "false");
     String query = "cube select id,name from test_dim";
     try {
       String result = qCom.executeQuery(query, false, "testQuery3");
@@ -401,6 +479,7 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     downloadResult(qCom, qCom.getClient().getStatement().getQueryHandleString(), "testQuery3",  "\"1\",\"first\"");
     System.out.println("@@END_PERSISTENT_RESULT_TEST-------------");
     qCom.getClient().setConnectionParam("lens.query.enable.persistent.resultset.indriver", "false");
+
     closeClientConnection(qCom);
   }
 
@@ -423,7 +502,6 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     String qh = qCom.executeQuery(sql, true, "testQuery4");
     String result = qCom.getQueryResults(qh, null, false);
     assertTrue(result.contains("1\tfirst"), result);
-    closeClientConnection(qCom);
   }
 
   /**
@@ -438,7 +516,7 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     String query = "cube select id,name from test_dim";
     String qh = qCom.executeQuery(query, true, "testQuery");
     while (!qCom.getClient().getQueryStatus(qh).finished()) {
-      Thread.sleep(5000);
+      Thread.sleep(100);
     }
     assertTrue(qCom.getStatus(qh).contains("Status: SUCCESSFUL"));
 
@@ -450,7 +528,58 @@ public class TestLensQueryCommands extends LensCliApplicationTest {
     assertFalse(result.contains("(-"));
     System.out.println("@@END_FINISHED_PURGED_RESULT_TEST-------------");
     qCom.getClient().setConnectionParam("lens.query.enable.persistent.resultset", "false");
+
     closeClientConnection(qCom);
+  }
+
+  @Test
+  public void testProxyLensQuery() throws Exception {
+    LensClient client = new LensClient();
+    QueryHandle handle = client.executeQueryAsynch("cube select id,name from test_dim", "proxyTestQuery",
+      new LensConf());
+    client.getStatement().waitForQueryToComplete(handle);
+    LensQuery query = client.getQueryDetails(handle);
+    ProxyLensQuery proxyQuery = new ProxyLensQuery(client.getStatement(), handle);
+    Assert.assertEquals(query.getStatus().successful(), proxyQuery.getStatus().successful());
+    Assert.assertEquals(query.getSubmissionTime(), proxyQuery.getSubmissionTime());
+    Assert.assertEquals(query.getFinishTime(), proxyQuery.getFinishTime());
+
+    //Check is any new getters are added to LensQuery. If yes, ProxyLensQuery should be updated too
+    Set<String> lensQueryMethods = new HashSet<String>();
+    for (Method m :query.getClass().getDeclaredMethods()) {
+      if (Modifier.isPublic(m.getModifiers()) && !m.getName().startsWith("hash") && !m.getName().startsWith("equals")) {
+        lensQueryMethods.add(m.getName());
+      }
+    }
+
+    Set<String> proxyLensQueryMethods = new HashSet<String>();
+    for (Method m :proxyQuery.getClass().getDeclaredMethods()) {
+      if (Modifier.isPublic(m.getModifiers())) {
+        proxyLensQueryMethods.add(m.getName());
+      }
+    }
+
+    log.info("Methods in LensQuery: " + lensQueryMethods + "\nMethods in ProxyLensQuery: " + proxyLensQueryMethods);
+    assertTrue(lensQueryMethods.containsAll(proxyLensQueryMethods),
+        "Methods in LensQuery and ProxyLensQuery do not match");
+
+
+    //Check equals and hashCode override
+    ProxyLensQuery proxyQuery2 = new ProxyLensQuery(client.getStatement(), handle);
+    Assert.assertEquals(proxyQuery, proxyQuery2);
+    Assert.assertEquals(proxyQuery, query);
+    Assert.assertEquals(proxyQuery.hashCode(), proxyQuery2.hashCode());
+    Assert.assertEquals(proxyQuery.hashCode(), query.hashCode());
+
+    client.closeConnection();
+  }
+
+  private void assertExplainOutput(String result) {
+    assertTrue(result.contains("Stage-0 is a root stage"));
+    assertTrue(result.contains("Partition Description"));
+    assertTrue(result.contains("dt latest"));
+    assertTrue(result.contains("Processor Tree"));
+    assertTrue(result.contains("TableScan"));
   }
 
 }

@@ -19,7 +19,6 @@
 
 package org.apache.lens.regression.core.helpers;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.Map;
@@ -30,15 +29,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 
-import javax.xml.bind.JAXBException;
-
-import org.apache.lens.api.APIResult;
-import org.apache.lens.regression.core.constants.SessionURL;
 import org.apache.lens.regression.core.type.FormBuilder;
 import org.apache.lens.regression.core.type.MapBuilder;
-import org.apache.lens.regression.util.AssertUtil;
 import org.apache.lens.regression.util.Util;
-import org.apache.lens.server.api.error.LensException;
 
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -56,29 +49,15 @@ public abstract class ServiceManagerHelper {
   private static final String LENS_CLIENT_DIR = "lens.client.dir";
   private static final String LENS_SERVER_HDFS_URL = "lens.server.hdfsurl";
   private static final String LENS_CURRENT_DB = "lens.server.currentDB";
+  private static final String JOB_CONF_URL = "job.conf.url";
+  private static final String START_DATE = "query.start.date";
 
   protected static String sessionHandleString;
   protected static WebTarget servLens;
-
-  protected String baseUrl;
-  protected String adminUrl;
-  protected String userName;
-  protected String password;
-  protected String serverDir;
-  protected String clientDir;
-  protected String serverHdfsUrl;
-  protected String currentDB;
+  protected Properties configProp = null;
 
   public ServiceManagerHelper(String envFileName) {
-    Properties prop = Util.getPropertiesObj(envFileName);
-    this.baseUrl = prop.getProperty(LENS_BASE_URL);
-    this.adminUrl = prop.getProperty(LENS_ADMIN_URL);
-    this.userName = prop.getProperty(LENS_USERNAME);
-    this.password = prop.getProperty(LENS_PASSWORD);
-    this.serverDir = prop.getProperty(LENS_SERVER_DIR);
-    this.clientDir = prop.getProperty(LENS_CLIENT_DIR);
-    this.serverHdfsUrl = prop.getProperty(LENS_SERVER_HDFS_URL);
-    this.currentDB = prop.getProperty(LENS_CURRENT_DB);
+    configProp = Util.getPropertiesObj(envFileName);
   }
 
   public ServiceManagerHelper() {
@@ -87,7 +66,7 @@ public abstract class ServiceManagerHelper {
 
   public static WebTarget init() {
     Client client = ClientBuilder.newBuilder().register(MultiPartFeature.class).build();
-    String baseUri = Util.getProperty("lens.baseurl");
+    String baseUri = Util.getProperty(LENS_BASE_URL);
     servLens = client.target(UriBuilder.fromUri(baseUri).build());
     return servLens;
   }
@@ -96,40 +75,36 @@ public abstract class ServiceManagerHelper {
     return servLens;
   }
 
-  public static String getSessionHandle() {
-    return sessionHandleString;
-  }
-
   public static URI getServiceURI(String baseUri) {
     return UriBuilder.fromUri(baseUri).build();
   }
 
   public String getBaseUrl() {
-    return baseUrl;
+    return configProp.getProperty(LENS_BASE_URL);
   }
 
   public String getAdminUrl() {
-    return adminUrl;
+    return configProp.getProperty(LENS_ADMIN_URL);
   }
 
   public String getUserName() {
-    return userName;
+    return configProp.getProperty(LENS_USERNAME);
   }
 
   public String getPassword() {
-    return password;
+    return configProp.getProperty(LENS_PASSWORD);
   }
 
   public String getServerDir() {
-    return serverDir;
+    return configProp.getProperty(LENS_SERVER_DIR);
   }
 
   public String getClientDir() {
-    return clientDir;
+    return configProp.getProperty(LENS_CLIENT_DIR);
   }
 
   public String getServerHdfsUrl() {
-    return serverHdfsUrl;
+    return configProp.getProperty(LENS_SERVER_HDFS_URL);
   }
 
   public String getSessionHandleString() {
@@ -137,42 +112,15 @@ public abstract class ServiceManagerHelper {
   }
 
   public String getCurrentDB() {
-    return currentDB;
+    return configProp.getProperty(LENS_CURRENT_DB);
   }
 
-  public String openSession(String database) throws JAXBException, LensException {
-    FormBuilder formData = new FormBuilder();
-    formData.add("username", this.getUserName());
-    formData.add("password", this.getPassword());
-    if (database != null) {
-      formData.add("database", database);
-    }
-    Response response = this.exec("post", SessionURL.SESSION_BASE_URL, ServiceManagerHelper.servLens, null, null,
-        MediaType.MULTIPART_FORM_DATA_TYPE, MediaType.APPLICATION_XML, formData.getForm());
-    AssertUtil.assertSucceededResponse(response);
-    sessionHandleString = response.readEntity(String.class);
-    log.info("Session Handle String:{}", sessionHandleString);
-    return sessionHandleString;
+  public String getJobConfUrl() {
+    return configProp.getProperty(JOB_CONF_URL);
   }
 
-  public String openSession() throws JAXBException, LensException {
-    return openSession(null);
-  }
-
-  public void closeSession() throws JAXBException, LensException {
-    MapBuilder query = new MapBuilder("sessionid", sessionHandleString);
-    Response response = this.exec("delete", SessionURL.SESSION_BASE_URL, ServiceManagerHelper.servLens, null, query);
-    APIResult result = response.readEntity(APIResult.class);
-    if (result.getStatus() != APIResult.Status.SUCCEEDED) {
-      throw new LensException("Status should be SUCCEEDED");
-    }
-    if (response.getStatus() != 200) {
-      throw new LensException("Status code should be 200");
-    }
-    if (result.getMessage() == null) {
-      throw new LensException("Status message is null");
-    }
-    log.info("Closed Session : {}", sessionHandleString);
+  public String getStartDate() {
+    return configProp.getProperty(START_DATE);
   }
 
   public <T> Response exec(String functionName, String path, WebTarget service, FormDataMultiPart headers,
@@ -190,21 +138,25 @@ public abstract class ServiceManagerHelper {
     return exec(functionName, path, service, headers, queryParams, null, null, null);
   }
 
+  public <T> Response exec(String functionName, String path, WebTarget service, FormDataMultiPart headers,
+      MapBuilder queryParams, MediaType inputMediaType, String outputMediaType, T inputObject) {
+
+    Response cl = (Response) exec(functionName, path, service, headers, queryParams, inputMediaType, outputMediaType,
+        Response.class, inputObject);
+    return cl;
+  }
+
   public <T> Object exec(String functionName, String path, WebTarget service, FormDataMultiPart headers,
       MapBuilder queryParams, MediaType inputMediaType, String outputMediaType, Class responseClass, T inputObject) {
 
-    Object result;
-    WebTarget builder = null;
-    String className = this.getClass().getName();
-
     if (outputMediaType == null) {
-      outputMediaType = MediaType.WILDCARD;
+      outputMediaType = MediaType.APPLICATION_XML;
     }
     if (inputMediaType == null) {
-      inputMediaType = MediaType.WILDCARD_TYPE;
+      inputMediaType = MediaType.APPLICATION_XML_TYPE;
     }
 
-    builder = service.path(path);
+    WebTarget builder = service.path(path);
     if (queryParams != null) {
       for (Map.Entry<String, String> queryMapEntry : queryParams.getMap().entrySet()) {
         builder = builder.queryParam(queryMapEntry.getKey(), queryMapEntry.getValue());
@@ -212,48 +164,25 @@ public abstract class ServiceManagerHelper {
     }
 
     Invocation.Builder build = builder.request(outputMediaType);
-
     functionName = "exec" + functionName.toUpperCase();
 
     try {
-      Class methodClass = Class.forName(className);
+      Class methodClass = Class.forName(this.getClass().getName());
       Object methodObject = methodClass.newInstance();
 
       Method method = methodObject.getClass()
           .getMethod(functionName, Invocation.Builder.class, inputMediaType.getClass(), responseClass.getClass(),
               Object.class);
-      result = method.invoke(methodObject, build, inputMediaType, responseClass, inputObject);
+      Object result = method.invoke(methodObject, build, inputMediaType, responseClass, inputObject);
       return result;
 
-    } catch (NoSuchMethodException e) {
-      return e.getMessage();
-    } catch (InstantiationException e) {
-      return e.getMessage();
-    } catch (IllegalAccessException e) {
-      return e.getMessage();
-    } catch (InvocationTargetException e) {
-      return e.getMessage();
-    } catch (ClassNotFoundException e) {
-      return e.getMessage();
     } catch (Exception e) {
-      return e.getMessage();
+      log.error("Exception in exec", e);
+      return null;
     }
-
   }
 
-  public <T> Response exec(String functionName, String path, WebTarget service, FormDataMultiPart headers,
-      MapBuilder queryParams, MediaType inputMediaType, String outputMediaType, T inputObject) {
 
-    Class responseClass = Response.class;
-    Response cl = null;
-    try {
-      cl = (Response) exec(functionName, path, service, headers, queryParams, inputMediaType, outputMediaType,
-          responseClass, inputObject);
-    } catch (Exception e) {
-      System.out.println(e);
-    }
-    return cl;
-  }
 
   public <T> Object execPUT(Invocation.Builder builder, MediaType inputMediaType, Class<?> responseClass,
       T inputObject) {

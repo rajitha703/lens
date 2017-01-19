@@ -18,6 +18,7 @@
  */
 package org.apache.lens.client;
 
+import java.net.SocketTimeoutException;
 import java.util.List;
 
 import javax.ws.rs.client.Client;
@@ -31,9 +32,9 @@ import org.apache.lens.api.APIResult;
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.query.*;
 import org.apache.lens.api.query.QueryStatus.Status;
-
 import org.apache.lens.api.result.LensAPIResult;
 import org.apache.lens.client.exceptions.LensAPIException;
+import org.apache.lens.client.model.ProxyLensQuery;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -58,64 +59,162 @@ public class LensStatement {
   private LensQuery query;
 
   /**
-   * Execute.
-   *
-   * @param sql                    the sql
-   * @param waitForQueryToComplete the wait for query to complete
-   * @param queryName              the query name
-   */
-  public LensAPIResult<QueryHandle> execute(String sql, boolean waitForQueryToComplete,
-      String queryName) throws LensAPIException {
-    LensAPIResult<QueryHandle> lensAPIResult = executeQuery(sql, waitForQueryToComplete, queryName);
-    this.query = getQuery(lensAPIResult.getData());
-    return lensAPIResult;
-  }
-
-  /**
-   * Execute.
-   *
-   * @param sql       the sql
-   * @param queryName the query name
-   */
-  public void execute(String sql, String queryName) throws LensAPIException {
-    QueryHandle handle = executeQuery(sql, true, queryName).getData();
-    this.query = getQuery(handle);
-  }
-
-  /**
-   * Execute query.
+   * This method can be used for executing a query. If waitForQueryToComplete is false, the call to this method returns
+   * immediately after submitting the query to the server without waiting for it to complete execution.
+   * <p>
+   * {@link #getStatus(QueryHandle)} can be used to track to track the query progress and
+   * {@link #getQuery(QueryHandle)} can be used to get complete details (including status) about the query.
    *
    * @param sql                    the sql
    * @param waitForQueryToComplete the wait for query to complete
    * @param queryName              the query name
    * @return the query handle
    */
-  public LensAPIResult<QueryHandle> executeQuery(String sql, boolean waitForQueryToComplete,
-      String queryName) throws LensAPIException {
-
-    LensAPIResult<QueryHandle> lensAPIResult = executeQuery(sql, queryName);
-
-    if (waitForQueryToComplete) {
-      waitForQueryToComplete(lensAPIResult.getData());
-    }
-    return lensAPIResult;
+  @Deprecated
+  public QueryHandle executeQuery(String sql, boolean waitForQueryToComplete, String queryName)
+    throws LensAPIException {
+    return executeQuery(sql, waitForQueryToComplete, queryName, new LensConf());
   }
 
   /**
-   * Execute query.
+   * This method can be used for executing a query. If waitForQueryToComplete is false, the call to this method returns
+   * immediately after submitting the query to the server without waiting for it to complete execution.
+   * <p>
+   * {@link #getStatus(QueryHandle)} can be used to track to track the query progress and
+   * {@link #getQuery(QueryHandle)} can be used to get complete details (including status) about the query.
    *
-   * @param phandle                the phandle
+   * @param sql                    the sql
    * @param waitForQueryToComplete the wait for query to complete
    * @param queryName              the query name
+   * @param conf                   config specific to this query
    * @return the query handle
    */
-  public QueryHandle executeQuery(QueryPrepareHandle phandle, boolean waitForQueryToComplete, String queryName) {
-    QueryHandle handle = executeQuery(phandle, queryName);
+  public QueryHandle executeQuery(String sql, boolean waitForQueryToComplete, String queryName, LensConf conf)
+    throws LensAPIException {
+
+    QueryHandle handle = submitQuery(sql, queryName, conf);
 
     if (waitForQueryToComplete) {
       waitForQueryToComplete(handle);
     }
     return handle;
+  }
+
+  /**
+   * This method can be used for executing a prepared query. If waitForQueryToComplete is false, the call to this method
+   * returns immediately after submitting the query to the server without waiting for it to complete execution.
+   * <p>
+   * {@link #getStatus(QueryHandle)} can be used to track to track the query progress and
+   * {@link #getQuery(QueryHandle)} can be used to get complete details (including status) about the query.
+   *
+   * @param phandle                the prepared query handle
+   * @param waitForQueryToComplete the wait for query to complete
+   * @param queryName              the query name
+   * @return the query handle
+   */
+  @Deprecated
+  public QueryHandle executeQuery(QueryPrepareHandle phandle, boolean waitForQueryToComplete, String queryName) {
+    return executeQuery(phandle, waitForQueryToComplete, queryName, new LensConf());
+  }
+
+  /**
+   * This method can be used for executing a prepared query. If waitForQueryToComplete is false, the call to this method
+   * returns immediately after submitting the query to the server without waiting for it to complete execution.
+   * <p>
+   * {@link #getStatus(QueryHandle)} can be used to track to track the query progress and
+   * {@link #getQuery(QueryHandle)} can be used to get complete details (including status) about the query.
+   *
+   * @param phandle                the prepared query handle
+   * @param waitForQueryToComplete the wait for query to complete
+   * @param queryName              the query name
+   * @param conf                   config to be used for the query
+   * @return the query handle
+   */
+  public QueryHandle executeQuery(QueryPrepareHandle phandle, boolean waitForQueryToComplete, String queryName,
+     LensConf conf) {
+    QueryHandle handle = submitQuery(phandle, queryName, conf);
+
+    if (waitForQueryToComplete) {
+      waitForQueryToComplete(handle);
+    }
+    return handle;
+  }
+
+  /**
+   * This method can be used for executing query. The method waits for timeOutMillis time OR query execution to succeed,
+   * which ever happens first, before returning the response to the caller.
+   * <p>
+   * If the query execution finishes before timeout, user can check the query Status (SUCCESSFUL/FAILED) using
+   * {@link QueryHandleWithResultSet#getStatus()} and access the result of SUCCESSFUL query via
+   * {@link QueryHandleWithResultSet#getResult()} and {@link QueryHandleWithResultSet#getResultMetadata()}.
+   * <p>
+   * If the query does not finish within the timeout, user can use {@link #getStatus(QueryHandle)} to track
+   * the query progress and {@link #getQuery(QueryHandle)} to get complete details (including status) about
+   * the query. Once the query has reached SUCCESSFUL state, user can access the results via
+   * {@link #getResultSet(LensQuery)} and {@link #getResultSetMetaData(LensQuery)}
+   *
+   * @param sql : query/command to be executed
+   * @param queryName : optional query name
+   * @param timeOutMillis : timeout milliseconds
+   * @return QueryHandleWithResultSet
+   * @throws LensAPIException
+   */
+  @Deprecated
+  public QueryHandleWithResultSet executeQuery(String sql, String queryName, long timeOutMillis)
+    throws LensAPIException {
+    return executeQuery(sql, queryName, timeOutMillis, new LensConf());
+  }
+
+  /**
+   * This method can be used for executing query. The method waits for timeOutMillis time OR query execution to succeed,
+   * which ever happens first, before returning the response to the caller.
+   * <p>
+   * If the query execution finishes before timeout, user can check the query Status (SUCCESSFUL/FAILED) using
+   * {@link QueryHandleWithResultSet#getStatus()} and access the result of SUCCESSFUL query via
+   * {@link QueryHandleWithResultSet#getResult()} and {@link QueryHandleWithResultSet#getResultMetadata()}.
+   * <p>
+   * If the query does not finish within the timeout, user can use {@link #getStatus(QueryHandle)} to track
+   * the query progress and {@link #getQuery(QueryHandle)} to get complete details (including status) about
+   * the query. Once the query has reached SUCCESSFUL state, user can access the results via
+   * {@link #getResultSet(LensQuery)} and {@link #getResultSetMetaData(LensQuery)}
+   *
+   * @param sql : query/command to be executed
+   * @param queryName : optional query name
+   * @param timeOutMillis : timeout milliseconds
+   * @param conf      config to be used for the query
+   * @return QueryHandleWithResultSet
+   * @throws LensAPIException
+   */
+  public QueryHandleWithResultSet executeQuery(String sql, String queryName, long timeOutMillis, LensConf conf)
+    throws LensAPIException {
+    if (!connection.isOpen()) {
+      throw new IllegalStateException("Lens Connection has to be established before querying");
+    }
+
+    Client client = connection.buildClient();
+    FormDataMultiPart mp = new FormDataMultiPart();
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), connection
+        .getSessionHandle(), MediaType.APPLICATION_XML_TYPE));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), sql));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "EXECUTE_WITH_TIMEOUT"));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("timeoutmillis").build(), "" + timeOutMillis));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("queryName").build(), queryName == null ? ""
+        : queryName));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
+        MediaType.APPLICATION_XML_TYPE));
+    WebTarget target = getQueryWebTarget(client);
+
+    Response response =
+        target.request(MediaType.APPLICATION_XML_TYPE).post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
+
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      QueryHandleWithResultSet result =
+          response.readEntity(new GenericType<LensAPIResult<QueryHandleWithResultSet>>() {}).getData();
+      this.query = new ProxyLensQuery(this, result.getQueryHandle());
+      return result;
+    }
+
+    throw new LensAPIException(response.readEntity(LensAPIResult.class));
   }
 
   /**
@@ -126,7 +225,21 @@ public class LensStatement {
    * @return the query prepare handle
    * @throws LensAPIException
    */
+  @Deprecated
   public LensAPIResult<QueryPrepareHandle> prepareQuery(String sql, String queryName) throws LensAPIException {
+    return prepareQuery(sql, queryName, new LensConf());
+  }
+
+  /**
+   * Prepare query.
+   *
+   * @param sql       the sql
+   * @param queryName the query name
+   * @return the query prepare handle
+   * @throws LensAPIException
+   */
+  public LensAPIResult<QueryPrepareHandle> prepareQuery(String sql, String queryName,
+     LensConf conf) throws LensAPIException {
     if (!connection.isOpen()) {
       throw new IllegalStateException("Lens Connection has to be established before querying");
     }
@@ -134,7 +247,7 @@ public class LensStatement {
     Client client = connection.buildClient();
     WebTarget target = getPreparedQueriesWebTarget(client);
 
-    Response response = target.request().post(Entity.entity(prepareForm(sql, "PREPARE", queryName),
+    Response response = target.request().post(Entity.entity(prepareForm(sql, "PREPARE", queryName, conf),
         MediaType.MULTIPART_FORM_DATA_TYPE));
 
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
@@ -152,7 +265,22 @@ public class LensStatement {
    * @return the query plan
    * @throws LensAPIException
    */
+  @Deprecated
   public LensAPIResult<QueryPlan> explainAndPrepare(String sql, String queryName) throws LensAPIException {
+    return explainAndPrepare(sql, queryName, new LensConf());
+  }
+
+  /**
+   * Explain and prepare.
+   *
+   * @param sql       the sql
+   * @param queryName the query name
+   * @param conf      config to be used for the query
+   * @return the query plan
+   * @throws LensAPIException
+   */
+  public LensAPIResult<QueryPlan> explainAndPrepare(String sql, String queryName,
+    LensConf conf) throws LensAPIException {
     if (!connection.isOpen()) {
       throw new IllegalStateException("Lens Connection has to be established before querying");
     }
@@ -162,7 +290,7 @@ public class LensStatement {
     WebTarget target = getPreparedQueriesWebTarget(client);
 
     Response response = target.request().post(
-        Entity.entity(prepareForm(sql, "EXPLAIN_AND_PREPARE", queryName), MediaType.MULTIPART_FORM_DATA_TYPE),
+        Entity.entity(prepareForm(sql, "EXPLAIN_AND_PREPARE", queryName, conf), MediaType.MULTIPART_FORM_DATA_TYPE),
         Response.class);
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       return response.readEntity(new GenericType<LensAPIResult<QueryPlan>>() {});
@@ -178,9 +306,10 @@ public class LensStatement {
    * @param sql       the sql
    * @param op        the op
    * @param queryName the query name
+   * @param conf      config to be used for the query
    * @return the form data multi part
    */
-  private FormDataMultiPart prepareForm(String sql, String op, String queryName) {
+  private FormDataMultiPart prepareForm(String sql, String op, String queryName, LensConf conf) {
     FormDataMultiPart mp = new FormDataMultiPart();
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), connection
       .getSessionHandle(), MediaType.APPLICATION_XML_TYPE));
@@ -189,9 +318,13 @@ public class LensStatement {
     if (!StringUtils.isBlank(queryName)) {
       mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("queryName").build(), queryName));
     }
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
       MediaType.APPLICATION_XML_TYPE));
     return mp;
+  }
+
+  public void waitForQueryToComplete(QueryHandle handle) {
+    waitForQueryToComplete(handle, true);
   }
 
   /**
@@ -199,28 +332,28 @@ public class LensStatement {
    *
    * @param handle the handle
    */
-  public void waitForQueryToComplete(QueryHandle handle) {
-    LensClient.getCliLooger().info("Query handle: {}", handle);
-    query = getQuery(handle);
-    while (query.queued()) {
-      query = getQuery(handle);
-      LensClient.getCliLooger().debug("Query {} status: {}", handle, query.getStatus());
+  void waitForQueryToComplete(QueryHandle handle, boolean retryOnTimeout) {
+    LensClient.getCliLogger().info("Query handle: {}", handle);
+    LensQuery queryDetails = retryOnTimeout ? getQueryWithRetryOnTimeout(handle) : getQuery(handle);
+    while (queryDetails.getStatus().queued()) {
+      queryDetails = retryOnTimeout ? getQueryWithRetryOnTimeout(handle) : getQuery(handle);
+      LensClient.getCliLogger().debug("Query {} status: {}", handle, queryDetails.getStatus());
       try {
         Thread.sleep(connection.getLensConnectionParams().getQueryPollInterval());
       } catch (InterruptedException e) {
         throw new IllegalStateException(e);
       }
     }
-    LensClient.getCliLooger().info("User query: '{}' was submitted to {}", query.getUserQuery(),
-      query.getSelectedDriverName());
-    if (query.getDriverQuery() != null) {
-      LensClient.getCliLooger().info(" Driver query: '{}' and Driver handle: {}", query.getDriverQuery(),
-        query.getDriverOpHandle());
+    LensClient.getCliLogger().info("User query: '{}' was submitted to {}", queryDetails.getUserQuery(),
+      queryDetails.getSelectedDriverName());
+    if (queryDetails.getDriverQuery() != null) {
+      LensClient.getCliLogger().info(" Driver query: '{}' and Driver handle: {}", queryDetails.getDriverQuery(),
+        queryDetails.getDriverOpHandle());
     }
-    while (!query.getStatus().finished()
-      && !(query.getStatus().getStatus().equals(Status.CLOSED))) {
-      query = getQuery(handle);
-      LensClient.getCliLooger().info("Query Status:{} ", query.getStatus());
+    while (!queryDetails.getStatus().finished()
+      && !(queryDetails.getStatus().getStatus().equals(Status.CLOSED))) {
+      queryDetails = retryOnTimeout ? getQueryWithRetryOnTimeout(handle) : getQuery(handle);
+      LensClient.getCliLogger().info("Query Status:{} ", queryDetails.getStatus());
       try {
         Thread.sleep(connection.getLensConnectionParams().getQueryPollInterval());
       } catch (InterruptedException e) {
@@ -261,12 +394,37 @@ public class LensStatement {
     try {
       Client client = connection.buildClient();
       WebTarget target = getQueryWebTarget(client);
-      this.query = target.path(handle.toString()).queryParam("sessionid", connection.getSessionHandle()).request()
+      return target.path(handle.toString()).queryParam("sessionid", connection.getSessionHandle()).request()
         .get(LensQuery.class);
-      return query;
     } catch (Exception e) {
       log.error("Failed to get query status, cause:", e);
-      throw new IllegalStateException("Failed to get query status, cause:" + e.getMessage());
+      throw new IllegalStateException("Failed to get query status, cause:" + e.getMessage(), e);
+    }
+  }
+
+  LensQuery getQueryWithRetryOnTimeout(QueryHandle handle) {
+    while (true) {
+      try {
+        return getQuery(handle);
+      } catch (Exception e) {
+        if (isExceptionDueToSocketTimeout(e)) {
+          log.warn("Could not get query status. Encountered socket timeout. Retrying...");
+          continue;
+        } else {
+          throw e;
+        }
+      }
+    }
+  }
+
+  static boolean isExceptionDueToSocketTimeout(Throwable err) {
+    if (err == null) {
+      return false;
+    }
+    if (err instanceof SocketTimeoutException) {
+      return true;
+    } else {
+      return isExceptionDueToSocketTimeout(err.getCause());
     }
   }
 
@@ -293,9 +451,10 @@ public class LensStatement {
    *
    * @param sql       the sql
    * @param queryName the query name
+   * @param conf      config to be used for the query
    * @return the query handle
    */
-  private LensAPIResult<QueryHandle> executeQuery(String sql, String queryName) throws LensAPIException {
+  private QueryHandle submitQuery(String sql, String queryName, LensConf conf) throws LensAPIException {
     if (!connection.isOpen()) {
       throw new IllegalStateException("Lens Connection has to be established before querying");
     }
@@ -305,17 +464,19 @@ public class LensStatement {
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("sessionid").build(), connection
       .getSessionHandle(), MediaType.APPLICATION_XML_TYPE));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), sql));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "execute"));
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "EXECUTE"));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("queryName").build(), queryName == null ? ""
       : queryName));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
       MediaType.APPLICATION_XML_TYPE));
     WebTarget target = getQueryWebTarget(client);
 
     Response response = target.request().post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE));
 
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-      return response.readEntity(new GenericType<LensAPIResult<QueryHandle>>() {});
+      QueryHandle handle = response.readEntity(new GenericType<LensAPIResult<QueryHandle>>() {}).getData();
+      this.query = new ProxyLensQuery(this, handle);
+      return handle;
     }
 
     throw new LensAPIException(response.readEntity(LensAPIResult.class));
@@ -326,9 +487,10 @@ public class LensStatement {
    *
    * @param phandle   the phandle
    * @param queryName the query name
+   * @param conf      config to be used for the query
    * @return the query handle
    */
-  public QueryHandle executeQuery(QueryPrepareHandle phandle, String queryName) {
+  private QueryHandle submitQuery(QueryPrepareHandle phandle, String queryName, LensConf conf) {
     if (!connection.isOpen()) {
       throw new IllegalStateException("Lens Connection has to be " + "established before querying");
     }
@@ -341,11 +503,12 @@ public class LensStatement {
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "execute"));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("queryName").build(), queryName == null ? ""
       : queryName));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
       MediaType.APPLICATION_XML_TYPE));
     QueryHandle handle = target.request()
-      .post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE), QueryHandle.class);
+        .post(Entity.entity(mp, MediaType.MULTIPART_FORM_DATA_TYPE), QueryHandle.class);
 
+    this.query = new ProxyLensQuery(this, handle);
     return handle;
   }
 
@@ -356,7 +519,20 @@ public class LensStatement {
    * @return the query plan
    * @throws LensAPIException
    */
+  @Deprecated
   public LensAPIResult<QueryPlan> explainQuery(String sql) throws LensAPIException {
+    return explainQuery(sql, new LensConf());
+  }
+
+  /**
+   * Explain query.
+   *
+   * @param sql   the sql
+   * @param conf  config to be used for the query
+   * @return the query plan
+   * @throws LensAPIException
+   */
+  public LensAPIResult<QueryPlan> explainQuery(String sql, LensConf conf) throws LensAPIException {
     if (!connection.isOpen()) {
       throw new IllegalStateException("Lens Connection has to be established before querying");
     }
@@ -367,7 +543,7 @@ public class LensStatement {
       .getSessionHandle(), MediaType.APPLICATION_XML_TYPE));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("query").build(), sql));
     mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("operation").build(), "explain"));
-    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), new LensConf(),
+    mp.bodyPart(new FormDataBodyPart(FormDataContentDisposition.name("conf").fileName("conf").build(), conf,
       MediaType.APPLICATION_XML_TYPE));
     WebTarget target = getQueryWebTarget(client);
 
@@ -391,15 +567,35 @@ public class LensStatement {
    * @param toDate    the to date
    * @return the all queries
    */
-  public List<QueryHandle> getAllQueries(String state, String queryName, String user, String driver, long fromDate,
-    long toDate) {
+  public List<QueryHandle> getAllQueries(String state, String queryName, String user, String driver, String fromDate,
+    String toDate) {
     WebTarget target = getQueryWebTarget(connection.buildClient());
-    List<QueryHandle> handles = target.queryParam("sessionid", connection.getSessionHandle())
+    return target.queryParam("sessionid", connection.getSessionHandle())
       .queryParam("state", state).queryParam("queryName", queryName).queryParam("user", user)
       .queryParam("driver", driver).queryParam("fromDate", fromDate).queryParam("toDate", toDate).request()
       .get(new GenericType<List<QueryHandle>>() {
       });
-    return handles;
+  }
+
+  /**
+   * Gets the all queries with details.
+   *
+   * @param state     the state
+   * @param queryName the query name
+   * @param user      the user
+   * @param driver    the driver name
+   * @param fromDate  the from date
+   * @param toDate    the to date
+   * @return the all queries as per criteria along with additional details
+   */
+  public List<LensQuery> getAllQueryDetails(String state, String queryName, String user, String driver,
+     String fromDate, String toDate) {
+    WebTarget target = getQueryWebTarget(connection.buildClient());
+    return target.queryParam("sessionid", connection.getSessionHandle())
+      .queryParam("state", state).queryParam("queryName", queryName).queryParam("user", user)
+      .queryParam("driver", driver).queryParam("fromDate", fromDate).queryParam("toDate", toDate).request()
+      .get(new GenericType<List<LensQuery>>() {
+      });
   }
 
   /**
@@ -411,17 +607,20 @@ public class LensStatement {
    * @param toDate    the to date
    * @return the all prepared queries
    */
-  public List<QueryPrepareHandle> getAllPreparedQueries(String userName, String queryName, long fromDate, long toDate) {
+  public List<QueryPrepareHandle> getAllPreparedQueries(String userName, String queryName, String fromDate,
+    String toDate) {
     Client client = connection.buildClient();
     WebTarget target = getPreparedQueriesWebTarget(client);
-    List<QueryPrepareHandle> handles = target.queryParam("sessionid", connection.getSessionHandle())
+    return target.queryParam("sessionid", connection.getSessionHandle())
       .queryParam("user", userName).queryParam("queryName", queryName).queryParam("fromDate", fromDate)
       .queryParam("toDate", toDate).request().get(new GenericType<List<QueryPrepareHandle>>() {});
-    return handles;
   }
 
+  /**
+   * Gets the result set meta data for the most recently executed query.
+   */
   public QueryResultSetMetadata getResultSetMetaData() {
-    return this.getResultSetMetaData(query);
+    return this.getResultSetMetaData(this.getQuery());
   }
 
   /**
@@ -447,12 +646,18 @@ public class LensStatement {
     }
   }
 
+  /**
+   * Gets result set for the most recently executed query.
+   */
   public QueryResult getResultSet() {
-    return this.getResultSet(this.query);
+    return this.getResultSet(this.getQuery());
   }
 
+  /**
+   * Gets http result set for the most recently executed query.
+   */
   public Response getHttpResultSet() {
-    return this.getHttpResultSet(this.query);
+    return this.getHttpResultSet(this.getQuery());
   }
 
   /**
@@ -501,12 +706,12 @@ public class LensStatement {
   }
 
   /**
-   * Kill.
+   * Kill the most recently submitted query via any executeQuery methods.
    *
    * @return true, if successful
    */
   public boolean kill() {
-    return this.kill(query);
+    return this.kill(this.getQuery());
   }
 
   /**
@@ -536,7 +741,7 @@ public class LensStatement {
    * @return true, if successful
    */
   public boolean closeResultSet() {
-    if (!query.getStatus().isResultSetAvailable()) {
+    if (!this.getQuery().getStatus().isResultSetAvailable()) {
       return false;
     }
     Client client = connection.buildClient();
@@ -565,35 +770,73 @@ public class LensStatement {
   }
 
   public boolean isIdle() {
-    return query == null || query.getStatus().finished();
+    return query == null || this.getQuery().getStatus().finished();
   }
 
   /**
-   * Was query successful.
+   * Was the most recently executed query successful.
    *
    * @return true, if successful
    */
   public boolean wasQuerySuccessful() {
-    return query.getStatus().getStatus().equals(QueryStatus.Status.SUCCESSFUL);
+    return this.getQuery().getStatus().getStatus().equals(QueryStatus.Status.SUCCESSFUL);
   }
 
+  /**
+   * Gets status for query represented by handle.
+   */
+  public QueryStatus getStatus(QueryHandle handle) {
+    return getQuery(handle).getStatus();
+  }
+
+  /**
+   * Gets the status for the most recently executed query.
+   */
   public QueryStatus getStatus() {
     return getQuery().getStatus();
   }
 
+  /**
+   * Gets details of the most recently executed query through {@link #executeQuery(QueryPrepareHandle, boolean, String)}
+   * or {@link #executeQuery(String, boolean, String)} or {@link #executeQuery(String, String, long)}
+   * <p>
+   * Note: Cached query details are returned if the query has finished. If the query has still not finished it fetches
+   * the latest details from server again.
+   */
   public LensQuery getQuery() {
+    if (this.query != null && !this.query.getStatus().finished()) {
+      // Get Updated Query if the query has not finished yet.
+      this.query = getQuery(this.query.getQueryHandle());
+    }
     return this.query;
   }
 
+  /**
+   *Gets the error code, if any, for the most recently executed query.
+   */
   public int getErrorCode() {
-    return this.query.getErrorCode();
+    return this.getQuery().getErrorCode();
   }
 
+  /**
+   * Gets the error message, if any, for the most recently executed query.
+   */
   public String getErrorMessage() {
-    return this.query.getErrorMessage();
+    return this.getQuery().getErrorMessage();
   }
 
+  /**
+   * Gets the query handle string for the most recently executed query.
+   */
   public String getQueryHandleString() {
     return this.query.getQueryHandleString();
   }
+
+  /**
+   * Gets the user for the lens session
+   */
+  public String getUser() {
+    return this.connection.getLensConnectionParams().getUser();
+  }
 }
+

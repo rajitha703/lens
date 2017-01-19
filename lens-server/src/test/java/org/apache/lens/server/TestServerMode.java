@@ -43,17 +43,13 @@ import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 /**
  * The Class TestServerMode.
  */
 @Test(alwaysRun = true, groups = "filter-test", dependsOnGroups = "restart-test")
 public class TestServerMode extends LensAllApplicationJerseyTest {
-
-  private LensSessionHandle lensSessionHandle;
 
   /*
    * (non-Javadoc)
@@ -63,8 +59,12 @@ public class TestServerMode extends LensAllApplicationJerseyTest {
   @BeforeTest
   public void setUp() throws Exception {
     super.setUp();
-    LensServerTestUtil.createTable("test_table", target(), RestAPITestUtil.openFooBarSession(target(), defaultMT),
-      defaultMT);
+  }
+  @BeforeClass
+  public void create() throws Exception {
+    LensSessionHandle fooBarSessonHandle = RestAPITestUtil.openFooBarSession(target(), defaultMT);
+    LensServerTestUtil.createTable("test_table", target(), fooBarSessonHandle, defaultMT);
+    RestAPITestUtil.closeSession(target(), fooBarSessonHandle, defaultMT);
   }
 
   /*
@@ -74,8 +74,15 @@ public class TestServerMode extends LensAllApplicationJerseyTest {
    */
   @AfterTest
   public void tearDown() throws Exception {
-    RestAPITestUtil.closeSession(target(), lensSessionHandle, defaultMT);
     super.tearDown();
+  }
+
+  @AfterClass
+  public void drop() throws Exception {
+    LensSessionHandle fooBarSessonHandle = RestAPITestUtil.openFooBarSession(target(), defaultMT);
+    LensServerTestUtil.dropTable("test_table", target(), fooBarSessonHandle,
+        defaultMT);
+    RestAPITestUtil.closeSession(target(), fooBarSessonHandle, defaultMT);
   }
 
   /**

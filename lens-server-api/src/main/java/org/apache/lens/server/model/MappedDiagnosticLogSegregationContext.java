@@ -41,6 +41,11 @@ public class MappedDiagnosticLogSegregationContext implements LogSegregationCont
     setQueryId(id);
   }
 
+  public static void removeLogSegragationIds() {
+    MDC.remove(LOG_SEGREGATION_ID);
+    MDC.remove(QUERY_LOG_ID);
+  }
+
   @Override
   public String getQueryId() {
     return MDC.get(QUERY_LOG_ID);
@@ -49,5 +54,12 @@ public class MappedDiagnosticLogSegregationContext implements LogSegregationCont
   @Override
   public void setQueryId(String id) {
     MDC.put(QUERY_LOG_ID, id);
+  }
+
+  public static void put(String key, String value) {
+    MDC.put(key, value);
+  }
+  public static void remove(String key) {
+    MDC.remove(key);
   }
 }

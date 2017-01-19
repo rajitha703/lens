@@ -25,13 +25,15 @@ import javax.ws.rs.core.Response;
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
 import org.apache.lens.api.query.*;
+import org.apache.lens.server.api.LensService;
+import org.apache.lens.server.api.SessionValidator;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.cost.QueryCost;
 
 /**
  * The Interface QueryExecutionService.
  */
-public interface QueryExecutionService {
+public interface QueryExecutionService extends LensService, SessionValidator {
 
   /**
    * The Constant NAME.
@@ -225,7 +227,8 @@ public interface QueryExecutionService {
    * Returns all the queries in the specified state, for the given user and matching query name.
    *
    * @param sessionHandle the session handle
-   * @param state         return queries in this state. if null, all queries will be returned
+   * @param states        return queries in these state. if null, all queries will be returned. Multiple states can
+   *                      be supplied separated by comma
    * @param user          Get queries submitted by a specific user.
    *                      If this set to "all", queries of all users are returned
    * @param driver        Get queries submitted on a specific driver.
@@ -235,8 +238,27 @@ public interface QueryExecutionService {
    * @return List of query handles
    * @throws LensException the lens exception
    */
-  List<QueryHandle> getAllQueries(LensSessionHandle sessionHandle, String state, String user, String driver,
-    String queryName, long fromDate, long toDate) throws LensException;
+  List<QueryHandle> getAllQueries(LensSessionHandle sessionHandle, String states, String user, String driver,
+    String queryName, String fromDate, String toDate) throws LensException;
+
+
+  /**
+   * Returns all the queries in the specified state, for the given user and matching query name.
+   *
+   * @param sessionHandle the session handle
+   * @param states        return queries in these state. if null, all queries will be returned. Multiple states can
+   *                      be supplied separated by comma
+   * @param user          Get queries submitted by a specific user.
+   *                      If this set to "all", queries of all users are returned
+   * @param driver        Get queries submitted on a specific driver.
+   * @param queryName     return queries containing the query name. If null, all queries will be returned
+   * @param fromDate      start date of time range interval
+   * @param toDate        end date of the time range interval
+   * @return List of Lens Query object
+   * @throws LensException the lens exception
+   */
+  List<LensQuery> getAllQueryDetails(LensSessionHandle sessionHandle, String states, String user, String driver,
+    String queryName, String fromDate, String toDate) throws LensException;
 
   /**
    * Returns all the prepared queries for the specified user. If no user is passed, queries of all users will be
@@ -253,7 +275,7 @@ public interface QueryExecutionService {
    * @throws LensException the lens exception
    */
   List<QueryPrepareHandle> getAllPreparedQueries(LensSessionHandle sessionHandle, String user, String queryName,
-    long fromDate, long toDate) throws LensException;
+    String fromDate, String toDate) throws LensException;
 
   /**
    * Destroy a prepared query.
@@ -315,4 +337,11 @@ public interface QueryExecutionService {
    * @return finished queries count
    */
   long getFinishedQueriesCount();
+
+  /**
+   * Get queries being launched count
+   *
+   * @return Queries being launched count
+   */
+  long getLaunchingQueriesCount();
 }

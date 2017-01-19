@@ -26,6 +26,7 @@ import java.net.URISyntaxException;
 import org.apache.lens.cli.commands.LensCubeCommands;
 import org.apache.lens.cli.commands.LensDatabaseCommands;
 import org.apache.lens.client.LensClient;
+import org.apache.lens.client.exceptions.LensBriefErrorException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,8 +45,7 @@ public class TestLensDatabaseCommands extends LensCliApplicationTest {
    */
   @Test
   public void testDatabaseCommands() throws URISyntaxException {
-    LensClient client = new LensClient();
-    try {
+    try (LensClient client = new LensClient()) {
       LensDatabaseCommands command = new LensDatabaseCommands();
       LensCubeCommands cubeCommand = new LensCubeCommands();
       command.setClient(client);
@@ -54,8 +54,6 @@ public class TestLensDatabaseCommands extends LensCliApplicationTest {
       for (int i = 0; i < 4; i++, cascade = !cascade) {
         testDrop(command, cubeCommand, cascade);
       }
-    } finally {
-      client.closeConnection();
     }
   }
 
@@ -70,8 +68,8 @@ public class TestLensDatabaseCommands extends LensCliApplicationTest {
     result = command.switchDatabase(myDatabase);
     assertEquals(result, "Successfully switched to my_db");
     if (cascade) {
-      String createOutput = cubeCommand.createCube(
-        new File(TestLensDatabaseCommands.class.getClassLoader().getResource("sample-cube.xml").toURI()));
+      String createOutput = cubeCommand.createCube(new File(TestLensDatabaseCommands.class.getClassLoader()
+        .getResource("schema/cubes/base/sample-cube.xml").toURI()));
       assertEquals(createOutput, "succeeded");
       assertTrue(cubeCommand.showCubes().contains("sample_cube"));
     }
@@ -79,7 +77,12 @@ public class TestLensDatabaseCommands extends LensCliApplicationTest {
     assertEquals(result, "Successfully switched to default");
     assertFalse(cubeCommand.showCubes().contains("sample_cube"));
     if (cascade) {
-      assertEquals(command.dropDatabase(myDatabase, false), "failed");
+      try {
+        command.dropDatabase(myDatabase, false);
+        fail("Should have failed");
+      } catch(LensBriefErrorException e) {
+        assertTrue(e.getIdBriefErrorTemplate().getBriefError().toPrettyString().contains("my_db is not empty"));
+      }
     }
     result = command.dropDatabase(myDatabase, cascade);
     assertEquals(result, "succeeded");

@@ -18,8 +18,9 @@
  */
 package org.apache.lens.server.query;
 
+import static org.apache.lens.api.query.SubmitOp.*;
+import static org.apache.lens.server.error.LensServerErrorCode.INVALID_HANDLE;
 import static org.apache.lens.server.error.LensServerErrorCode.NULL_OR_EMPTY_OR_BLANK_QUERY;
-import static org.apache.lens.server.error.LensServerErrorCode.SESSION_ID_NOT_PROVIDED;
 
 import java.util.List;
 
@@ -31,7 +32,6 @@ import org.apache.lens.api.APIResult;
 import org.apache.lens.api.APIResult.Status;
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
-import org.apache.lens.api.error.ErrorCollection;
 import org.apache.lens.api.query.*;
 import org.apache.lens.api.result.LensAPIResult;
 import org.apache.lens.server.LensServices;
@@ -39,8 +39,9 @@ import org.apache.lens.server.api.annotations.MultiPurposeResource;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.QueryExecutionService;
 import org.apache.lens.server.api.query.cost.QueryCostTOBuilder;
-import org.apache.lens.server.error.UnSupportedQuerySubmitOpException;
+import org.apache.lens.server.error.UnSupportedOpException;
 import org.apache.lens.server.model.LogSegregationContext;
+import org.apache.lens.server.util.UtilityMethods;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -60,46 +61,10 @@ public class QueryServiceResource {
   /** The query server. */
   private QueryExecutionService queryServer;
 
-  private final ErrorCollection errorCollection;
-
   private final LogSegregationContext logSegregationContext;
 
-  /**
-   * Check session id.
-   *
-   * @param sessionHandle the session handle
-   */
-  private void checkSessionId(final LensSessionHandle sessionHandle) {
-    if (sessionHandle == null) {
-      throw new BadRequestException("Invalid session handle");
-    }
-  }
-
   private void validateSessionId(final LensSessionHandle sessionHandle) throws LensException {
-    if (sessionHandle == null) {
-      throw new LensException(SESSION_ID_NOT_PROVIDED.getLensErrorInfo());
-    }
-  }
-
-  private SubmitOp checkAndGetQuerySubmitOperation(final String operation) throws UnSupportedQuerySubmitOpException {
-
-    try {
-      return SubmitOp.valueOf(operation.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      throw new UnSupportedQuerySubmitOpException(e);
-    }
-  }
-
-  /**
-   * Check query.
-   *
-   * @param query the query
-   */
-
-  private void checkQuery(String query) {
-    if (StringUtils.isBlank(query)) {
-      throw new BadRequestException("Invalid query");
-    }
+    queryServer.validateSession(sessionHandle);
   }
 
   private void validateQuery(String query) throws LensException {
@@ -125,12 +90,7 @@ public class QueryServiceResource {
    */
   public QueryServiceResource() throws LensException {
     queryServer = LensServices.get().getService(QueryExecutionService.NAME);
-    errorCollection = LensServices.get().getErrorCollection();
     logSegregationContext = LensServices.get().getLogSegregationContext();
-  }
-
-  QueryExecutionService getQueryServer() {
-    return queryServer;
   }
 
   /**
@@ -139,45 +99,63 @@ public class QueryServiceResource {
    * parameter to false.
    *
    * @param sessionid The sessionid in which queryName is working
-   * @param state     If any state is passed, all the queries in that state will be returned, otherwise all queries will
-   *                  be returned. Possible states are {link QueryStatus.Status#values()}
+   * @param states    If any state is passed, all the queries in that state will be returned, otherwise all queries will
+   *                  be returned. Possible states are {link QueryStatus.Status#values()}. Multiple states can be
+   *                  passed as comma separated string
    * @param queryName If any queryName is passed, all the queries containing the queryName will be returned, otherwise
    *                  all the queries will be returned
    * @param user      Returns queries submitted by this user. If set to "all", returns queries of all users. By default,
    *                  returns queries of the current user.
    * @param driver    Get queries submitted on a specific driver.
    * @param fromDate  from date to search queries in a time range, the range is inclusive(submitTime &gt;= fromDate)
-   * @param toDate    to date to search queries in a time range, the range is inclusive(toDate &gt;= submitTime)
+   *                  from date can be a long value indicating timestamp, or it can be in a format acceptable in
+   *                  time_range_in function. Notably: yyyy[-MM[-dd[-HH-[mm...]]]], or now based relative format
+   * @param toDate    to date to search queries in a time range, the range is inclusive(toDate &gt; submitTime)
+   *                  possible formats it can take is same as fromDate
    * @return List of {@link QueryHandle} objects
    */
   @GET
   @Path("queries")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public List<QueryHandle> getAllQueries(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @DefaultValue("") @QueryParam("state") String state, @DefaultValue("") @QueryParam("queryName") String queryName,
-    @DefaultValue("") @QueryParam("user") String user, @DefaultValue("") @QueryParam("driver") String driver,
-    @DefaultValue("-1") @QueryParam("fromDate") long fromDate, @DefaultValue("-1") @QueryParam("toDate") long toDate) {
-    checkSessionId(sessionid);
-    try {
-      if (toDate == -1L) {
-        toDate = Long.MAX_VALUE;
-      }
-      return queryServer.getAllQueries(sessionid, state, user, driver, queryName, fromDate, toDate);
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @QueryParam("state") String states, @QueryParam("queryName") String queryName, @QueryParam("user") String user,
+    @QueryParam("driver") String driver, @QueryParam("fromDate") String fromDate, @QueryParam("toDate") String toDate)
+    throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.getAllQueries(sessionid, states, user, driver, queryName, fromDate, toDate);
   }
 
-  /** The submit clue. */
-  static String submitClue = ". supported values are:" + SubmitOp.ESTIMATE + ", " + SubmitOp.EXPLAIN + ", "
-    + SubmitOp.EXECUTE + " and " + SubmitOp.EXECUTE_WITH_TIMEOUT;
-
-  /** The prepare clue. */
-  static String prepareClue = ". supported values are:" + SubmitOp.PREPARE + " and " + SubmitOp.EXPLAIN_AND_PREPARE;
-
-  /** The submit prepared clue. */
-  static String submitPreparedClue = ". supported values are:" + SubmitOp.EXECUTE + " and "
-    + SubmitOp.EXECUTE_WITH_TIMEOUT;
+  /**
+   * Get all the queries in the query server; can be filtered with state and queryName. This will by default only return
+   * queries submitted by the user that has started the session. To get queries of all users, set the searchAllUsers
+   * parameter to false.
+   *
+   * @param sessionid The sessionid in which queryName is working
+   * @param states    If any state is passed, all the queries in that state will be returned, otherwise all queries will
+   *                  be returned. Possible states are {link QueryStatus.Status#values()}. Multiple states can be
+   *                  passed as comma separated string
+   * @param queryName If any queryName is passed, all the queries containing the queryName will be returned, otherwise
+   *                  all the queries will be returned
+   * @param user      Returns queries submitted by this user. If set to "all", returns queries of all users. By default,
+   *                  returns queries of the current user.
+   * @param driver    Get queries submitted on a specific driver.
+   * @param fromDate  from date to search queries in a time range, the range is inclusive(submitTime &gt;= fromDate)
+   *                  from date can be a long value indicating timestamp, or it can be in a format acceptable in
+   *                  time_range_in function. Notably: yyyy[-MM[-dd[-HH-[mm...]]]], or now based relative format
+   * @param toDate    to date to search queries in a time range, the range is inclusive(toDate &gt; submitTime)
+   *                  possible formats it can take is same as fromDate
+   * @return List of {@link LensQuery} objects
+   */
+  @GET
+  @Path("queries/detail")
+  @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
+  public List<LensQuery> getAllQueryDetails(@QueryParam("sessionid") LensSessionHandle sessionid,
+    @QueryParam("state") String states, @QueryParam("queryName") String queryName, @QueryParam("user") String user,
+    @QueryParam("driver") String driver, @QueryParam("fromDate") String fromDate, @QueryParam("toDate") String toDate)
+    throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.getAllQueryDetails(sessionid, states, user, driver, queryName, fromDate, toDate);
+  }
 
   /**
    * Submit the query for explain or execute or execute with a timeout.
@@ -191,7 +169,11 @@ public class QueryServiceResource {
    *                      {@link org.apache.lens.api.query.SubmitOp#EXECUTE} and
    *                      {@link org.apache.lens.api.query.SubmitOp#EXECUTE_WITH_TIMEOUT}
    * @param conf          The configuration for the query
-   * @param timeoutmillis The timeout for the query, honored only in case of value {@link
+   * @param timeoutmillis The timeout for the query. If the query does not finish within the specified
+   *                      timeout, it is automatically cancelled unless user specified otherwise
+   *                      by setting configuration lens.query.cancel.on.timeout = false.
+   *                      <br>
+   *                      Note: The timeout parameter is honored only in case of {@link
    *                      org.apache.lens.api.query.SubmitOp#EXECUTE_WITH_TIMEOUT} operation
    * @param queryName     human readable query name set by user (optional parameter)
 
@@ -213,35 +195,28 @@ public class QueryServiceResource {
       @DefaultValue("") @FormDataParam("queryName") String queryName) throws LensException {
 
     final String requestId = this.logSegregationContext.getLogSegragationId();
-
-    try {
-      validateSessionId(sessionid);
-      SubmitOp sop = checkAndGetQuerySubmitOperation(operation);
-      validateQuery(query);
-
-      QuerySubmitResult result;
-      switch (sop) {
-      case ESTIMATE:
-        result = new QueryCostTOBuilder(queryServer.estimate(requestId, sessionid, query, conf)).build();
-        break;
-      case EXECUTE:
-        result = queryServer.executeAsync(sessionid, query, conf, queryName);
-        break;
-      case EXPLAIN:
-        result = queryServer.explain(requestId, sessionid, query, conf);
-        break;
-      case EXECUTE_WITH_TIMEOUT:
-        result = queryServer.execute(sessionid, query, timeoutmillis, conf, queryName);
-        break;
-      default:
-        throw new UnSupportedQuerySubmitOpException();
-      }
-
-      return LensAPIResult.composedOf(null, requestId, result);
-    } catch (LensException e) {
-      e.buildLensErrorResponse(errorCollection, null, requestId);
-      throw e;
+    validateSessionId(sessionid);
+    SubmitOp[] supportedOperations = new SubmitOp[]{ESTIMATE, EXECUTE, EXPLAIN, EXECUTE_WITH_TIMEOUT};
+    SubmitOp sop = UtilityMethods.checkAndGetOperation(operation, SubmitOp.class, supportedOperations);
+    validateQuery(query);
+    QuerySubmitResult result;
+    switch (sop) {
+    case ESTIMATE:
+      result = new QueryCostTOBuilder(queryServer.estimate(requestId, sessionid, query, conf)).build();
+      break;
+    case EXECUTE:
+      result = queryServer.executeAsync(sessionid, query, conf, queryName);
+      break;
+    case EXPLAIN:
+      result = queryServer.explain(requestId, sessionid, query, conf);
+      break;
+    case EXECUTE_WITH_TIMEOUT:
+      result = queryServer.execute(sessionid, query, timeoutmillis, conf, queryName);
+      break;
+    default:
+      throw new UnSupportedOpException(supportedOperations);
     }
+    return LensAPIResult.composedOf(null, requestId, result);
   }
 
   /**
@@ -271,16 +246,16 @@ public class QueryServiceResource {
   public APIResult cancelAllQueries(@QueryParam("sessionid") LensSessionHandle sessionid,
     @DefaultValue("") @QueryParam("state") String state, @DefaultValue("") @QueryParam("user") String user,
     @DefaultValue("") @QueryParam("queryName") String queryName, @DefaultValue("") @QueryParam("driver") String driver,
-    @DefaultValue("-1") @QueryParam("fromDate") long fromDate, @DefaultValue("-1") @QueryParam("toDate") long toDate) {
-    checkSessionId(sessionid);
+    @QueryParam("fromDate") String fromDate, @QueryParam("toDate") String toDate)
+    throws LensException {
+    validateSessionId(sessionid);
     int numCancelled = 0;
     List<QueryHandle> handles = null;
     boolean failed = false;
     try {
-      handles = getAllQueries(sessionid, state, queryName, user, driver, fromDate,
-        toDate == -1L ? Long.MAX_VALUE : toDate);
+      handles = getAllQueries(sessionid, state, queryName, user, driver, fromDate, toDate);
       for (QueryHandle handle : handles) {
-        if (cancelQuery(sessionid, handle)) {
+        if (queryServer.cancelQuery(sessionid, handle)) {
           numCancelled++;
         }
       }
@@ -318,16 +293,9 @@ public class QueryServiceResource {
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public List<QueryPrepareHandle> getAllPreparedQueries(@QueryParam("sessionid") LensSessionHandle sessionid,
     @DefaultValue("") @QueryParam("user") String user, @DefaultValue("") @QueryParam("queryName") String queryName,
-    @DefaultValue("-1") @QueryParam("fromDate") long fromDate, @DefaultValue("-1") @QueryParam("toDate") long toDate) {
-    checkSessionId(sessionid);
-    try {
-      if (toDate == -1L) {
-        toDate = Long.MAX_VALUE;
-      }
-      return queryServer.getAllPreparedQueries(sessionid, user, queryName, fromDate, toDate);
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @QueryParam("fromDate") String fromDate, @QueryParam("toDate") String toDate) throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.getAllPreparedQueries(sessionid, user, queryName, fromDate, toDate);
   }
 
   /**
@@ -356,35 +324,22 @@ public class QueryServiceResource {
       @DefaultValue("") @FormDataParam("operation") String operation, @FormDataParam("conf") LensConf conf,
       @DefaultValue("") @FormDataParam("queryName") String queryName) throws LensException {
     final String requestId = this.logSegregationContext.getLogSegragationId();
-
-    try {
-      checkSessionId(sessionid);
-      checkQuery(query);
-      SubmitOp sop = null;
-      QuerySubmitResult result;
-      try {
-        sop = SubmitOp.valueOf(operation.toUpperCase());
-      } catch (IllegalArgumentException e) {
-        log.error("Illegal argument for submitop: " + operation, e);
-      }
-      if (sop == null) {
-        throw new BadRequestException("Invalid operation type: " + operation + prepareClue);
-      }
-      switch (sop) {
-      case PREPARE:
-        result = queryServer.prepare(sessionid, query, conf, queryName);
-        break;
-      case EXPLAIN_AND_PREPARE:
-        result = queryServer.explainAndPrepare(sessionid, query, conf, queryName);
-        break;
-      default:
-        throw new BadRequestException("Invalid operation type: " + operation + prepareClue);
-      }
-      return LensAPIResult.composedOf(null, requestId, result);
-    } catch (LensException e) {
-      e.buildLensErrorResponse(errorCollection, null, requestId);
-      throw e;
+    validateSessionId(sessionid);
+    validateQuery(query);
+    SubmitOp[] supportedOperations = new SubmitOp[]{PREPARE, EXPLAIN_AND_PREPARE};
+    SubmitOp sop = UtilityMethods.checkAndGetOperation(operation, SubmitOp.class, supportedOperations);
+    QuerySubmitResult result;
+    switch (sop) {
+    case PREPARE:
+      result = queryServer.prepare(sessionid, query, conf, queryName);
+      break;
+    case EXPLAIN_AND_PREPARE:
+      result = queryServer.explainAndPrepare(sessionid, query, conf, queryName);
+      break;
+    default:
+      throw new UnSupportedOpException(supportedOperations);
     }
+    return LensAPIResult.composedOf(null, requestId, result);
   }
   /**
    * Destroy all the prepared queries; Can be filtered with user.
@@ -405,16 +360,15 @@ public class QueryServiceResource {
   @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN })
   public APIResult destroyPreparedQueries(@QueryParam("sessionid") LensSessionHandle sessionid,
       @DefaultValue("") @QueryParam("user") String user, @DefaultValue("") @QueryParam("queryName") String queryName,
-      @DefaultValue("-1") @QueryParam("fromDate") long fromDate,
-      @DefaultValue("-1") @QueryParam("toDate") long toDate) {
-    checkSessionId(sessionid);
+      @QueryParam("fromDate") String fromDate, @QueryParam("toDate") String toDate) throws LensException {
+    validateSessionId(sessionid);
     int numDestroyed = 0;
     boolean failed = false;
     List<QueryPrepareHandle> handles = null;
     try {
-      handles = getAllPreparedQueries(sessionid, user, queryName, fromDate, toDate == -1L ? Long.MAX_VALUE : toDate);
+      handles = getAllPreparedQueries(sessionid, user, queryName, fromDate, toDate);
       for (QueryPrepareHandle prepared : handles) {
-        if (destroyPrepared(sessionid, prepared)) {
+        if (queryServer.destroyPrepared(sessionid, prepared)) {
           numDestroyed++;
         }
       }
@@ -441,11 +395,11 @@ public class QueryServiceResource {
    * @param queryHandle the query handle
    * @return the query handle
    */
-  private QueryHandle getQueryHandle(String queryHandle) {
+  private QueryHandle getQueryHandle(String queryHandle) throws LensException {
     try {
       return QueryHandle.fromString(queryHandle);
     } catch (Exception e) {
-      throw new BadRequestException("Invalid query handle: " + queryHandle, e);
+      throw new LensException(INVALID_HANDLE.getLensErrorInfo(), e, queryHandle);
     }
   }
 
@@ -455,11 +409,11 @@ public class QueryServiceResource {
    * @param prepareHandle the prepare handle
    * @return the prepare handle
    */
-  private QueryPrepareHandle getPrepareHandle(String prepareHandle) {
+  private QueryPrepareHandle getPrepareHandle(String prepareHandle) throws LensException {
     try {
       return QueryPrepareHandle.fromString(prepareHandle);
     } catch (Exception e) {
-      throw new BadRequestException("Invalid prepared query handle: " + prepareHandle, e);
+      throw new LensException(INVALID_HANDLE.getLensErrorInfo(), e, prepareHandle);
     }
   }
 
@@ -474,13 +428,9 @@ public class QueryServiceResource {
   @Path("preparedqueries/{prepareHandle}")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public LensPreparedQuery getPreparedQuery(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("prepareHandle") String prepareHandle) {
-    checkSessionId(sessionid);
-    try {
-      return queryServer.getPreparedQuery(sessionid, getPrepareHandle(prepareHandle));
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @PathParam("prepareHandle") String prepareHandle) throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.getPreparedQuery(sessionid, getPrepareHandle(prepareHandle));
   }
 
   /**
@@ -496,9 +446,9 @@ public class QueryServiceResource {
   @Path("preparedqueries/{prepareHandle}")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public APIResult destroyPrepared(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("prepareHandle") String prepareHandle) {
-    checkSessionId(sessionid);
-    boolean ret = destroyPrepared(sessionid, getPrepareHandle(prepareHandle));
+    @PathParam("prepareHandle") String prepareHandle) throws LensException {
+    validateSessionId(sessionid);
+    boolean ret = queryServer.destroyPrepared(sessionid, getPrepareHandle(prepareHandle));
     if (ret) {
       return new APIResult(Status.SUCCEEDED, "Destroy on the query " + prepareHandle + " is successful");
     } else {
@@ -517,13 +467,9 @@ public class QueryServiceResource {
   @Path("queries/{queryHandle}")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public LensQuery getStatus(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("queryHandle") String queryHandle) {
-    checkSessionId(sessionid);
-    try {
-      return queryServer.getQuery(sessionid, getQueryHandle(queryHandle));
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @PathParam("queryHandle") String queryHandle) throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.getQuery(sessionid, getQueryHandle(queryHandle));
   }
 
   /**
@@ -539,43 +485,13 @@ public class QueryServiceResource {
   @Path("queries/{queryHandle}")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public APIResult cancelQuery(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("queryHandle") String queryHandle) {
-    checkSessionId(sessionid);
-    boolean ret = cancelQuery(sessionid, getQueryHandle(queryHandle));
+    @PathParam("queryHandle") String queryHandle) throws LensException {
+    validateSessionId(sessionid);
+    boolean ret = queryServer.cancelQuery(sessionid, getQueryHandle(queryHandle));
     if (ret) {
       return new APIResult(Status.SUCCEEDED, "Cancel on the query " + queryHandle + " is successful");
     } else {
       return new APIResult(Status.FAILED, "Cancel on the query " + queryHandle + " failed");
-    }
-  }
-
-  /**
-   * Cancel query.
-   *
-   * @param sessionid   the sessionid
-   * @param queryHandle the query handle
-   * @return true, if successful
-   */
-  private boolean cancelQuery(LensSessionHandle sessionid, QueryHandle queryHandle) {
-    try {
-      return queryServer.cancelQuery(sessionid, queryHandle);
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
-  }
-
-  /**
-   * Destroy prepared.
-   *
-   * @param sessionid   the sessionid
-   * @param queryHandle the query handle
-   * @return true, if successful
-   */
-  private boolean destroyPrepared(LensSessionHandle sessionid, QueryPrepareHandle queryHandle) {
-    try {
-      return queryServer.destroyPrepared(sessionid, queryHandle);
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
     }
   }
 
@@ -593,17 +509,13 @@ public class QueryServiceResource {
   @Consumes({MediaType.MULTIPART_FORM_DATA})
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public APIResult updateConf(@FormDataParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("queryHandle") String queryHandle, @FormDataParam("conf") LensConf conf) {
-    checkSessionId(sessionid);
-    try {
-      boolean ret = queryServer.updateQueryConf(sessionid, getQueryHandle(queryHandle), conf);
-      if (ret) {
-        return new APIResult(Status.SUCCEEDED, "Update on the query conf for " + queryHandle + " is successful");
-      } else {
-        return new APIResult(Status.FAILED, "Update on the query conf for " + queryHandle + " failed");
-      }
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
+    @PathParam("queryHandle") String queryHandle, @FormDataParam("conf") LensConf conf) throws LensException {
+    validateSessionId(sessionid);
+    boolean ret = queryServer.updateQueryConf(sessionid, getQueryHandle(queryHandle), conf);
+    if (ret) {
+      return new APIResult(Status.SUCCEEDED, "Update on the query conf for " + queryHandle + " is successful");
+    } else {
+      return new APIResult(Status.FAILED, "Update on the query conf for " + queryHandle + " failed");
     }
   }
 
@@ -622,17 +534,13 @@ public class QueryServiceResource {
   @Consumes({MediaType.MULTIPART_FORM_DATA})
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public APIResult updatePreparedConf(@FormDataParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("prepareHandle") String prepareHandle, @FormDataParam("conf") LensConf conf) {
-    checkSessionId(sessionid);
-    try {
-      boolean ret = queryServer.updateQueryConf(sessionid, getPrepareHandle(prepareHandle), conf);
-      if (ret) {
-        return new APIResult(Status.SUCCEEDED, "Update on the query conf for " + prepareHandle + " is successful");
-      } else {
-        return new APIResult(Status.FAILED, "Update on the query conf for " + prepareHandle + " failed");
-      }
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
+    @PathParam("prepareHandle") String prepareHandle, @FormDataParam("conf") LensConf conf) throws LensException {
+    validateSessionId(sessionid);
+    boolean ret = queryServer.updateQueryConf(sessionid, getPrepareHandle(prepareHandle), conf);
+    if (ret) {
+      return new APIResult(Status.SUCCEEDED, "Update on the query conf for " + prepareHandle + " is successful");
+    } else {
+      return new APIResult(Status.FAILED, "Update on the query conf for " + prepareHandle + " failed");
     }
   }
 
@@ -662,28 +570,17 @@ public class QueryServiceResource {
     @PathParam("prepareHandle") String prepareHandle,
     @DefaultValue("EXECUTE") @FormDataParam("operation") String operation, @FormDataParam("conf") LensConf conf,
     @DefaultValue("30000") @FormDataParam("timeoutmillis") Long timeoutmillis,
-    @DefaultValue("") @FormDataParam("queryName") String queryName) {
-    checkSessionId(sessionid);
-    try {
-      SubmitOp sop = null;
-      try {
-        sop = SubmitOp.valueOf(operation.toUpperCase());
-      } catch (IllegalArgumentException e) {
-        log.warn("illegal argument for submit operation: " + operation, e);
-      }
-      if (sop == null) {
-        throw new BadRequestException("Invalid operation type: " + operation + submitPreparedClue);
-      }
-      switch (sop) {
-      case EXECUTE:
-        return queryServer.executePrepareAsync(sessionid, getPrepareHandle(prepareHandle), conf, queryName);
-      case EXECUTE_WITH_TIMEOUT:
-        return queryServer.executePrepare(sessionid, getPrepareHandle(prepareHandle), timeoutmillis, conf, queryName);
-      default:
-        throw new BadRequestException("Invalid operation type: " + operation + submitPreparedClue);
-      }
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
+    @DefaultValue("") @FormDataParam("queryName") String queryName) throws LensException {
+    validateSessionId(sessionid);
+    SubmitOp[] supportedOperations = new SubmitOp[]{EXECUTE, EXECUTE_WITH_TIMEOUT};
+    SubmitOp sop = UtilityMethods.checkAndGetOperation(operation, SubmitOp.class, supportedOperations);
+    switch (sop) {
+    case EXECUTE:
+      return queryServer.executePrepareAsync(sessionid, getPrepareHandle(prepareHandle), conf, queryName);
+    case EXECUTE_WITH_TIMEOUT:
+      return queryServer.executePrepare(sessionid, getPrepareHandle(prepareHandle), timeoutmillis, conf, queryName);
+    default:
+      throw new UnSupportedOpException(supportedOperations);
     }
   }
 
@@ -698,13 +595,9 @@ public class QueryServiceResource {
   @Path("queries/{queryHandle}/resultsetmetadata")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public QueryResultSetMetadata getResultSetMetadata(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("queryHandle") String queryHandle) {
-    checkSessionId(sessionid);
-    try {
-      return queryServer.getResultSetMetadata(sessionid, getQueryHandle(queryHandle));
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @PathParam("queryHandle") String queryHandle) throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.getResultSetMetadata(sessionid, getQueryHandle(queryHandle));
   }
 
   /**
@@ -721,13 +614,9 @@ public class QueryServiceResource {
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public QueryResult getResultSet(@QueryParam("sessionid") LensSessionHandle sessionid,
     @PathParam("queryHandle") String queryHandle, @QueryParam("fromindex") long startIndex,
-    @QueryParam("fetchsize") int fetchSize) {
-    checkSessionId(sessionid);
-    try {
-      return queryServer.fetchResultSet(sessionid, getQueryHandle(queryHandle), startIndex, fetchSize);
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @QueryParam("fetchsize") int fetchSize) throws LensException {
+    validateSessionId(sessionid);
+    return queryServer.fetchResultSet(sessionid, getQueryHandle(queryHandle), startIndex, fetchSize);
   }
 
   /**
@@ -741,12 +630,8 @@ public class QueryServiceResource {
   @Path("queries/{queryHandle}/httpresultset")
   @Produces({MediaType.APPLICATION_OCTET_STREAM})
   public Response getHttpResultSet(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("queryHandle") String queryHandle) {
-    try {
-      return queryServer.getHttpResultSet(sessionid, getQueryHandle(queryHandle));
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @PathParam("queryHandle") String queryHandle) throws LensException {
+    return queryServer.getHttpResultSet(sessionid, getQueryHandle(queryHandle));
   }
 
   /**
@@ -761,16 +646,10 @@ public class QueryServiceResource {
   @Path("queries/{queryHandle}/resultset")
   @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN})
   public APIResult closeResultSet(@QueryParam("sessionid") LensSessionHandle sessionid,
-    @PathParam("queryHandle") String queryHandle) {
-    checkSessionId(sessionid);
-    try {
-      queryServer.closeResultSet(sessionid, getQueryHandle(queryHandle));
-      return new APIResult(Status.SUCCEEDED,
-        "Close on the result set" + " for query " + queryHandle + " is successful");
-
-    } catch (LensException e) {
-      throw new WebApplicationException(e);
-    }
+    @PathParam("queryHandle") String queryHandle) throws LensException {
+    validateSessionId(sessionid);
+    queryServer.closeResultSet(sessionid, getQueryHandle(queryHandle));
+    return new APIResult(Status.SUCCEEDED,
+      "Close on the result set for query " + queryHandle + " is successful");
   }
-
 }

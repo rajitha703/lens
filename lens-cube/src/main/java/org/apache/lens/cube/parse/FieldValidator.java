@@ -29,15 +29,16 @@ import org.apache.lens.cube.metadata.ReferencedDimAttribute.ChainRefCol;
 import org.apache.lens.cube.parse.ExpressionResolver.ExprSpecContext;
 import org.apache.lens.server.api.error.LensException;
 
-import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 
 import com.google.common.collect.ImmutableSet;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Validate fields based on cube queryability
  */
+@Slf4j
 public class FieldValidator implements ContextRewriter {
 
   @Override
@@ -54,11 +55,7 @@ public class FieldValidator implements ContextRewriter {
     if (!cube.allFieldsQueriable()) {
       // do queried field validation
       List<DerivedCube> dcubes;
-      try {
-        dcubes = cubeql.getMetastoreClient().getAllDerivedQueryableCubes(cube);
-      } catch (HiveException e) {
-        throw new LensException(e);
-      }
+      dcubes = cubeql.getMetastoreClient().getAllDerivedQueryableCubes(cube);
 
       ImmutableSet<String> queriedTimeDimCols = cubeql.getQueriedTimeDimCols();
 
@@ -78,12 +75,13 @@ public class FieldValidator implements ContextRewriter {
       // do validation
       // Find atleast one derived cube which contains all the dimensions
       // queried.
-
+      log.info("Chained columns: {}, Queried dim attributes: {}", chainedSrcColumns, queriedDimAttrs);
       boolean derivedCubeFound = false;
       for (DerivedCube dcube : dcubes) {
 
         if (dcube.getDimAttributeNames().containsAll(chainedSrcColumns)
           && dcube.getDimAttributeNames().containsAll(queriedDimAttrs)) {
+          log.info("Derived cube found: {}", dcube.getName());
           // remove all the measures that are covered
           queriedMsrs.removeAll(dcube.getMeasureNames());
           derivedCubeFound = true;
@@ -98,9 +96,10 @@ public class FieldValidator implements ContextRewriter {
       }
 
       if (!queriedMsrs.isEmpty()) {
+        log.info("Uncovered queried Measures: {}", queriedMsrs);
         // Add appropriate message to know which fields are not queryable together
         if (!nonQueryableFields.isEmpty()) {
-
+          log.info("Non queryable fields: {}", nonQueryableFields);
           conflictingFields.addAll(nonQueryableFields);
           conflictingFields.addAll(queriedMsrs);
           throw new FieldsCannotBeQueriedTogetherException(new ConflictingFields(conflictingFields));

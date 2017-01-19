@@ -24,6 +24,7 @@ import { Link } from 'react-router';
 import 'react-treeview/react-treeview.css';
 import ClassNames from 'classnames';
 
+import DatabaseStore from '../stores/DatabaseStore';
 import CubeStore from '../stores/CubeStore';
 import AdhocQueryActions from '../actions/AdhocQueryActions';
 import UserStore from '../stores/UserStore';
@@ -32,7 +33,7 @@ import '../styles/css/tree.css';
 
 function getCubeData () {
   return {
-    cubes: CubeStore.getCubes()
+    cubes: CubeStore.getCubes(UserStore.currentDatabase())
   };
 }
 
@@ -44,17 +45,17 @@ class CubeTree extends React.Component {
     // comes with React.createClass, using constructor is the new
     // idiomatic way
     // https://facebook.github.io/react/blog/2015/01/27/react-v0.13.0-beta-1.html
-    this.state = { cubes: [], loading: true, isCollapsed: false };
+    this.state = {cubes: CubeStore.getCubes(UserStore.currentDatabase()), loading: false, isCollapsed: false };
 
     // no autobinding with ES6 so doing it manually, see link below
     // https://facebook.github.io/react/blog/2015/01/27/react-v0.13.0-beta-1.html#autobinding
     this._onChange = this._onChange.bind(this);
     this.toggle = this.toggle.bind(this);
-
-    // need to fire an action to fetch the cubes from server
-    // can't ask the store as it won't have any at the startup
-    // TODO optimize this, don't fire it everytime.
-    AdhocQueryActions.getCubes(UserStore.getUserDetails().secretToken);
+    if (!this.state.cubes) {
+      this.state.cubes = this.state.cubes || [];
+      this.state.loading = true;
+      AdhocQueryActions.getCubes(UserStore.getUserDetails().secretToken, UserStore.currentDatabase());
+    }
   }
 
   componentDidMount () {
@@ -77,18 +78,18 @@ class CubeTree extends React.Component {
     var cubeTree = Object.keys(this.state.cubes).map((cubeName, i) => {
       let cube = cubeHash[cubeName];
 
-      let label = <Link to='cubeschema' params={{cubeName: cubeName}}>
+      let label = <Link to='cubeschema' params={{databaseName: this.state.database, cubeName: cubeName}}>
           <span className='node'>{cube.name}</span>
         </Link>;
 
-      let measureLabel = <Link to='cubeschema' params={{cubeName: cubeName}}
+      let measureLabel = <Link to='cubeschema' params={{databaseName: this.state.database, cubeName: cubeName}}
         query={{type: 'measures'}}>
           <span className='quiet'>Measures</span>
         </Link>;
 
-      let dimensionLabel = <Link to='cubeschema' params={{cubeName: cubeName}}
+      let dimensionLabel = <Link to='cubeschema' params={{databaseName: this.state.database, cubeName: cubeName}}
         query={{type: 'dimensions'}}>
-          <span className='quiet'>Dimensions</span>
+          <span className='quiet'>Dim-Attributes</span>
         </Link>;
       return (
         <TreeView key={cube.name + '|' + i} nodeLabel={label}
@@ -105,7 +106,7 @@ class CubeTree extends React.Component {
             }) : null }
           </TreeView >
 
-          <TreeView key={cube.name + '|dimensions'} nodeLabel={dimensionLabel}
+          <TreeView key={cube.name + '|dim attributes'} nodeLabel={dimensionLabel}
             defaultCollapsed={!cube.isLoaded}>
             { cube.dimensions ? cube.dimensions.map(dimension => {
               return (

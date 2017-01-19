@@ -174,6 +174,10 @@ public class MetastoreUtil {
     return getColumnKeyPrefix(colName) + DISPLAY_SFX;
   }
 
+  public static String getCubeColTagKey(String colName) {
+    return getColumnKeyPrefix(colName) + TAGS_PFX;
+  }
+
   public static String getExprColumnKey(String colName) {
     return getColumnKeyPrefix(colName) + EXPR_SFX;
   }
@@ -562,7 +566,8 @@ public class MetastoreUtil {
     }
     return null;
   }
-  public static ASTNode parseExpr(String expr) throws LensException {
+
+  static ASTNode parseExpr(String expr) throws LensException {
     ParseDriver driver = new ParseDriver();
     ASTNode tree;
     try {
@@ -571,5 +576,18 @@ public class MetastoreUtil {
       throw new LensException(EXPRESSION_NOT_PARSABLE.getLensErrorInfo(), e, e.getMessage(), expr);
     }
     return ParseUtils.findRootNonNullToken(tree);
+  }
+
+  public static ASTNode copyAST(ASTNode original) {
+
+    ASTNode copy = new ASTNode(original); // Leverage constructor
+
+    if (original.getChildren() != null) {
+      for (Object o : original.getChildren()) {
+        ASTNode childCopy = copyAST((ASTNode) o);
+        copy.addChild(childCopy);
+      }
+    }
+    return copy;
   }
 }

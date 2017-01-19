@@ -54,12 +54,7 @@
     <name>lens.query.result.parent.dir</name>
     <value>target/lens-results</value>
   </property>
-
-  <property>
-    <name>hive.server2.query.log.dir</name>
-    <value>target/query-logs</value>
-  </property>
-
+  
   <property>
     <name>hive.server2.authentication</name>
     <value>CUSTOM</value>
@@ -129,7 +124,12 @@
   <property>
     <!-- run every second -->
     <name>lens.server.querypurger.sleep.interval</name>
-    <value>1000</value>
+    <value>100</value>
+  </property>
+
+  <property>
+    <name>lens.server.query.expiry.check.interval.millis</name>
+    <value>10</value>
   </property>
 
   <property>
@@ -145,7 +145,7 @@
 
   <property>
     <name>lens.server.servicenames</name>
-    <value>session,query,metastore,scheduler,quota,mocknonlens,savedquery</value>
+    <value>session,alarm,query,metastore,scheduler,quota,mocknonlens,savedquery</value>
   </property>
 
   <property>
@@ -162,7 +162,7 @@
 
   <property>
     <name>lens.server.ws.filternames</name>
-    <value>authentication,consistentState,serverMode,logging</value>
+    <value>requestlogger,consistentState,serverMode,logging</value>
     <description>These JAX-RS filters would be started in the specified order when lens-server starts up</description>
   </property>
 
@@ -192,4 +192,19 @@
     <value>20</value>
     <description>Number of sessions can be allowed for each user.</description>
   </property>
+  <property>
+    <name>lens.server.status.update.exponential.wait.millis</name>
+    <value>1000</value>
+    <description>Number of millis that would grow exponentially for next update, incase of transient failures.
+    </description>
+  </property>
+  <property>
+    <name>lens.server.duplicate.query.allowed</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>lens.server.scheduler.max.job.per.user</name>
+    <value>3</value>
+  </property>
+
 </configuration>

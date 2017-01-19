@@ -70,7 +70,7 @@ Jdbc driver configuration
 *--+--+---+--+
 |23|lens.driver.jdbc.fetch.size|1000|Fetch size for JDBC result set|
 *--+--+---+--+
-|24|lens.driver.jdbc.get.connection.timeout|10000|Response timeout in milliseconds of any JDBC call invoking data transmission over a connection socket|
+|24|lens.driver.jdbc.get.connection.timeout|10000|The number of milliseconds a client calling getConnection() will wait for a Connection to be checked-in or acquired when the pool is exhausted. Zero means wait indefinitely. Setting any positive value will cause the getConnection () call to time-out and break with an SQLException after the specified number of milliseconds. The default value of this property is 10 secs.|
 *--+--+---+--+
 |25|lens.driver.jdbc.pool.idle.time|600|Maximum idle time in sec before a connection is closed|
 *--+--+---+--+
@@ -78,14 +78,19 @@ Jdbc driver configuration
 *--+--+---+--+
 |27|lens.driver.jdbc.pool.max.statements|20|Maximum number of prepared statements to cache per connection|
 *--+--+---+--+
-|28|lens.driver.jdbc.query.launching.constraint.factories|org.apache.lens.server.api.query.constraint.MaxConcurrentDriverQueriesConstraintFactory|Factories used to instantiate constraints enforced on queries by driver. A query will be launched only if all constraints pass. Every Factory should be an implementation of org.apache.lens.server.api.common.ConfigBasedObjectCreationFactory and create an implementation of org.apache.lens.server.api.query.constraint.QueryLaunchingConstraint.|
+|28|lens.driver.jdbc.query.launching.constraint.factories|org.apache.lens.server.api.query.constraint.MaxConcurrentDriverQueriesConstraintFactory,
+      org.apache.lens.driver.jdbc.MaxJDBCConnectionCheckConstraintFactory|Factories used to instantiate constraints enforced on queries by driver. A query will be launched only if all constraints pass. Every Factory should be an implementation of org.apache.lens.server.api.common.ConfigBasedObjectCreationFactory and create an implementation of org.apache.lens.server.api.query.constraint.QueryLaunchingConstraint.|
 *--+--+---+--+
 |29|lens.driver.jdbc.query.rewriter|org.apache.lens.driver.jdbc.ColumnarSQLRewriter|Rewriting the HQL to optimized sql queries|
 *--+--+---+--+
 |30|lens.driver.jdbc.regex.replacement.values|to_date=date, format_number=format, date_sub\((.*?)\,\s*([0-9]+\s*)\)=date_sub($1\, interval $2 day), date_add\((.*?)\,\s*([0-9]+\s*)\)=date_add($1\, interval $2 day)|Rewriting the HQL to optimized sql queries|
 *--+--+---+--+
-|31|lens.driver.jdbc.validate.through.prepare|true|Flag to enable query syntactic and semantic validation using prepared statement.|
+|31|lens.driver.jdbc.statement.cancel.supported|true|Flag to indicate Whether cancel on JDBC statement is supported. If not supported, framework wont call cancel on JDBC statement.|
 *--+--+---+--+
-|32|lens.driver.jdbc.waiting.queries.selection.policy.factories|org.apache.lens.server.api.query.collect.DriverSpecificWaitingQueriesSelectionPolicyFactory|Factories used to instantiate driver specific waiting queries selection policies. Every factory should be an implementation of org.apache.lens.server.api.common.ConfigBasedObjectCreationFactory and create an implementation of org.apache.lens.server.api.query.collect.WaitingQueriesSelectionPolicy.|
+|32|lens.driver.jdbc.validate.through.prepare|true|Flag to enable query syntactic and semantic validation using prepared statement.|
+*--+--+---+--+
+|33|lens.driver.jdbc.waiting.queries.selection.policy.factories|org.apache.lens.server.api.query.collect.DriverSpecificWaitingQueriesSelectionPolicyFactory|Factories used to instantiate driver specific waiting queries selection policies. Every factory should be an implementation of org.apache.lens.server.api.common.ConfigBasedObjectCreationFactory and create an implementation of org.apache.lens.server.api.query.collect.WaitingQueriesSelectionPolicy.|
+*--+--+---+--+
+|34|lens.query.timeout.millis|3600000|The runtime(millis) of the query after which query will be timedout and cancelled. Default is 1 hour for jdbc queries.|
 *--+--+---+--+
 The configuration parameters and their default values

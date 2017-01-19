@@ -18,7 +18,13 @@
  */
 package org.apache.lens.server.api;
 
+import javax.ws.rs.core.MediaType;
+
+import org.apache.lens.api.parse.Parser;
 import org.apache.lens.server.api.error.LensException;
+import org.apache.lens.server.api.metastore.*;
+import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
+import org.apache.lens.server.api.query.cost.QueryCost;
 
 /**
  * The Class LensConfConstants.
@@ -50,6 +56,11 @@ public final class LensConfConstants {
    * The Constant METASTORE_PFX.
    */
   public static final String METASTORE_PFX = "lens.metastore.";
+
+  /**
+   * The Constant DRIVER_PFX.
+   */
+  public static final String DRIVER_PFX = "lens.driver.";
 
   /**
    * The Constant DRIVER_TYPES_AND_CLASSES
@@ -90,6 +101,8 @@ public final class LensConfConstants {
   public static final String WS_FEATURE_NAMES = SERVER_PFX + "ws.featurenames";
 
   public static final String MAX_SESSIONS_PER_USER = SERVER_PFX + "max.sessions.per.user";
+
+  public static final String QUERY_COMPARATOR_CLASSES = SERVER_PFX + "query.comparator.classes";
 
   public static final Integer DEFAULT_MAX_SESSIONS_PER_USER = 10;
 
@@ -139,14 +152,26 @@ public final class LensConfConstants {
   public static final String DEFAULT_SERVER_BASE_URL = "http://0.0.0.0:9999/lensapi";
 
   /**
-   * The Constant SERVER_RESTART_ENABLED.
+   * The Constant SERVER_STATE_PERSISTENCE_ENABLED.
    */
-  public static final String SERVER_RESTART_ENABLED = SERVER_PFX + "restart.enabled";
+  public static final String SERVER_STATE_PERSISTENCE_ENABLED = SERVER_PFX + "state.persistence.enabled";
 
   /**
-   * The Constant DEFAULT_SERVER_RESTART_ENABLED.
+   * The Constant DEFAULT_SERVER_STATE_PERSISTENCE_ENABLED.
    */
-  public static final boolean DEFAULT_SERVER_RESTART_ENABLED = true;
+  public static final boolean DEFAULT_SERVER_STATE_PERSISTENCE_ENABLED = true;
+
+  /**
+   * If this is false and same query is submitted by a user in the same session
+   * and with the same configuration while earlier query is not completed then
+   * lens server will return the handle of the previous query.
+   */
+  public static final String SERVER_DUPLICATE_QUERY_ALLOWED = SERVER_PFX + "duplicate.query.allowed";
+
+  /**
+   * By default same query by same user is not allowed.
+   */
+  public static final boolean DEFAULT_SERVER_DUPLICATE_QUERY_ALLOWED = false;
 
   /**
    * The Constant SERVER_STATE_PERSIST_LOCATION.
@@ -159,16 +184,6 @@ public final class LensConfConstants {
   public static final String DEFAULT_SERVER_STATE_PERSIST_LOCATION = "file:///tmp/lensserver";
 
   /**
-   * The Constant SERVER_RECOVER_ON_RESTART.
-   */
-  public static final String SERVER_RECOVER_ON_RESTART = SERVER_PFX + "recover.onrestart";
-
-  /**
-   * The Constant DEFAULT_SERVER_RECOVER_ON_RESTART.
-   */
-  public static final boolean DEFAULT_SERVER_RECOVER_ON_RESTART = true;
-
-  /**
    * The Constant SESSION_TIMEOUT_SECONDS.
    */
   public static final String SESSION_TIMEOUT_SECONDS = SERVER_PFX + "session.timeout.seconds";
@@ -179,54 +194,15 @@ public final class LensConfConstants {
   public static final long SESSION_TIMEOUT_SECONDS_DEFAULT = 1440 * 60; // Default is one day
 
   /**
-   * The Constant
+   * The Constant SERVER_STATE_PERSISTENCE_INTERVAL_MILLIS.
    */
-  public static final String SERVER_UI_ENABLE = SERVER_PFX + "ui.enable";
+  public static final String SERVER_STATE_PERSISTENCE_INTERVAL_MILLIS =
+    SERVER_PFX + "state.persistence.interval.millis";
 
   /**
-   * The Constant
+   * The Constant DEFAULT_SERVER_STATE_PERSISTENCE_INTERVAL_MILLIS.
    */
-  public static final boolean DEFAULT_SERVER_UI_ENABLE = true;
-
-  /**
-   * The Constant SERVER_UI_URI.
-   */
-  public static final String SERVER_UI_URI = SERVER_PFX + "ui.base.uri";
-
-  /**
-   * The Constant DEFAULT_SERVER_UI_URI.
-   */
-  public static final String DEFAULT_SERVER_UI_URI = "http://0.0.0.0:19999/";
-
-  /**
-   * The Constant SERVER_UI_STATIC_DIR.
-   */
-  public static final String SERVER_UI_STATIC_DIR = SERVER_PFX + ".ui.static.dir";
-
-  /**
-   * The Constant DEFAULT_SERVER_UI_STATIC_DIR.
-   */
-  public static final String DEFAULT_SERVER_UI_STATIC_DIR = "webapp/lens-server/static";
-
-  /**
-   * The Constant SERVER_UI_ENABLE_CACHING.
-   */
-  public static final String SERVER_UI_ENABLE_CACHING = SERVER_PFX + "ui.enable.caching";
-
-  /**
-   * The Constant DEFAULT_SERVER_UI_ENABLE_CACHING.
-   */
-  public static final boolean DEFAULT_SERVER_UI_ENABLE_CACHING = true;
-
-  /**
-   * The Constant SERVER_SNAPSHOT_INTERVAL.
-   */
-  public static final String SERVER_SNAPSHOT_INTERVAL = SERVER_PFX + "snapshot.interval";
-
-  /**
-   * The Constant DEFAULT_SERVER_SNAPSHOT_INTERVAL.
-   */
-  public static final long DEFAULT_SERVER_SNAPSHOT_INTERVAL = 5 * 60 * 1000;
+  public static final long DEFAULT_SERVER_STATE_PERSISTENCE_INTERVAL_MILLIS = 5 * 60 * 1000;
 
   // Email related configurations
   /**
@@ -916,13 +892,34 @@ public final class LensConfConstants {
   public static final String ESTIMATE_POOL_KEEP_ALIVE_MILLIS = SERVER_PFX + "estimate.pool.keepalive.millis";
   public static final int DEFAULT_ESTIMATE_POOL_KEEP_ALIVE_MILLIS = 60000; // 1 minute
 
+  /**
+   * Key used to get minimum number of threads in the launcher thread pool
+   */
+  public static final String LAUNCHER_POOL_MIN_THREADS = SERVER_PFX + "launcher.pool.min.threads";
+  public static final int DEFAULT_LAUNCHER_POOL_MIN_THREADS = 3;
+
+  /**
+   * Key used to get maximum number of threads in the launcher thread pool
+   */
+  public static final String LAUNCHER_POOL_MAX_THREADS = SERVER_PFX + "launcher.pool.max.threads";
+  // keeping the default to hundred, we may never grow till there, it would go to max for concurrent queries allowed on
+  // all drivers together.
+  public static final int DEFAULT_LAUNCHER_POOL_MAX_THREADS = 100;
+
+  /**
+   * Key used to get keep alive time for threads in the launcher thread pool
+   */
+  public static final String LAUNCHER_POOL_KEEP_ALIVE_MILLIS = SERVER_PFX + "launcher.pool.keepalive.millis";
+  public static final int DEFAULT_LAUNCHER_POOL_KEEP_ALIVE_MILLIS = 60000; // 1 minute
+
   public static final String QUERY_PHASE1_REWRITERS = SERVER_PFX + "query.phase1.rewriters";
 
   /**
    * Key to get the implementations of query constraint factories.
    */
+  public static final String QUERY_LAUNCHING_CONSTRAINT_FACTORIES_SFX = "query.launching.constraint.factories";
   public static final String QUERY_LAUNCHING_CONSTRAINT_FACTORIES_KEY = SERVER_PFX
-    + "query.launching.constraint.factories";
+    + QUERY_LAUNCHING_CONSTRAINT_FACTORIES_SFX;
 
   /**
    * Key to get the total query cost ceiling per user.
@@ -933,8 +930,10 @@ public final class LensConfConstants {
   /**
    * Key to get the implementations of waiting queries selection policy factories.
    */
+  public static final String WAITING_QUERIES_SELECTION_POLICY_FACTORIES_SFX =
+    "waiting.queries.selection.policy.factories";
   public static final String WAITING_QUERIES_SELECTION_POLICY_FACTORIES_KEY = SERVER_PFX
-      + "waiting.queries.selection.policy.factories";
+      + WAITING_QUERIES_SELECTION_POLICY_FACTORIES_SFX;
 
   /**
    * Key denoting the dialect class property of saved query service.
@@ -955,6 +954,28 @@ public final class LensConfConstants {
    * This is the base directory where all drivers are available under lens-server's Conf directory.
    */
   public static final String DRIVERS_BASE_DIR = "drivers";
+
+  /**
+   * The driver weight property
+   */
+  public static final String DRIVER_WEIGHT = DRIVER_PFX + "weight";
+
+  /**
+   * Key for specifying Retry policy class
+   */
+  public static final String RETRY_POLICY_CLASSES_SFX = "query.retry.policy.classes";
+
+  public static final String QUERY_RETRY_POLICY_CLASSES = SERVER_PFX + RETRY_POLICY_CLASSES_SFX;
+
+  /**
+   * Driver hook property
+   */
+  public static final String DRIVER_HOOK_CLASSES_SFX = "query.hook.classes";
+
+  /**
+   * Default driver weight
+   */
+  public static final int DEFAULT_DRIVER_WEIGHT = 1;
 
   /**
    * Name of the property that holds the path of "conf" directory of server
@@ -1046,4 +1067,190 @@ public final class LensConfConstants {
    * Default value of  INMEMORY_RESULT_SET_TTL_SECS is 300 secs (5 minutes)
    */
   public static final int DEFAULT_INMEMORY_RESULT_SET_TTL_SECS = 300;
+
+  /**
+   * Number of retries status update will be retried, in case of transient failures
+   */
+  public static final String STATUS_UPDATE_EXPONENTIAL_RETRIES = SERVER_PFX + "status.update.num.retries";
+
+  /**
+   * Default value of STATUS_UPDATE_EXPONENTIAL_RETRIES is 10
+   */
+  public static final int DEFAULT_STATUS_UPDATE_EXPONENTIAL_RETRIES = 10;
+
+  /**
+   * Maximum delay a status update can wait for next update, in case of transient failures
+   */
+  public static final String MAXIMUM_STATUS_UPDATE_DELAY = SERVER_PFX + "status.update.maximum.delay.secs";
+
+  /**
+   * Default value of MAXIMUM_STATUS_UPDATE_DELAY is 1800 secs (30 minutes)
+   */
+  public static final long DEFAULT_MAXIMUM_STATUS_UPDATE_DELAY = 1800;
+
+  /**
+   * Number of seconds that would grow exponentially for next update, incase of transient failures.
+   */
+  public static final String STATUS_UPDATE_EXPONENTIAL_WAIT_FACTOR = SERVER_PFX
+    + "status.update.exponential.wait.millis";
+
+  /**
+   * Default value of DEFAULT_STATUS_UPDATE_EXPONENTIAL_WAIT_FACTOR is 30000 millis (30 seconds)
+   */
+  public static final long DEFAULT_STATUS_UPDATE_EXPONENTIAL_WAIT_FACTOR = 30000;
+
+  /**
+   * Specifies whether to attempt cancellation of a query whose execution takes longer than the timeout value
+   * specified while submitting the query for execution.
+   */
+  public static final String CANCEL_QUERY_ON_TIMEOUT = QUERY_PFX + "cancel.on.timeout";
+
+  /**
+   * Default value of "lens.query.cancel.on.timeout"
+   */
+  public static final boolean DEFAULT_CANCEL_QUERY_ON_TIMEOUT = true;
+
+  /**
+   * Scheduler store class
+   */
+  public static final java.lang.String SCHEDULER_STORE_CLASS = SERVER_PFX + "scheduler.store.class";
+
+  /**
+   * Query current time for the scheduled query.
+   */
+  public static final String QUERY_CURRENT_TIME_IN_MILLIS = QUERY_PFX + "current.time.millis";
+
+  /**
+   * This is the connection timeout for all HTTP Notifications sent by lens server
+   */
+  public static final String HTTP_NOTIFICATION_CONN_TIMEOUT_MILLIS = SERVER_PFX
+    + "http.notification.conn.timeout.millis";
+
+  /**
+   * Default connection timeout is 5 secs
+   */
+  public static final int DEFAULT_HTTP_NOTIFICATION_CONN_TIMEOUT_MILLIS = 5000; //5 secs
+
+  /**
+   * This is the read timeout for all HTTP Notifications sent by lens server
+   */
+  public static final String HTTP_NOTIFICATION_READ_TIMEOUT_MILLIS = SERVER_PFX
+    + "http.notification.read.timeout.millis";
+
+  /**
+   * Default read timeout is 5 secs
+   */
+  public static final int DEFAULT_HTTP_NOTIFICATION_READ_TIMEOUT_MILLIS = 10000; //10 secs
+
+  /**
+   * This is the media type for Query Http notifications
+   */
+  public static final String QUERY_HTTP_NOTIFICATION_MEDIATYPE = QUERY_PFX + "http.notification.mediatype";
+
+  /**
+   * This is the default media type for all Query Http notifications
+   */
+  public static final String DEFAULT_QUERY_HTTP_NOTIFICATION_MEDIATYPE = MediaType.APPLICATION_JSON;
+
+  /**
+   * These are the end points for Query http notifications. Users can specify more than one comma separated end points
+   */
+  public static final String QUERY_HTTP_NOTIFICATION_URLS = QUERY_PFX + "http.notification.urls";
+
+  /**
+   * This is the prefix for Query http Notification. User is expected to add notification type along with prefix
+   */
+  public static final String QUERY_HTTP_NOTIFICATION_TYPE_PFX = QUERY_PFX + "http.notification.type.";
+
+  /**
+   * This is the property for enabling Query finished Http notification. This will include successful, failed and
+   * cancelled queries.
+   */
+  public static final String QUERY_HTTP_NOTIFICATION_TYPE_FINISHED = QUERY_HTTP_NOTIFICATION_TYPE_PFX + "FINISHED";
+
+  /**
+   * This is the property to specify the timeout for a query after running for configured time.
+   */
+  public static final String QUERY_TIMEOUT_MILLIS = QUERY_PFX + "timeout.millis";
+
+  /**
+   * This is the default timeout for query to get killed after running for configured time.
+   */
+  public static final int DEFAULT_QUERY_TIMEOUT_MILLIS = 24 * 60 * 60 * 1000; // 1day
+
+  /**
+   * Specifies how often query expiry will run
+   */
+  public static final String QUERY_EXPIRY_INTERVAL_MILLIS = SERVER_PFX + "query.expiry.check.interval.millis";
+  /**
+   * Default value for query expiry interval
+   */
+  public static final long DEFAULT_QUERY_EXPIRY_INTERVAL_MILLIS = 1 * 60 * 60 * 1000; // 1 hour
+
+  /**
+   * The Constant GRIZZLY_CORE_POOL_SIZE.
+   */
+  public static final String GRIZZLY_CORE_POOL_SIZE = SERVER_PFX + "grizzly.core.pool.size";
+
+  /**
+   * The Constant DEFAULT_GRIZZLY_CORE_POOL_SIZE.
+   */
+  public static final int DEFAULT_GRIZZLY_CORE_POOL_SIZE = 20;
+
+  /**
+   * The Constant GRIZZLY_MAX_POOL_SIZE.
+   */
+  public static final String GRIZZLY_MAX_POOL_SIZE = SERVER_PFX + "grizzly.max.pool.size";
+
+  /**
+   * The Constant DEFAULT_GRIZZLY_MAX_POOL_SIZE.
+   */
+  public static final int DEFAULT_GRIZZLY_MAX_POOL_SIZE = 40;
+
+  /**
+   * Thread interval for checking the waiting instances
+   */
+  public static final String SCHEDULED_INSTANCE_WAITING_THREAD_INTERVAL_MILLIS =
+    SERVER_PFX + "scheduler.instance.waiting.thread.interval";
+
+  /**
+   * Default waiting thread interval in milliseconds
+   */
+  public static final long DEFAULT_SCHEDULED_INSTANCE_WAITING_THREAD_INTERVAL_MILLIS = 60 * 5 * 1000;
+
+  /**
+   * Default value is less than zero, that means an user can scheduler unlimited number of jobs.
+   */
+  public static final int DEFAULT_MAX_SCHEDULED_JOB_PER_USER = -1;
+
+  public static final String QUERY_COST_PARSER = SERVER_PFX + "query.cost.parser.class";
+  public static final Class<? extends Parser<? extends QueryCost>> DEFAULT_QUERY_COST_PARSER
+    = FactPartitionBasedQueryCost.Parser.class;
+
+  /**
+   * Maximum number of scheduled job per user.
+   */
+  public static final String MAX_SCHEDULED_JOB_PER_USER  = SERVER_PFX + "scheduler.max.job.per.user";
+
+  /**
+   * The class that implements the DataCompletenessChecker Interface. This will take effect if the flag
+   * "lens.cube.metastore.enable.datacompleteness.check" is set.
+   */
+  public static final String COMPLETENESS_CHECKER_CLASS = "lens.cube.metastore.completeness.checker.class";
+
+  /**
+   * The default implementation of DataCompletenessChecker
+   */
+  public static final Class<? extends DataCompletenessChecker> DEFAULT_COMPLETENESS_CHECKER =
+          DefaultChecker.class.asSubclass(DataCompletenessChecker.class);
+
+  /**
+   * This property is to enable Data Completeness Checks while resolving partitions.
+   */
+  public static final String ENABLE_DATACOMPLETENESS_CHECK = "lens.cube.metastore.enable.datacompleteness.check";
+
+  /**
+   * Default Value of the config "lens.cube.metastore.enable.datacompleteness.check"
+   */
+  public static final boolean DEFAULT_ENABLE_DATACOMPLETENESS_CHECK = false;
 }

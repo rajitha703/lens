@@ -19,10 +19,13 @@
 package org.apache.lens.server.query;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import static org.apache.lens.api.error.LensCommonErrorCode.INTERNAL_SERVER_ERROR;
+
 import static org.apache.lens.cube.error.LensCubeErrorCode.COLUMN_UNAVAILABLE_IN_TIME_RANGE;
 import static org.apache.lens.cube.error.LensCubeErrorCode.SYNTAX_ERROR;
+
 import static org.apache.lens.server.common.RestAPITestUtil.*;
 import static org.apache.lens.server.common.TestDataUtils.*;
 import static org.apache.lens.server.error.LensServerErrorCode.*;
@@ -37,17 +40,17 @@ import javax.xml.datatype.DatatypeConfigurationException;
 
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
+import org.apache.lens.api.SupportedOperations;
 import org.apache.lens.api.jaxb.LensJAXBContextResolver;
 import org.apache.lens.api.metastore.*;
-import org.apache.lens.api.query.SupportedQuerySubmitOperations;
 import org.apache.lens.api.result.LensAPIResult;
 import org.apache.lens.api.result.LensErrorTO;
 import org.apache.lens.api.util.MoxyJsonConfigurationContextResolver;
 import org.apache.lens.cube.error.ColUnAvailableInTimeRange;
 import org.apache.lens.server.LensJerseyTest;
-import org.apache.lens.server.LensRequestContextInitFilter;
+import org.apache.lens.server.LensRequestLoggingFilter;
 import org.apache.lens.server.common.ErrorResponseExpectedData;
-import org.apache.lens.server.error.LensExceptionMapper;
+import org.apache.lens.server.error.GenericExceptionMapper;
 import org.apache.lens.server.error.LensJAXBValidationExceptionMapper;
 import org.apache.lens.server.metastore.MetastoreResource;
 import org.apache.lens.server.session.SessionResource;
@@ -89,9 +92,10 @@ public class QueryAPIErrorResponseTest extends LensJerseyTest {
     enable(TestProperties.LOG_TRAFFIC);
     enable(TestProperties.DUMP_ENTITY);
 
-    return new ResourceConfig(LensRequestContextInitFilter.class, SessionResource.class, MetastoreResource.class,
-      QueryServiceResource.class, MultiPartFeature.class, LensExceptionMapper.class, LensJAXBContextResolver.class,
-      LensRequestContextInitFilter.class, LensJAXBValidationExceptionMapper.class,
+    return new ResourceConfig(LensRequestLoggingFilter.class, SessionResource.class, MetastoreResource.class,
+      QueryServiceResource.class, MultiPartFeature.class, GenericExceptionMapper.class,
+      LensJAXBContextResolver.class,
+      LensRequestLoggingFilter.class, LensJAXBValidationExceptionMapper.class,
       MoxyJsonConfigurationContextResolver.class, MoxyJsonFeature.class);
   }
 
@@ -130,14 +134,14 @@ public class QueryAPIErrorResponseTest extends LensJerseyTest {
     LensSessionHandle sessionId = openSession(target(), "foo", "bar", new LensConf(), mt);
 
     Response response = postQuery(target(), Optional.of(sessionId), Optional.of(MOCK_QUERY),
-        Optional.of(INVALID_OPERATION), mt);
+      Optional.of(INVALID_OPERATION), mt);
 
     final String expectedErrMsg = "Provided Operation is not supported. Supported Operations are: "
       + "[estimate, execute, explain, execute_with_timeout]";
 
     LensErrorTO expectedLensErrorTO = LensErrorTO.composedOf(
-        UNSUPPORTED_QUERY_SUBMIT_OPERATION.getLensErrorInfo().getErrorCode(),
-      expectedErrMsg, MOCK_STACK_TRACE, new SupportedQuerySubmitOperations());
+        UNSUPPORTED_OPERATION.getLensErrorInfo().getErrorCode(),
+      expectedErrMsg, MOCK_STACK_TRACE, new SupportedOperations());
     ErrorResponseExpectedData expectedData = new ErrorResponseExpectedData(BAD_REQUEST, expectedLensErrorTO);
 
     expectedData.verify(response);
@@ -165,8 +169,8 @@ public class QueryAPIErrorResponseTest extends LensJerseyTest {
     LensErrorTO responseLensErrorTO = response.readEntity(LensAPIResult.class).getLensErrorTO();
 
     assertTrue(expectedLensErrorTO1.getMessage().equals(responseLensErrorTO.getMessage())
-            || expectedLensErrorTO2.getMessage().equals(responseLensErrorTO.getMessage()),
-        "Message is " + responseLensErrorTO.getMessage());
+        || expectedLensErrorTO2.getMessage().equals(responseLensErrorTO.getMessage()),
+      "Message is " + responseLensErrorTO.getMessage());
     closeSession(target(), sessionId, mt);
 
   }
@@ -295,5 +299,50 @@ public class QueryAPIErrorResponseTest extends LensJerseyTest {
       dropDatabaseFailFast(target, sessionId, testDb, mt);
       closeSessionFailFast(target, sessionId, mt);
     }
+  }
+
+  /**
+   * Test execute failure in with selected driver throwing Runtime exception.
+   *
+   * @throws InterruptedException the interrupted exception
+   */
+  @Test(dataProvider = "mediaTypeData")
+  public void testExplainRuntimeException(MediaType mt) throws InterruptedException {
+    LensSessionHandle sessionId = openSession(target(), "foo", "bar", new LensConf(), mt);
+    try {
+      Response response = explain(target(), Optional.of(sessionId), Optional.of("select fail, execute_runtime "
+        + " from non_exist"), mt);
+      final String expectedErrMsg = "Internal server error:Runtime exception from query explain";
+      LensErrorTO expectedLensErrorTO = LensErrorTO.composedOf(
+        INTERNAL_SERVER_ERROR.getValue(), expectedErrMsg, MOCK_STACK_TRACE);
+      ErrorResponseExpectedData expectedData = new ErrorResponseExpectedData(Response.Status.INTERNAL_SERVER_ERROR,
+        expectedLensErrorTO);
+      expectedData.verify(response);
+    } finally {
+      closeSessionFailFast(target(), sessionId, mt);
+    }
+
+  }
+  /**
+   * Test execute failure in with selected driver throwing webapp exception.
+   *
+   * @throws InterruptedException the interrupted exception
+   */
+  @Test(dataProvider = "mediaTypeData")
+  public void testExplainWebappException(MediaType mt) throws InterruptedException {
+    LensSessionHandle sessionId = openSession(target(), "foo", "bar", new LensConf(), mt);
+    try {
+      Response response = explain(target(), Optional.of(sessionId), Optional.of("select fail, webappexception "
+        + " from non_exist"), mt);
+      final String expectedErrMsg = "Not found from mock driver";
+      LensErrorTO expectedLensErrorTO = LensErrorTO.composedOf(
+        NOT_FOUND.getStatusCode(), expectedErrMsg, MOCK_STACK_TRACE);
+      ErrorResponseExpectedData expectedData = new ErrorResponseExpectedData(Response.Status.NOT_FOUND,
+        expectedLensErrorTO);
+      expectedData.verify(response);
+    } finally {
+      closeSessionFailFast(target(), sessionId, mt);
+    }
+
   }
 }

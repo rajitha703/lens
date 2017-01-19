@@ -24,7 +24,8 @@ import static org.apache.lens.server.api.LensServerAPITestUtil.getConfiguration;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -44,11 +45,13 @@ public class MaxConcurrentDriverQueriesConstraintTest {
 
   MaxConcurrentDriverQueriesConstraintFactory factory = new MaxConcurrentDriverQueriesConstraintFactory();
   QueryLaunchingConstraint constraint = factory.create(getConfiguration(
-    "driver.max.concurrent.launched.queries", 10
+    "driver.max.concurrent.launched.queries", 10,
+    "driver.max.concurrent.launches", 4
   ));
+
   QueryLaunchingConstraint perQueueConstraint = factory.create(getConfiguration(
     "driver.max.concurrent.launched.queries", 4,
-    "driver.max.concurrent.launched.queries.per.queue", "q1=2,q2=3"
+    "driver.max.concurrent.launched.queries.per.queue", "*=1,q1=2,q2=3"
   ));
 
   QueryLaunchingConstraint perPriorityConstraint = factory.create(getConfiguration(
@@ -63,7 +66,12 @@ public class MaxConcurrentDriverQueriesConstraintTest {
 
   @DataProvider
   public Object[][] dpTestAllowsLaunchOfQuery() {
-    return new Object[][]{{2, true}, {10, false}, {11, false}};
+    return new Object[][]{{2, true}, {3, true}, {4, true}, {5, true}, {10, false}, {11, false}};
+  }
+
+  @DataProvider
+  public Object[][] dpTestConcurrentLaunches() {
+    return new Object[][]{{2, true}, {3, true}, {4, false}, {5, false}, {10, false}, {11, false}};
   }
 
   @DataProvider
@@ -73,12 +81,14 @@ public class MaxConcurrentDriverQueriesConstraintTest {
       {queues("q1", "q1"), "q2", true},
       {queues("q1", "q1"), "q3", true},
       {queues("q1", "q1", "q1"), "q2", true}, // hypothetical
-      {queues("q1", "q1", "q2"), "q1", false},
+      {queues("q1", "q1", "q2"), "q1", false}, //q1 limit breached
       {queues("q1", "q2", "q2"), "q1", true},
       {queues("q1", "q2", "q2"), "q2", true},
-      {queues("q1", "q2", "q1", "q2"), "q2", false},
-      {queues("q1", "q2", "q1", "q2"), "q1", false},
-      {queues("q1", "q2", "q1", "q2"), "q3", false},
+      {queues("q1", "q2", "q1", "q2"), "q2", false}, // driver.max.concurrent.launched.queries breached
+      {queues("q1", "q2", "q1", "q2"), "q1", false}, // driver.max.concurrent.launched.queries breached
+      {queues("q1", "q2", "q1", "q2"), "q3", false}, // driver.max.concurrent.launched.queries breached
+      {queues("q1", "q2", "q2"), "q3", true},
+      {queues("q1", "q2", "q3"), "q3", false}, //default max concurrent queries per queue limit breached
     };
   }
 
@@ -155,9 +165,39 @@ public class MaxConcurrentDriverQueriesConstraintTest {
     when(mockCandidateQuery.getSelectedDriver()).thenReturn(mockDriver);
     when(mockLaunchedQueries.getQueriesCount(mockDriver)).thenReturn(currentDriverLaunchedQueries);
 
-    boolean actualCanLaunch = constraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
+    String actualCanLaunch = constraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
 
-    assertEquals(actualCanLaunch, expectedCanLaunch);
+    if (expectedCanLaunch) {
+      assertNull(actualCanLaunch);
+    } else {
+      assertNotNull(actualCanLaunch);
+    }
+  }
+
+  @Test(dataProvider = "dpTestConcurrentLaunches")
+  public void testConcurrentLaunches(final int currentDriverLaunchedQueries, final boolean expectedCanLaunch) {
+
+    QueryContext mockCandidateQuery = mock(QueryContext.class);
+    EstimatedImmutableQueryCollection mockLaunchedQueries = mock(EstimatedImmutableQueryCollection.class);
+    LensDriver mockDriver = mock(LensDriver.class);
+
+    Set<QueryContext> queries = new HashSet<>(currentDriverLaunchedQueries);
+    for (int i = 0; i < currentDriverLaunchedQueries; i++) {
+      QueryContext mQuery = mock(QueryContext.class);
+      when(mQuery.isLaunching()).thenReturn(true);
+      queries.add(mQuery);
+    }
+    when(mockCandidateQuery.getSelectedDriver()).thenReturn(mockDriver);
+    when(mockLaunchedQueries.getQueriesCount(mockDriver)).thenReturn(currentDriverLaunchedQueries);
+    when(mockLaunchedQueries.getQueries(mockDriver)).thenReturn(queries);
+
+    String actualCanLaunch = constraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
+
+    if (expectedCanLaunch) {
+      assertNull(actualCanLaunch);
+    } else {
+      assertNotNull(actualCanLaunch);
+    }
   }
 
   @Test(dataProvider = "dpTestPerQueueConstraints")
@@ -177,9 +217,13 @@ public class MaxConcurrentDriverQueriesConstraintTest {
     QueryContext mockCandidateQuery = mock(QueryContext.class);
     when(mockCandidateQuery.getQueue()).thenReturn(candidateQueue);
     when(mockCandidateQuery.getSelectedDriver()).thenReturn(mockDriver);
-    boolean actualCanLaunch = perQueueConstraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
+    String actualCanLaunch = perQueueConstraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
 
-    assertEquals(actualCanLaunch, expectedCanLaunch);
+    if (expectedCanLaunch) {
+      assertNull(actualCanLaunch);
+    } else {
+      assertNotNull(actualCanLaunch);
+    }
   }
 
   @Test(dataProvider = "dpTestPerPriorityConstraints")
@@ -199,9 +243,13 @@ public class MaxConcurrentDriverQueriesConstraintTest {
     QueryContext mockCandidateQuery = mock(QueryContext.class);
     when(mockCandidateQuery.getPriority()).thenReturn(candidatePriority);
     when(mockCandidateQuery.getSelectedDriver()).thenReturn(mockDriver);
-    boolean actualCanLaunch = perPriorityConstraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
+    String actualCanLaunch = perPriorityConstraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
 
-    assertEquals(actualCanLaunch, expectedCanLaunch);
+    if (expectedCanLaunch) {
+      assertNull(actualCanLaunch);
+    } else {
+      assertNotNull(actualCanLaunch);
+    }
   }
 
   @Test(dataProvider = "dpTestPerQueuePerPriorityConstraints")
@@ -223,8 +271,12 @@ public class MaxConcurrentDriverQueriesConstraintTest {
     when(mockCandidateQuery.getQueue()).thenReturn(candidateQueue);
     when(mockCandidateQuery.getPriority()).thenReturn(candidatePriority);
     when(mockCandidateQuery.getSelectedDriver()).thenReturn(mockDriver);
-    boolean actualCanLaunch = perQueueAndPerPriorityConstraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
+    String actualCanLaunch = perQueueAndPerPriorityConstraint.allowsLaunchOf(mockCandidateQuery, mockLaunchedQueries);
 
-    assertEquals(actualCanLaunch, expectedCanLaunch);
+    if (expectedCanLaunch) {
+      assertNull(actualCanLaunch);
+    } else {
+      assertNotNull(actualCanLaunch);
+    }
   }
 }

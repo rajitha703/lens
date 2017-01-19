@@ -91,8 +91,10 @@
   <property>
     <name>lens.driver.jdbc.get.connection.timeout</name>
     <value>10000</value>
-    <description>Response timeout in milliseconds of any JDBC call invoking data transmission over a connection socket
-    </description>
+    <description>The number of milliseconds a client calling getConnection() will wait for a Connection to be
+      checked-in or acquired when the pool is exhausted. Zero means wait indefinitely. Setting any positive value
+      will cause the getConnection () call to time-out and break with an SQLException after the specified number
+      of milliseconds. The default value of this property is 10 secs.</description>
   </property>
 
   <!-- Estimate query connection pool settings -->
@@ -207,6 +209,14 @@
   </property>
 
   <property>
+    <name>lens.query.timeout.millis</name>
+    <value>3600000</value>
+    <description>The runtime(millis) of the query after which query will be timedout and cancelled. Default is 1 hour
+      for jdbc queries.
+    </description>
+  </property>
+
+  <property>
     <name>lens.driver.jdbc.enable.resultset.streaming.retrieval</name>
     <value>false</value>
     <description>Flag to enable row by row retrieval of result set from the database server. This is used to enable
@@ -228,7 +238,8 @@
 
   <property>
     <name>lens.driver.jdbc.query.launching.constraint.factories</name>
-    <value>org.apache.lens.server.api.query.constraint.MaxConcurrentDriverQueriesConstraintFactory</value>
+    <value>org.apache.lens.server.api.query.constraint.MaxConcurrentDriverQueriesConstraintFactory,
+      org.apache.lens.driver.jdbc.MaxJDBCConnectionCheckConstraintFactory</value>
     <description>Factories used to instantiate constraints enforced on queries by driver. A query will be launched
       only if all constraints pass. Every Factory should be an implementation of
       org.apache.lens.server.api.common.ConfigBasedObjectCreationFactory and create an implementation of
@@ -250,5 +261,12 @@
       lens.driver.jdbc.pool.max.size. This configuration value is only useful when MaxConcurrentDriverQueriesConstraint
       is enabled by using org.apache.lens.server.api.query.constraint.MaxConcurrentDriverQueriesConstraintFactory as
       one of the factories in lens.driver.jdbc.query.constraint.factories property.</description>
+  </property>
+
+  <property>
+    <name>lens.driver.jdbc.statement.cancel.supported</name>
+    <value>true</value>
+    <description>Flag to indicate Whether cancel on JDBC statement is supported. If not supported,
+      framework wont call cancel on JDBC statement.</description>
   </property>
 </configuration>

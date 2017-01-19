@@ -24,7 +24,9 @@ import DatabaseStore from '../stores/DatabaseStore';
 import AdhocQueryActions from '../actions/AdhocQueryActions';
 import UserStore from '../stores/UserStore';
 import Loader from '../components/LoaderComponent';
+import CubeTree from './CubeTreeComponent';
 import TableTree from './TableTreeComponent';
+import Config from 'config.json';
 
 function getDatabases () {
   return DatabaseStore.getDatabases();
@@ -37,7 +39,7 @@ class DatabaseComponent extends React.Component {
       databases: [],
       loading: true,
       isCollapsed: false,
-      selectedDatabase: ''
+      selectedDatabase: UserStore.getUserDetails().database
     };
     this._onChange = this._onChange.bind(this);
     this.toggle = this.toggle.bind(this);
@@ -48,10 +50,12 @@ class DatabaseComponent extends React.Component {
 
   componentDidMount () {
     DatabaseStore.addChangeListener(this._onChange);
+    UserStore.addChangeListener(this._onChange);
   }
 
   componentWillUnmount () {
     DatabaseStore.removeChangeListener(this._onChange);
+    UserStore.removeChangeListener(this._onChange);
   }
 
   render () {
@@ -71,7 +75,7 @@ class DatabaseComponent extends React.Component {
 
     databaseComponent = (<div>
         <label className='control-label' id='db'>Select a Database</label>
-        <select className='form-control' id='db' onChange={this.setDatabase}>
+        <select className='form-control' id='db' onChange={this.setDatabase} value={this.state.selectedDatabase} >
           <option value=''>Select</option>
           {this.state.databases.map(database => {
             return <option key={database} value={database}>{database}</option>;
@@ -79,48 +83,54 @@ class DatabaseComponent extends React.Component {
         </select>
       </div>);
 
+
     if (this.state.loading) {
-      databaseComponent = <Loader size='4px' margin='2px' />;
+      databaseComponent = <Loader size='4px' margin='2px'/>;
     } else if (!this.state.databases.length) {
       databaseComponent = (<div className='alert-danger'
-          style={{padding: '8px 5px'}}>
-          <strong>Sorry, we couldn&#39;t find any databases.</strong>
-        </div>);
+                                style={{padding: '8px 5px'}}>
+        <strong>Sorry, we couldn&#39;t find any databases.</strong>
+      </div>);
     }
+    return (<div>
+        {databaseComponent}
+        {
+          this.state.selectedDatabase &&
+          <div>
+            <hr style={{marginTop: '10px', marginBottom: '10px'}}/>
+            <CubeTree key={this.state.selectedDatabase}
+                      database={this.state.selectedDatabase}/>
+          </div>
+        }
+        {
+          this.state.selectedDatabase && Config.display_tables &&
+          <div>
+            <hr style={{marginTop: '10px', marginBottom: '10px'}}/>
+            <TableTree key={this.state.selectedDatabase}
+                       database={this.state.selectedDatabase}/>
+          </div>
+        }
 
-    return (
-      <div className='panel panel-default'>
-        <div className='panel-heading'>
-          <h3 className='panel-title'>
-            Tables
-            <span className={collapseClass} onClick={this.toggle}></span>
-          </h3>
-        </div>
-        <div className={panelBodyClassName}>
-          {databaseComponent}
-
-          { this.state.selectedDatabase &&
-            <div>
-              <hr style={{marginTop: '10px', marginBottom: '10px'}}/>
-              <TableTree key={this.state.selectedDatabase}
-                database={this.state.selectedDatabase} />
-            </div>
-          }
-        </div>
       </div>
     );
   }
 
   _onChange () {
-    this.setState({ databases: getDatabases(), loading: false });
+    this.setState({ databases: getDatabases(), loading: false, selectedDatabase:  UserStore.currentDatabase() });
   }
 
   toggle () {
     this.setState({ isCollapsed: !this.state.isCollapsed });
   }
 
-  setDatabase (event) {
-    this.setState({selectedDatabase: event.target.value});
+  setDatabase(event) {
+    var dbName = null;
+    if (typeof(event) == "string") {
+      dbName = event;
+    } else {
+      dbName = event.target.value;
+    }
+    AdhocQueryActions.setDatabase(UserStore.getUserDetails().secretToken, dbName);
   }
 }
 

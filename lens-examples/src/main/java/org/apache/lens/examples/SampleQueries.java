@@ -25,6 +25,7 @@ import java.io.InputStreamReader;
 
 import javax.xml.bind.JAXBException;
 
+import org.apache.lens.api.LensConf;
 import org.apache.lens.api.query.*;
 import org.apache.lens.client.LensClient;
 import org.apache.lens.client.LensClientSingletonWrapper;
@@ -134,7 +135,7 @@ public class SampleQueries {
       total++;
       System.out.println("Query:" + query);
       try {
-        QueryHandle handle = queryClient.executeQuery(query, true, null).getData();
+        QueryHandle handle = queryClient.executeQuery(query, true, null, new LensConf());
         System.out.println("Status:" + queryClient.getQuery().getStatus());
         System.out.println("Total time in millis:"
           + (queryClient.getQuery().getFinishTime() - queryClient.getQuery().getSubmissionTime()));
@@ -160,7 +161,7 @@ public class SampleQueries {
           retCode = 1;
         }
       } catch (Exception e) {
-        LensClient.getCliLooger().error("Exception for example query : \"{}\"", query, e);
+        LensClient.getCliLogger().error("Exception for example query : \"{}\"", query, e);
         retCode = 1;
       }
       System.out.println("--------------------");

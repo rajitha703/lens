@@ -39,7 +39,7 @@ import org.apache.lens.server.api.events.AsyncEventListener;
 import org.apache.lens.server.api.events.LensEvent;
 import org.apache.lens.server.api.events.LensEventListener;
 import org.apache.lens.server.api.events.LensEventService;
-import org.apache.lens.server.api.query.*;
+import org.apache.lens.server.api.query.events.*;
 import org.apache.lens.server.api.session.SessionClosed;
 import org.apache.lens.server.api.session.SessionExpired;
 import org.apache.lens.server.api.session.SessionOpened;
@@ -47,7 +47,7 @@ import org.apache.lens.server.api.session.SessionRestored;
 import org.apache.lens.server.query.QueryExecutionServiceImpl.QueryStatusLogger;
 import org.apache.lens.server.stats.event.query.QueryExecutionStatistics;
 
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import lombok.extern.slf4j.Slf4j;
@@ -277,7 +277,7 @@ public class TestEventService {
    *
    * @throws Exception the exception
    */
-  @BeforeTest
+  @BeforeClass
   public void setup() throws Exception {
     System.setProperty(LensConfConstants.CONFIG_LOCATION, "target/test-classes/");
     LensServices.get().init(LensServerConf.getHiveConf());
@@ -485,13 +485,8 @@ public class TestEventService {
     // Catch all listener just to make sure that the query accepted and
     // query exec stat events get through
     final CountDownLatch latch = new CountDownLatch(2);
-    service.addListenerForType(new LensEventListener<LensEvent>() {
-      @Override
-      public void onEvent(LensEvent event) throws LensException {
-        System.out.println("@@@@ Got Event: Type= " + event.getClass().getName() + " obj = " + event);
-        latch.countDown();
-      }
-    }, LensEvent.class);
+    LensEventListener<LensEvent> eventListener = queryEventListener(latch);
+    service.addListenerForType(eventListener, LensEvent.class);
 
     QueryHandle queryHandle = new QueryHandle(UUID.randomUUID());
     QueryAccepted queryAccepted = new QueryAccepted(System.currentTimeMillis(), "beforeAccept", "afterAccept",
@@ -503,7 +498,17 @@ public class TestEventService {
     service.notifyEvent(queryExecStats);
 
     latch.await();
+    service.removeListener(eventListener);
+  }
 
+  private LensEventListener<LensEvent> queryEventListener(final CountDownLatch latch) {
+    return new LensEventListener<LensEvent>() {
+      @Override
+      public void onEvent(LensEvent event) throws LensException {
+        System.out.println("@@@@ Got Event: Type= " + event.getClass().getName() + " obj = " + event);
+        latch.countDown();
+      }
+    };
   }
 
   @Test
@@ -538,6 +543,38 @@ public class TestEventService {
       "DummyAsncEventListener_AsyncThread-5")));
   }
 
+  /**
+   * Test synchronous events
+   * @throws Exception
+   */
+  @Test
+  public void testNotifySync() throws Exception {
+    service.addListenerForType(new TestEventHandler(), TestEvent.class);
+    TestEvent testEvent = new TestEvent("ID");
+    service.notifyEventSync(testEvent);
+    assertTrue(testEvent.processed);
+  }
+
+  private static class TestEvent extends LensEvent{
+    String id;
+    boolean processed = false;
+    public TestEvent(String id) {
+      super(System.currentTimeMillis());
+      this.id = id;
+    }
+    @Override
+    public String getEventId() {
+      return id;
+    }
+  }
+
+  private static class TestEventHandler implements LensEventListener<TestEvent> {
+
+    @Override
+    public void onEvent(TestEvent event) throws LensException {
+      event.processed = true;
+    }
+  }
   private static class DummyAsncEventListener extends AsyncEventListener<QuerySuccess> {
     public DummyAsncEventListener(){
       super(5); //core pool = 5
@@ -547,5 +584,4 @@ public class TestEventService {
       throw new RuntimeException("Simulated Exception");
     }
   }
-
 }
