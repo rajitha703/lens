@@ -23,6 +23,8 @@ import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.Map.Entry;
 
+import org.apache.lens.server.api.error.LensException;
+
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.Path;
@@ -370,7 +372,7 @@ public abstract class Storage extends AbstractCubeTable implements PartitionMeta
    */
   public void updatePartition(Hive client, String fact, Partition partition)
     throws InvalidOperationException, HiveException {
-    client.alterPartition(MetastoreUtil.getFactOrDimtableStorageTableName(fact, getName()), partition);
+    client.alterPartition(MetastoreUtil.getFactOrDimtableStorageTableName(fact, getName()), partition, null);
   }
 
   /**
@@ -385,7 +387,7 @@ public abstract class Storage extends AbstractCubeTable implements PartitionMeta
     throws InvalidOperationException, HiveException {
     boolean success = false;
     try {
-      client.alterPartitions(MetastoreUtil.getFactOrDimtableStorageTableName(fact, getName()), partitions);
+      client.alterPartitions(MetastoreUtil.getFactOrDimtableStorageTableName(fact, getName()), partitions, null);
       success = true;
     } finally {
       if (success) {
@@ -462,7 +464,7 @@ public abstract class Storage extends AbstractCubeTable implements PartitionMeta
     }
   }
 
-  static Storage createInstance(Table tbl) throws HiveException {
+  static Storage createInstance(Table tbl) throws LensException {
     String storageName = tbl.getTableName();
     String storageClassName = tbl.getParameters().get(MetastoreUtil.getStorageClassKey(storageName));
     try {
@@ -470,7 +472,7 @@ public abstract class Storage extends AbstractCubeTable implements PartitionMeta
       Constructor<?> constructor = clazz.getConstructor(Table.class);
       return (Storage) constructor.newInstance(tbl);
     } catch (Exception e) {
-      throw new HiveException("Could not create storage class" + storageClassName, e);
+      throw new LensException("Could not create storage class" + storageClassName, e);
     }
   }
 }

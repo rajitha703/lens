@@ -18,29 +18,24 @@
  */
 package org.apache.lens.server.api.query;
 
-import static org.apache.lens.server.api.LensConfConstants.DEFAULT_PREFETCH_INMEMORY_RESULTSET;
-import static org.apache.lens.server.api.LensConfConstants.DEFAULT_PREFETCH_INMEMORY_RESULTSET_ROWS;
-import static org.apache.lens.server.api.LensConfConstants.PREFETCH_INMEMORY_RESULTSET;
-import static org.apache.lens.server.api.LensConfConstants.PREFETCH_INMEMORY_RESULTSET_ROWS;
+import static org.apache.lens.server.api.LensConfConstants.*;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.Future;
 
 import org.apache.lens.api.LensConf;
+import org.apache.lens.api.query.FailedAttempt;
 import org.apache.lens.api.query.LensQuery;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryStatus;
 import org.apache.lens.api.query.QueryStatus.Status;
 import org.apache.lens.server.api.LensConfConstants;
-import org.apache.lens.server.api.driver.DriverQueryStatus;
-import org.apache.lens.server.api.driver.InMemoryResultSet;
-import org.apache.lens.server.api.driver.LensDriver;
-import org.apache.lens.server.api.driver.LensResultSet;
-import org.apache.lens.server.api.driver.PartiallyFetchedInMemoryResultSet;
+import org.apache.lens.server.api.driver.*;
 import org.apache.lens.server.api.error.LensException;
-import org.apache.lens.server.api.query.collect.WaitingQueriesSelectionPolicy;
 import org.apache.lens.server.api.query.constraint.QueryLaunchingConstraint;
+import org.apache.lens.server.api.retry.BackOffRetryHandler;
+import org.apache.lens.server.api.retry.FailureContext;
+import org.apache.lens.server.api.util.LensUtil;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -56,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
  * The Class QueryContext.
  */
 @Slf4j
-public class QueryContext extends AbstractQueryContext {
+public class QueryContext extends AbstractQueryContext implements FailureContext {
 
   /**
    * The Constant serialVersionUID.
@@ -157,6 +152,10 @@ public class QueryContext extends AbstractQueryContext {
   @Setter
   private boolean finishedQueryPersisted = false;
 
+  @Getter
+  @Setter
+  private boolean isQueryClosedOnDriver = false;
+
   /**
    * The query name.
    */
@@ -186,6 +185,31 @@ public class QueryContext extends AbstractQueryContext {
   @Getter
   private transient boolean isDriverResultRegistered;
 
+  @Getter
+  @Setter
+  private byte[] queryConfHash;
+
+  transient StatusUpdateFailureContext statusUpdateFailures = new StatusUpdateFailureContext();
+
+  @Getter
+  @Setter
+  private transient boolean isLaunching = false;
+
+  @Getter
+  @Setter
+  private transient Future queryLauncher;
+  transient List<QueryDriverStatusUpdateListener> driverStatusUpdateListeners = Lists.newArrayList();
+  @Getter
+  @Setter
+  List<FailedAttempt> failedAttempts = Lists.newArrayList();
+
+  @Getter
+  @Setter
+  private BackOffRetryHandler<QueryContext> driverRetryPolicy;
+  @Getter
+  @Setter
+  private BackOffRetryHandler<QueryContext> serverRetryPolicy;
+
   /**
    * Creates context from query
    *
@@ -208,7 +232,7 @@ public class QueryContext extends AbstractQueryContext {
    */
   public QueryContext(PreparedQueryContext prepared, String user, LensConf qconf, Configuration conf) {
     this(prepared.getUserQuery(), user, qconf, mergeConf(prepared.getConf(), conf), prepared.getDriverContext()
-        .getDriverQueryContextMap().keySet(), prepared.getDriverContext().getSelectedDriver(), true);
+      .getDriverQueryContextMap().keySet(), prepared.getDriverContext().getSelectedDriver(), true);
     setDriverContext(prepared.getDriverContext());
     setSelectedDriverQuery(prepared.getSelectedDriverQuery());
     setSelectedDriverQueryCost(prepared.getSelectedDriverQueryCost());
@@ -225,7 +249,7 @@ public class QueryContext extends AbstractQueryContext {
    * @param selectedDriver SelectedDriver
    */
   QueryContext(String userQuery, String user, LensConf qconf, Configuration conf, Collection<LensDriver> drivers,
-      LensDriver selectedDriver, boolean mergeDriverConf) {
+    LensDriver selectedDriver, boolean mergeDriverConf) {
     this(userQuery, user, qconf, conf, drivers, selectedDriver, System.currentTimeMillis(), mergeDriverConf);
   }
 
@@ -241,7 +265,7 @@ public class QueryContext extends AbstractQueryContext {
    * @param submissionTime the submission time
    */
   QueryContext(String userQuery, String user, LensConf qconf, Configuration conf, Collection<LensDriver> drivers,
-      LensDriver selectedDriver, long submissionTime, boolean mergeDriverConf) {
+    LensDriver selectedDriver, long submissionTime, boolean mergeDriverConf) {
     super(userQuery, user, qconf, conf, drivers, mergeDriverConf);
     this.submissionTime = submissionTime;
     this.queryHandle = new QueryHandle(UUID.randomUUID());
@@ -249,9 +273,9 @@ public class QueryContext extends AbstractQueryContext {
     this.lensConf = qconf;
     this.conf = conf;
     this.isPersistent = conf.getBoolean(LensConfConstants.QUERY_PERSISTENT_RESULT_SET,
-        LensConfConstants.DEFAULT_PERSISTENT_RESULT_SET);
+      LensConfConstants.DEFAULT_PERSISTENT_RESULT_SET);
     this.isDriverPersistent = conf.getBoolean(LensConfConstants.QUERY_PERSISTENT_RESULT_INDRIVER,
-        LensConfConstants.DEFAULT_DRIVER_PERSISTENT_RESULT_SET);
+      LensConfConstants.DEFAULT_DRIVER_PERSISTENT_RESULT_SET);
     this.userQuery = userQuery;
     if (selectedDriver != null) {
       this.setSelectedDriver(selectedDriver);
@@ -273,10 +297,16 @@ public class QueryContext extends AbstractQueryContext {
    * @return QueryContext object
    */
   public static QueryContext createContextWithSingleDriver(String query, String user, LensConf qconf,
-      Configuration conf, LensDriver driver, String lensSessionPublicId, boolean mergeDriverConf) {
+    Configuration conf, LensDriver driver, String lensSessionPublicId, boolean mergeDriverConf) {
     QueryContext ctx = new QueryContext(query, user, qconf, conf, Lists.newArrayList(driver), driver, mergeDriverConf);
     ctx.setLensSessionIdentifier(lensSessionPublicId);
     return ctx;
+  }
+
+  public void initTransientState() {
+    super.initTransientState();
+    statusUpdateFailures = new StatusUpdateFailureContext();
+    driverStatusUpdateListeners = Lists.newArrayList();
   }
 
   /**
@@ -295,18 +325,6 @@ public class QueryContext extends AbstractQueryContext {
       conf.set(entry.getKey(), entry.getValue());
     }
     return conf;
-  }
-
-  /**
-   * Update conf.
-   *
-   * @param confoverlay the conf to set
-   */
-  public void updateConf(Map<String, String> confoverlay) {
-    lensConf.getProperties().putAll(confoverlay);
-    for (Map.Entry<String, String> prop : confoverlay.entrySet()) {
-      this.conf.set(prop.getKey(), prop.getValue());
-    }
   }
 
   public String getResultSetParentDir() {
@@ -329,7 +347,7 @@ public class QueryContext extends AbstractQueryContext {
       getSelectedDriverQuery(),
       status,
       resultSetPath, driverOpHandle, lensConf, submissionTime, launchTime, driverStatus.getDriverStartTime(),
-      driverStatus.getDriverFinishTime(), endTime, closedTime, queryName);
+      driverStatus.getDriverFinishTime(), endTime, closedTime, queryName, getFailedAttempts());
   }
 
   public boolean isResultAvailableInDriver() {
@@ -357,8 +375,37 @@ public class QueryContext extends AbstractQueryContext {
   }
 
   public synchronized void setStatus(final QueryStatus newStatus) throws LensException {
+    validateTransition(newStatus);
     log.info("Updating status of {} from {} to {}", getQueryHandle(), this.status, newStatus);
     this.status = newStatus;
+  }
+
+  /**
+   * Update status from selected driver
+   *
+   * @param statusUpdateRetryHandler The exponential retry handler
+   *
+   * @throws LensException Throws exception if update from driver has failed.
+   */
+  public synchronized void updateDriverStatus(BackOffRetryHandler statusUpdateRetryHandler)
+    throws LensException {
+    if (statusUpdateRetryHandler.canTryOpNow(statusUpdateFailures)) {
+      try {
+        getSelectedDriver().updateStatus(this);
+        statusUpdateFailures.clear();
+      } catch (LensException exc) {
+        if (LensUtil.isSocketException(exc)) {
+          statusUpdateFailures.updateFailure();
+          if (!statusUpdateRetryHandler.hasExhaustedRetries(statusUpdateFailures)) {
+            // retries are not exhausted, so failure is ignored and update will be tried later
+            log.warn("Exception during update status from driver and update will be tried again at {}",
+              statusUpdateRetryHandler.getOperationNextTime(statusUpdateFailures), exc);
+            return;
+          }
+        }
+        throw exc;
+      }
+    }
   }
 
   public String getResultHeader() {
@@ -403,8 +450,7 @@ public class QueryContext extends AbstractQueryContext {
 
 
   /**
-   * Get query handle string
-   * @return
+   * @return query handle string
    */
   @Override
   public String getLogHandle() {
@@ -429,6 +475,9 @@ public class QueryContext extends AbstractQueryContext {
   public boolean successful() {
     return this.status.successful();
   }
+  public boolean executed() {
+    return this.status.executed();
+  }
 
   public boolean launched() {
     return this.status.launched();
@@ -446,15 +495,13 @@ public class QueryContext extends AbstractQueryContext {
     return getSelectedDriver().getQueryConstraints();
   }
 
-  public ImmutableSet<WaitingQueriesSelectionPolicy> getSelectedDriverSelectionPolicies() {
-    return getSelectedDriver().getWaitingQuerySelectionPolicies();
-  }
-
   public synchronized void registerDriverResult(LensResultSet result) throws LensException {
     if (isDriverResultRegistered) {
       return; //already registered
     }
+    log.info("Registering driver resultset for query {}", getQueryHandleString());
     this.isDriverResultRegistered = true;
+
     /*
      *  Check if results needs to be streamed to client in which case driver result needs to be wrapped in
      *  PartiallyFetchedInMemoryResultSet
@@ -467,18 +514,115 @@ public class QueryContext extends AbstractQueryContext {
      *  5. rowsToPreFetch should be > 0
      */
     if (isPersistent && executeTimeoutMillis > 0
-        && result instanceof InMemoryResultSet
-        && conf.getBoolean(PREFETCH_INMEMORY_RESULTSET, DEFAULT_PREFETCH_INMEMORY_RESULTSET)) {
+      && result instanceof InMemoryResultSet
+      && conf.getBoolean(PREFETCH_INMEMORY_RESULTSET, DEFAULT_PREFETCH_INMEMORY_RESULTSET)) {
       int rowsToPreFetch = conf.getInt(PREFETCH_INMEMORY_RESULTSET_ROWS, DEFAULT_PREFETCH_INMEMORY_RESULTSET_ROWS);
       if (rowsToPreFetch > 0) {
         long executeTimeOutTime = submissionTime + executeTimeoutMillis;
         if (System.currentTimeMillis() < executeTimeOutTime) {
           this.driverResult = new PartiallyFetchedInMemoryResultSet((InMemoryResultSet) result, rowsToPreFetch);
           return;
+        } else {
+          log.info("Skipping creation of PartiallyFetchedInMemoryResultSet as the query {} has already timed out",
+            getQueryHandleString());
         }
       }
     }
     this.driverResult = result;
   }
+  public void setDriverStatus(DriverQueryStatus.DriverQueryState state, String message) {
+    if (getDriverStatus().getState().getOrder() > state.getOrder()) {
+      log.info("current driver status: {}, ignoring transition request to {}", getDriverStatus().getState(), state);
+      return;
+    }
+    switch (state) {
+    case NEW:
+    case INITIALIZED:
+    case PENDING:
+      getDriverStatus().setProgress(0.0);
+    case RUNNING:
+      if (getDriverStatus().getDriverStartTime() == null || getDriverStatus().getDriverStartTime() <= 0) {
+        getDriverStatus().setDriverStartTime(System.currentTimeMillis());
+      }
+      break;
+    case SUCCESSFUL:
+    case FAILED:
+    case CANCELED:
+      getDriverStatus().setProgress(1.0);
+      if (getDriverStatus().getDriverFinishTime() == null || getDriverStatus().getDriverFinishTime() <= 0) {
+        getDriverStatus().setDriverFinishTime(System.currentTimeMillis());
+      }
+      break;
+    default:
+      break;
+    }
+    if (message != null) {
+      if (state == DriverQueryStatus.DriverQueryState.FAILED) {
+        getDriverStatus().setErrorMessage(message);
+      } else {
+        getDriverStatus().setStatusMessage(message);
+      }
+    }
+    if (getDriverStatus().getStatusMessage() == null) {
+      getDriverStatus().setStatusMessage("Query " + getQueryHandleString() + " " + state.name().toLowerCase());
+    }
+    getDriverStatus().setState(state);
+    synchronized (this.driverStatusUpdateListeners) {
+      for (QueryDriverStatusUpdateListener listener : this.driverStatusUpdateListeners) {
+        listener.onDriverStatusUpdated(getQueryHandle(), getDriverStatus());
+      }
+    }
+  }
 
+  public String toString() {
+    return queryHandle + ":" + this.status;
+  }
+
+  public void setDriverStatus(DriverQueryStatus.DriverQueryState state) {
+    setDriverStatus(state, null);
+  }
+
+
+  public void registerStatusUpdateListener(QueryDriverStatusUpdateListener driverStatusUpdateListener) {
+    synchronized (this.driverStatusUpdateListeners) {
+      this.driverStatusUpdateListeners.add(driverStatusUpdateListener);
+    }
+  }
+
+  @Override
+  public long getLastFailedTime() {
+    if (getFailCount() == 0) {
+      return 0;
+    }
+    return getFailedAttempts().get(getFailedAttempts().size() - 1).getDriverFinishTime();
+  }
+
+  @Override
+  public int getFailCount() {
+    return getFailedAttempts().size();
+  }
+
+  public BackOffRetryHandler<QueryContext> getRetryPolicy() {
+    return driverRetryPolicy != null ? driverRetryPolicy : serverRetryPolicy;
+  }
+
+  public void extractFailedAttempt() {
+    extractFailedAttempt(getSelectedDriver());
+  }
+
+  public void extractFailedAttempt(LensDriver selectedDriver) {
+    failedAttempts.add(new FailedAttempt(selectedDriver.getFullyQualifiedName(), getDriverStatus().getProgress(),
+      getDriverStatus().getProgressMessage(), getDriverStatus().getErrorMessage(),
+      getDriverStatus().getDriverStartTime(), getDriverStatus().getDriverFinishTime()));
+    getDriverStatus().clear();
+  }
+
+  public boolean hasTimedout() {
+    if (status.running()) {
+      long runtimeMillis = System.currentTimeMillis() - launchTime;
+      long timeoutMillis = getSelectedDriverConf().getInt(QUERY_TIMEOUT_MILLIS, DEFAULT_QUERY_TIMEOUT_MILLIS);
+      return runtimeMillis > timeoutMillis;
+    }
+    return false;
+  }
 }

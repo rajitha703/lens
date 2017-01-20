@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.ws.rs.client.Entity;
@@ -40,6 +41,7 @@ import org.apache.lens.driver.hive.TestRemoteHiveDriver;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.metrics.LensMetricsUtil;
 import org.apache.lens.server.api.metrics.MetricsService;
+import org.apache.lens.server.api.query.QueryExecutionService;
 import org.apache.lens.server.model.LogSegregationContext;
 import org.apache.lens.server.model.MappedDiagnosticLogSegregationContext;
 import org.apache.lens.server.query.QueryExecutionServiceImpl;
@@ -126,8 +128,24 @@ public abstract class LensJerseyTest extends JerseyTest {
     config.register(LensJAXBContextResolver.class);
   }
 
-  public HiveConf getServerConf() {
-    return LensServerConf.getHiveConf();
+  /**
+   * This should used only on restarts and not during initial setup.
+   * @return Modified Server conf with over-writes
+   */
+  public final HiveConf getServerConf() {
+    HiveConf serverConf = LensServerConf.getHiveConf();
+    Map<String, String> overWrites = getServerConfOverWrites();
+    if (overWrites != null) {
+      serverConf = new HiveConf(serverConf);
+      for (Map.Entry<String, String> overWrite : overWrites.entrySet()) {
+        serverConf.set(overWrite.getKey(), overWrite.getValue());
+      }
+    }
+    return serverConf;
+  }
+
+  public Map<String, String> getServerConfOverWrites() {
+    return null;
   }
 
   /**
@@ -150,7 +168,7 @@ public abstract class LensJerseyTest extends JerseyTest {
     createTestDatabaseResources(new String[]{DB_WITH_JARS, DB_WITH_JARS_2},
       hiveConf);
 
-    LensServices.get().init(getServerConf());
+    LensServices.get().init(LensServerConf.getHiveConf());
     LensServices.get().start();
 
     // Check if mock service is started
@@ -211,22 +229,31 @@ public abstract class LensJerseyTest extends JerseyTest {
   /**
    * Restart lens server.
    */
-  public void restartLensServer() {
-    HiveConf h = getServerConf();
-    restartLensServer(h);
+  protected void restartLensServer() {
+    restartLensServer(LensServerConf.getHiveConf());
+  }
+
+  protected void restartLensServer(HiveConf conf) {
+    restartLensServer(conf, false);
   }
 
   /**
    * Restart lens server.
    *
    * @param conf the conf
+   * @param pauseQuerySubmitter whether to pause query submitter while starting lens server
    */
-  public void restartLensServer(HiveConf conf) {
+  public void restartLensServer(HiveConf conf, boolean pauseQuerySubmitter) {
     LensServices.get().stop();
     LensMetricsUtil.clearRegistry();
     System.out.println("Lens services stopped!");
     LensServices.setInstance(new LensServices(LensServices.LENS_SERVICES_NAME, this.logSegregationContext));
     LensServices.get().init(conf);
+    if (pauseQuerySubmitter) {
+      QueryExecutionServiceImpl queryService = LensServices.get().getService(QueryExecutionService.NAME);
+      queryService.pauseQuerySubmitter(true);
+      System.out.println("Paused Query Submitter");
+    }
     LensServices.get().start();
     System.out.println("Lens services restarted!");
   }
@@ -240,7 +267,7 @@ public abstract class LensJerseyTest extends JerseyTest {
       }
     }
     if (unPurgable.size() > allowUnpurgable) {
-      throw new RuntimeException("finished queries can't be purged: " + unPurgable);
+      throw new RuntimeException(unPurgable.size() + " finished queries can't be purged: " + unPurgable);
     }
     while (finishedQueries.size() > allowUnpurgable) {
       Thread.sleep(5000);
@@ -256,11 +283,6 @@ public abstract class LensJerseyTest extends JerseyTest {
   }
 
   public static Entity getEntityForString(String o, MediaType mt) {
-    if (mt.equals(MediaType.APPLICATION_JSON_TYPE)) {
-      return Entity.json(o);
-    } else if (mt.equals(MediaType.APPLICATION_XML_TYPE)) {
-      return Entity.xml(o);
-    }
     return Entity.entity(o, mt);
   }
 }

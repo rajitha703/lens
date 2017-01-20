@@ -25,6 +25,7 @@ import Config from 'config.json';
 let baseUrl = Config.baseURL;
 let urls = {
   getDatabases: 'metastore/databases',
+  setDatabases: 'metastore/databases/current',
   getCubes: 'metastore/cubes',
   query: 'queryapi/queries', // POST on this to execute, GET to fetch all
   getTables: 'metastore/nativetables',
@@ -39,10 +40,24 @@ let AdhocQueryAdapter = {
     let url = baseUrl + urls.getDatabases;
     return BaseAdapter.get(url + '?sessionid=' + secretToken);
   },
+  setDatabase (secretToken, database) {
+    let url = baseUrl + urls.setDatabases;
+    return BaseAdapter.put(url + '?sessionid=' + secretToken, database, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+  },
 
   getCubes (secretToken) {
     let url = baseUrl + urls.getCubes;
-    return BaseAdapter.get(url + '?sessionid=' + secretToken);
+    let postURL = "?";
+    if (Config.cubes_type) {
+      postURL += "type=" + Config.cubes_type + "&"
+    }
+    postURL += "sessionid=" + secretToken;
+    return BaseAdapter.get(url + postURL);
   },
 
   getCubeDetails (secretToken, cubeName) {
@@ -135,6 +150,29 @@ let AdhocQueryAdapter = {
         }));
       });
   },
+  getQueryHandles (secretToken, email, options) {
+    let queryOptions = {};
+    queryOptions.sessionid = secretToken;
+    queryOptions.user = email;
+    var state;
+    if (options && options.state) {
+      state = options.state.toUpperCase();
+    }
+    let handlesUrl = baseUrl + urls.query + '?sessionid=' + secretToken + '&user=' +
+      email;
+    if (state) handlesUrl += '&state=' + state;
+    if (options.fromDate) handlesUrl += "&fromDate="+options.fromDate;
+    if (options.toDate) handlesUrl += "&toDate="+options.toDate;
+    return BaseAdapter.get(handlesUrl);
+  },
+  getQueriesDetails (secretToken, handles) {
+    let url = baseUrl + urls.query + '?sessionid=' + secretToken;
+    return Promise.all(handles.map((handle) => {
+      let queryUrl = baseUrl + urls.query + '/' + handle +
+        '?sessionid=' + secretToken + '&queryHandle=' + handle;
+      return BaseAdapter.get(queryUrl);
+    }));
+  },
 
   getQueryResult (secretToken, handle, queryMode) {
     // on page refresh, the store won't have queryMode so fetch query
@@ -202,7 +240,7 @@ let AdhocQueryAdapter = {
   },
 
   getParams (secretToken, query) {
-    let url = baseUrl + urls.parameters;
+    let url = baseUrl + urls.parameters + '?sessionid=' + secretToken;
 
     let formData = new FormData();
     formData.append('query', query);

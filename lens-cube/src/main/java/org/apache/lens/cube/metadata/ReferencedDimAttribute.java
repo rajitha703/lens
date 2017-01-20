@@ -42,6 +42,11 @@ public class ReferencedDimAttribute extends BaseDimAttribute {
   public static class ChainRefCol {
     private final String chainName;
     private final String refColumn;
+
+    public ChainRefCol(String chainName, String refColumn) {
+      this.chainName = chainName.toLowerCase();
+      this.refColumn = refColumn.toLowerCase();
+    }
   }
 
   public ReferencedDimAttribute(FieldSchema column, String displayString, String chainName, String refColumn,
@@ -52,18 +57,20 @@ public class ReferencedDimAttribute extends BaseDimAttribute {
   public ReferencedDimAttribute(FieldSchema column, String displayString, String chainName, String refColumn,
     Date startTime, Date endTime, Double cost, Long numOfDistinctValues) throws LensException {
     this(column, displayString,
-      Collections.singletonList(new ChainRefCol(chainName.toLowerCase(), refColumn.toLowerCase())), startTime, endTime,
+      Collections.singletonList(new ChainRefCol(chainName, refColumn)), startTime, endTime,
       cost, numOfDistinctValues);
   }
 
   public ReferencedDimAttribute(FieldSchema column, String displayString, List<ChainRefCol> chainRefCols,
     Date startTime, Date endTime, Double cost, Long numOfDistinctValues) throws LensException {
-    this(column, displayString, chainRefCols, startTime, endTime, cost, numOfDistinctValues, null);
+    this(column, displayString, chainRefCols, startTime, endTime, cost, numOfDistinctValues,
+        null, new HashMap<String, String>());
   }
 
   public ReferencedDimAttribute(FieldSchema column, String displayString, List<ChainRefCol> chainRefCols,
-    Date startTime, Date endTime, Double cost, Long numOfDistinctValues, List<String> values) throws LensException {
-    super(column, displayString, startTime, endTime, cost, numOfDistinctValues, values);
+    Date startTime, Date endTime, Double cost, Long numOfDistinctValues, List<String> values, Map<String, String> tags)
+    throws LensException {
+    super(column, displayString, startTime, endTime, cost, numOfDistinctValues, values, tags);
     if (chainRefCols.isEmpty()) {
       throw new LensException(LensCubeErrorCode.ERROR_IN_ENTITY_DEFINITION.getLensErrorInfo(), " Ref column: "
         + getName() + " does not have any chain_ref_column defined");

@@ -234,6 +234,47 @@
     </description>
   </property>
 
+  <property>
+    <name>lens.query.cancel.on.timeout</name>
+    <value>true</value>
+    <description>Specifies whether to attempt cancellation of a query whose execution takes longer than the timeout
+    value specified while submitting the query for execution. The default value is true.
+    </description>
+  </property>
+
+  <property>
+    <name>lens.query.http.notification.mediatype</name>
+    <value>application/json</value>
+    <description>This is the media type for Query Http notifications. Accepted types are "application/json" and
+      "application/xml". The default value is "application/json"</description>
+  </property>
+
+  <property>
+    <name>lens.query.http.notification.type.FINISHED</name>
+    <value>false</value>
+    <description>Setting this property to true will enable query FINISHED notifications which includes
+      SUCCESSFUL, FAILED and CANCELLED queries. The notification will have eventtype = "FINISHED",
+      eventtime = long event time and query = org.apache.lens.api.query.LensQuery instance. The mediatype for
+      eventtype and eventtime will be TEXT/PLAIN and the mediatype for query will be based on property
+      lens.query.http.notification.mediatype. Default value of this property is false. </description>
+  </property>
+
+  <property>
+    <name>lens.query.http.notification.urls</name>
+    <value></value>
+    <description>These are the http end points for Query http notifications. Users can specify more than one comma
+      separated end points for a query. Url parameter values that include special characters should be
+      encoded. Please note that if this property is not set, no http notification will be sent out by lens
+      server for the query.</description>
+  </property>
+
+  <property>
+    <name>lens.query.timeout.millis</name>
+    <value>86400000</value>
+    <description>The runtime(millis) of the query after which query will be timedout and cancelled. Default is 1 day.
+    </description>
+  </property>
+
   <!--  properties for session -->
   <property>
     <name>lens.session.aux.jars</name>
@@ -330,6 +371,13 @@
     <name>lens.cube.query.fail.if.data.partial</name>
     <value>true</value>
     <description>Whether to fail the query of data is partial</description>
+  </property>
+
+  <property>
+    <name>lens.cube.query.completeness.threshold</name>
+    <value>100</value>
+    <description>The query will fail if data completeness is less than the set threshold given that the flag
+      "lens.cube.query.fail.if.data.partial" is set as true</description>
   </property>
 
   <property>

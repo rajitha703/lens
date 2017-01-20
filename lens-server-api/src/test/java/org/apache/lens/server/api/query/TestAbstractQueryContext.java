@@ -18,7 +18,6 @@
  */
 package org.apache.lens.server.api.query;
 
-import static org.apache.lens.api.Priority.HIGH;
 import static org.apache.lens.server.api.LensConfConstants.*;
 import static org.apache.lens.server.api.LensServerAPITestUtil.getConfiguration;
 
@@ -28,12 +27,10 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.lens.api.Priority;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.driver.MockDriver;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metrics.LensMetricsRegistry;
-import org.apache.lens.server.api.query.priority.MockQueryPriorityDecider;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -76,33 +73,22 @@ public class TestAbstractQueryContext {
   public void testTransientState() throws LensException, IOException, ClassNotFoundException {
     MockQueryContext ctx = new MockQueryContext();
     ByteArrayOutputStream bios = new ByteArrayOutputStream();
-    ObjectOutputStream out = new ObjectOutputStream(bios);
-    byte[] ctxBytes = null;
-    try {
+    byte[] ctxBytes;
+    try (ObjectOutputStream out = new ObjectOutputStream(bios)) {
       out.writeObject(ctx);
       ctxBytes = bios.toByteArray();
-    } finally {
-      out.close();
     }
     ByteArrayInputStream bais = new ByteArrayInputStream(ctxBytes);
-    ObjectInputStream in = new ObjectInputStream(bais);
-    MockQueryContext ctxRead = null;
-    try {
+    MockQueryContext ctxRead;
+    try (ObjectInputStream in = new ObjectInputStream(bais)) {
       ctxRead = (MockQueryContext) in.readObject();
-    } finally {
-      in.close();
     }
     ctxRead.initTransientState();
     ctxRead.setConf(ctx.getConf());
     assertNotNull(ctxRead.getHiveConf());
-  }
-
-  @Test
-  public void testPrioritySetting() throws LensException {
-    MockQueryContext ctx = new MockQueryContext();
-    Priority p = ctx.decidePriority(ctx.getSelectedDriver(), new MockQueryPriorityDecider());
-    assertEquals(p, HIGH);
-    assertEquals(ctx.getPriority(), HIGH);
+    assertNotNull(ctxRead.statusUpdateFailures);
+    assertNotNull(ctxRead.driverStatusUpdateListeners);
+    assertEquals(ctxRead.driverStatusUpdateListeners.size(), 0);
   }
 
   @Test

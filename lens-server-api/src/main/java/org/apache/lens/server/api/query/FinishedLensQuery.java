@@ -19,10 +19,11 @@
 package org.apache.lens.server.api.query;
 
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.List;
 
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.Priority;
+import org.apache.lens.api.query.FailedAttempt;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryStatus;
 import org.apache.lens.server.api.driver.LensDriver;
@@ -46,7 +47,7 @@ import lombok.ToString;
  *
  * @see java.lang.Object#hashCode()
  */
-@EqualsAndHashCode(exclude = "selectedDriver")
+@EqualsAndHashCode(exclude = {"selectedDriver", "conf", "failedAttempts"})
 /*
  * (non-Javadoc)
  *
@@ -174,6 +175,21 @@ public class FinishedLensQuery {
   @Setter
   private String priority;
 
+  @Getter
+  @Setter
+  private LensConf conf;
+
+  /**
+   * The selected driver's query.
+   */
+  @Getter
+  @Setter
+  private String driverQuery;
+
+  @Getter
+  @Setter
+  private List<FailedAttempt> failedAttempts;
+
   /**
    * Instantiates a new finished lens query.
    */
@@ -204,11 +220,14 @@ public class FinishedLensQuery {
     this.selectedDriver = ctx.getSelectedDriver();
     if (null != ctx.getSelectedDriver()) {
       this.driverName = ctx.getSelectedDriver().getFullyQualifiedName();
+      this.driverQuery = ctx.getSelectedDriverQuery();
     }
     //Priority can be null in case no driver is fit to execute a query and launch fails.
     if (null != ctx.getPriority()) {
       this.priority = ctx.getPriority().toString();
     }
+    this.conf = ctx.getLensConf();
+    this.failedAttempts = ctx.getFailedAttempts();
   }
 
   public QueryContext toQueryContext(Configuration conf, Collection<LensDriver> drivers) {
@@ -218,28 +237,30 @@ public class FinishedLensQuery {
     }
 
     QueryContext qctx =
-      new QueryContext(userQuery, submitter, new LensConf(), conf, drivers, selectedDriver, submissionTime,
+      new QueryContext(userQuery, submitter, this.conf, conf, drivers, selectedDriver, submissionTime,
         false);
 
     qctx.setQueryHandle(QueryHandle.fromString(handle));
     qctx.setLaunchTime(this.startTime);
     qctx.setEndTime(getEndTime());
     qctx.setStatusSkippingTransitionTest(new QueryStatus(0.0, null, QueryStatus.Status.valueOf(getStatus()),
-        getErrorMessage() == null ? "" : getErrorMessage(), getResult() != null, null, null, null));
+      null, getResult() != null, null, getErrorMessage() == null ? "" : getErrorMessage(), null));
     qctx.getDriverStatus().setDriverStartTime(getDriverStartTime());
     qctx.getDriverStatus().setDriverFinishTime(getDriverEndTime());
     qctx.setResultSetPath(getResult());
     qctx.setQueryName(getQueryName());
+    if (null != driverQuery){
+      qctx.setSelectedDriverQuery(driverQuery);
+    }
     if (getPriority() != null) {
       qctx.setPriority(Priority.valueOf(getPriority()));
     }
+    qctx.setFailedAttempts(getFailedAttempts());
     return qctx;
   }
 
   private LensDriver getDriverFromName(Collection<LensDriver> drivers) {
-    Iterator<LensDriver> iterator = drivers.iterator();
-    while (iterator.hasNext()) {
-      LensDriver driver = iterator.next();
+    for (LensDriver driver : drivers) {
       if (driverName.equals(driver.getFullyQualifiedName())) {
         return driver;
       }

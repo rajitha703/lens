@@ -18,12 +18,13 @@
  */
 package org.apache.lens.server;
 
-import java.io.Externalizable;
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import static org.apache.lens.server.error.LensServerErrorCode.SESSION_CLOSED;
+import static org.apache.lens.server.error.LensServerErrorCode.SESSION_ID_NOT_PROVIDED;
+
+import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,23 +32,26 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
 
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
+import org.apache.lens.api.session.UserSessionInfo;
 import org.apache.lens.api.util.PathValidator;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.LensService;
+import org.apache.lens.server.api.SessionValidator;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.events.LensEvent;
 import org.apache.lens.server.api.events.LensEventService;
-import org.apache.lens.server.api.health.HealthStatus;
+import org.apache.lens.server.api.query.QueryExecutionService;
 import org.apache.lens.server.error.LensServerErrorCode;
+import org.apache.lens.server.query.QueryExecutionServiceImpl;
 import org.apache.lens.server.session.LensSessionImpl;
 import org.apache.lens.server.user.UserConfigLoaderFactory;
 import org.apache.lens.server.util.UtilityMethods;
 
 import org.apache.commons.lang3.StringUtils;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hive.service.CompositeService;
@@ -59,7 +63,7 @@ import org.apache.hive.service.cli.HandleIdentifier;
 import org.apache.hive.service.cli.HiveSQLException;
 import org.apache.hive.service.cli.SessionHandle;
 import org.apache.hive.service.cli.session.SessionManager;
-import org.apache.hive.service.cli.thrift.TSessionHandle;
+import org.apache.hive.service.rpc.thrift.TSessionHandle;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -67,7 +71,8 @@ import lombok.extern.slf4j.Slf4j;
  * The Class LensService.
  */
 @Slf4j
-public abstract class BaseLensService extends CompositeService implements Externalizable, LensService {
+public abstract class BaseLensService extends CompositeService implements Externalizable, LensService,
+  SessionValidator {
 
   /** The cli service. */
   private final CLIService cliService;
@@ -144,6 +149,7 @@ public abstract class BaseLensService extends CompositeService implements Extern
     return numSessions != null && numSessions >= maxNumSessionsPerUser;
   }
 
+
   /**
    * Open session.
    *
@@ -155,12 +161,19 @@ public abstract class BaseLensService extends CompositeService implements Extern
    */
   public LensSessionHandle openSession(String username, String password, Map<String, String> configuration)
     throws LensException {
+    return openSession(username, password, configuration, true);
+  }
+
+  public LensSessionHandle openSession(String username, String password, Map<String, String> configuration,
+      boolean auth) throws LensException {
     if (StringUtils.isBlank(username)) {
       throw new BadRequestException("User name cannot be null or empty");
     }
     SessionHandle sessionHandle;
     username = UtilityMethods.removeDomain(username);
-    doPasswdAuth(username, password);
+    if (auth) {
+      doPasswdAuth(username, password);
+    }
     SessionUser sessionUser = SESSION_USER_INSTANCE_MAP.get(username);
     if (sessionUser == null) {
       sessionUser = new SessionUser(username);
@@ -224,7 +237,7 @@ public abstract class BaseLensService extends CompositeService implements Extern
   }
 
   protected LensEventService getEventService() {
-    LensEventService  eventService = LensServices.get().getService(LensEventService.NAME);
+    LensEventService eventService = LensServices.get().getService(LensEventService.NAME);
     if (eventService == null) {
       throw new NullPointerException("Could not get event service");
     }
@@ -247,10 +260,10 @@ public abstract class BaseLensService extends CompositeService implements Extern
     HandleIdentifier handleIdentifier = new HandleIdentifier(sessionHandle.getPublicId(), sessionHandle.getSecretId());
     SessionHandle hiveSessionHandle = new SessionHandle(new TSessionHandle(handleIdentifier.toTHandleIdentifier()));
     try {
-      SessionHandle restoredHandle = cliService.restoreSession(hiveSessionHandle, userName, password,
+      cliService.createSessionWithSessionHandle(hiveSessionHandle, userName, password,
         new HashMap<String, String>());
-      LensSessionHandle restoredSession = new LensSessionHandle(restoredHandle.getHandleIdentifier().getPublicId(),
-        restoredHandle.getHandleIdentifier().getSecretId());
+      LensSessionHandle restoredSession = new LensSessionHandle(hiveSessionHandle.getHandleIdentifier().getPublicId(),
+        hiveSessionHandle.getHandleIdentifier().getSecretId());
       SESSION_MAP.put(restoredSession.getPublicId().toString(), restoredSession);
       updateSessionsPerUser(userName);
     } catch (HiveSQLException e) {
@@ -271,14 +284,14 @@ public abstract class BaseLensService extends CompositeService implements Extern
         cliService.getHiveConf().setVar(var, cliService.getHiveConf().get(LensConfConstants.SERVER_DOMAIN));
       }
     }
-    String authType = cliService.getHiveConf().getVar(ConfVars.HIVE_SERVER2_AUTHENTICATION);
+    String authType = getHiveConf().getVar(ConfVars.HIVE_SERVER2_AUTHENTICATION);
     // No-op when authType is NOSASL
     if (!authType.equalsIgnoreCase(HiveAuthFactory.AuthTypes.NOSASL.toString())) {
       try {
         AuthenticationProviderFactory.AuthMethods authMethod = AuthenticationProviderFactory.AuthMethods
           .getValidAuthMethod(authType);
-        PasswdAuthenticationProvider provider = AuthenticationProviderFactory.getAuthenticationProvider(authMethod,
-          cliService.getHiveConf());
+        PasswdAuthenticationProvider provider = AuthenticationProviderFactory
+          .getAuthenticationProvider(authMethod, getHiveConf());
         provider.Authenticate(userName, password);
       } catch (Exception e) {
         log.error("Auth error: ", e);
@@ -295,12 +308,26 @@ public abstract class BaseLensService extends CompositeService implements Extern
    */
   public void closeSession(LensSessionHandle sessionHandle) throws LensException {
     try {
-      String userName = getSession(sessionHandle).getLoggedInUser();
-      cliService.closeSession(getHiveSessionHandle(sessionHandle));
-      String publicId = sessionHandle.getPublicId().toString();
-      SESSION_MAP.remove(publicId);
-      decrementSessionCountForUser(sessionHandle, userName);
-    } catch (Exception e) {
+      LensSessionImpl session = getSession(sessionHandle);
+      boolean shouldDecrementOpenedSessionCount = !session.getLensSessionPersistInfo().isMarkedForClose();
+      if (session.activeOperationsPresent()) {
+        session.markForClose();
+      } else {
+        cliService.closeSession(getHiveSessionHandle(sessionHandle));
+        SESSION_MAP.remove(sessionHandle.getPublicId().toString());
+        log.info("Closed session {} for {} user", sessionHandle, session.getLoggedInUser());
+      }
+      if (shouldDecrementOpenedSessionCount) {
+        decrementSessionCountForUser(sessionHandle, session.getLoggedInUser());
+      }
+      if (!SESSION_MAP.containsKey(sessionHandle.getPublicId().toString())) {
+        // Inform query service
+        BaseLensService svc = LensServices.get().getService(QueryExecutionService.NAME);
+        if (svc instanceof QueryExecutionServiceImpl) {
+          ((QueryExecutionServiceImpl) svc).closeDriverSessions(sessionHandle);
+        }
+      }
+    } catch (HiveSQLException e) {
       throw new LensException(e);
     }
   }
@@ -313,7 +340,6 @@ public abstract class BaseLensService extends CompositeService implements Extern
     }
     synchronized (sessionUser) {
       Integer sessionCount = SESSIONS_PER_USER.get(userName);
-      log.info("Closed session {} for {} user", sessionHandle, userName);
       if (sessionCount == 1) {
         SESSIONS_PER_USER.remove(userName);
       } else {
@@ -334,15 +360,15 @@ public abstract class BaseLensService extends CompositeService implements Extern
    */
   public LensSessionImpl getSession(LensSessionHandle sessionHandle) {
     if (sessionHandle == null) {
-      throw new ClientErrorException("Session is null " + sessionHandle, 400);
+      throw new ClientErrorException("Session is null", 400);
     }
-
     try {
       return ((LensSessionImpl) getSessionManager().getSession(getHiveSessionHandle(sessionHandle)));
     } catch (HiveSQLException exc) {
       log.warn("Session {} not found", sessionHandle.getPublicId(), exc);
       // throw resource gone exception (410)
-      throw new ClientErrorException("Session " + sessionHandle.getPublicId() + " is invalid " + sessionHandle, 410);
+      throw new ClientErrorException("Session " + sessionHandle.getPublicId() + " is invalid " + sessionHandle,
+        Response.Status.GONE, exc);
     }
   }
 
@@ -406,28 +432,6 @@ public abstract class BaseLensService extends CompositeService implements Extern
    */
   protected LensSessionHandle getSessionHandle(String sessionid) {
     return SESSION_MAP.get(sessionid);
-  }
-
-  /**
-   * Adds the resource.
-   *
-   * @param sessionHandle the session handle
-   * @param type          the type
-   * @param path          the path
-   * @throws LensException the lens exception
-   */
-  public void addResource(LensSessionHandle sessionHandle, String type, String path) throws LensException {
-  }
-
-  /**
-   * Delete resource.
-   *
-   * @param sessionHandle the session handle
-   * @param type          the type
-   * @param path          the path
-   * @throws LensException the lens exception
-   */
-  public void deleteResource(LensSessionHandle sessionHandle, String type, String path) throws LensException {
   }
 
   /**
@@ -507,12 +511,6 @@ public abstract class BaseLensService extends CompositeService implements Extern
   public void writeExternal(ObjectOutput out) throws IOException {
   }
 
-  /**
-   * Returns the health status of the service.
-   *
-   * @return
-   */
-  public abstract HealthStatus getHealthStatus();
 
   /**
    * Method that uses PathValidator to get appropriate path.
@@ -543,4 +541,49 @@ public abstract class BaseLensService extends CompositeService implements Extern
     }
     return pathValidator.removePrefixBeforeURI(path);
   }
+
+  @Override
+  public void validateSession(LensSessionHandle handle) throws LensException {
+    if (handle == null) {
+      throw new LensException(SESSION_ID_NOT_PROVIDED.getLensErrorInfo());
+    }
+    LensSessionImpl session;
+    try {
+      session = getSession(handle);
+    } catch (ClientErrorException e) {
+      throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle, e);
+    }
+    if (!session.isActive() || session.isMarkedForClose()) {
+      throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle);
+    }
+  }
+
+  public class SessionContext implements AutoCloseable {
+    private LensSessionHandle sessionHandle;
+
+    public SessionContext(LensSessionHandle sessionHandle) {
+      this.sessionHandle = sessionHandle;
+      acquire(sessionHandle);
+    }
+    @Override
+    public void close() {
+      release(sessionHandle);
+    }
+  }
+
+  public List<UserSessionInfo> getSessionInfo() {
+    List<UserSessionInfo> userSessionInfoList = new ArrayList<>();
+    for (LensSessionHandle handle : SESSION_MAP.values()) {
+      LensSessionImpl session = getSession(handle);
+      UserSessionInfo sessionInfo = new UserSessionInfo();
+      sessionInfo.setHandle(handle.getPublicId().toString());
+      sessionInfo.setUserName(session.getLoggedInUser());
+      sessionInfo.setActiveQueries(session.getActiveQueries());
+      sessionInfo.setCreationTime(session.getCreationTime());
+      sessionInfo.setLastAccessTime(session.getLastAccessTime());
+      userSessionInfoList.add(sessionInfo);
+    }
+    return userSessionInfoList;
+  }
 }
+

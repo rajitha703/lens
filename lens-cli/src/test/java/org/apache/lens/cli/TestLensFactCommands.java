@@ -66,7 +66,7 @@ public class TestLensFactCommands extends LensCliApplicationTest {
   }
 
   private void createSampleCube() throws URISyntaxException {
-    URL cubeSpec = TestLensCubeCommands.class.getClassLoader().getResource("sample-cube.xml");
+    URL cubeSpec = TestLensCubeCommands.class.getClassLoader().getResource("schema/cubes/base/sample-cube.xml");
     String cubeList = getCubeCommand().showCubes();
     assertFalse(cubeList.contains("sample_cube"), cubeList);
     getCubeCommand().createCube(new File(cubeSpec.toURI()));
@@ -118,7 +118,7 @@ public class TestLensFactCommands extends LensCliApplicationTest {
     assertEquals(factList, "No fact found", "Fact tables should not be found");
     // add local storage before adding fact table
     TestLensStorageCommands.addLocalStorage(FACT_LOCAL);
-    URL factSpec = TestLensFactCommands.class.getClassLoader().getResource("fact1.xml");
+    URL factSpec = TestLensFactCommands.class.getClassLoader().getResource("schema/facts/fact1.xml");
     try {
       command.createFact(new File(factSpec.toURI()));
     } catch (Exception e) {
@@ -147,7 +147,7 @@ public class TestLensFactCommands extends LensCliApplicationTest {
   public static void updateFact1Table() {
     try {
       LensFactCommands command = getCommand();
-      URL factSpec = TestLensFactCommands.class.getClassLoader().getResource("fact1.xml");
+      URL factSpec = TestLensFactCommands.class.getClassLoader().getResource("schema/facts/fact1.xml");
       StringBuilder sb = new StringBuilder();
       BufferedReader bufferedReader = new BufferedReader(new FileReader(factSpec.getFile()));
       String s;
@@ -162,6 +162,10 @@ public class TestLensFactCommands extends LensCliApplicationTest {
       xmlContent = xmlContent.replace("<property name=\"fact1.prop\" value=\"f1\"/>\n",
         "<property name=\"fact1.prop\" value=\"f1\"/>" + "\n<property name=\"fact1.prop1\" value=\"f2\"/>\n");
 
+      xmlContent = xmlContent.replace("<column comment=\"\" name=\"measure3\" _type=\"FLOAT\"/>",
+          "<column comment=\"\" name=\"measure3\" _type=\"FLOAT\"/>"
+              + "\n<column comment=\"\" name=\"measure4\" _type=\"FLOAT\" start_time=\"2015-01-01\"/>\n");
+
       File newFile = new File("target/local-fact1.xml");
       Writer writer = new OutputStreamWriter(new FileOutputStream(newFile));
       writer.write(xmlContent);
@@ -171,7 +175,7 @@ public class TestLensFactCommands extends LensCliApplicationTest {
       log.debug(desc);
       String propString = "fact1.prop: f1";
       String propString1 = "fact1.prop1: f2";
-
+      String propStringColStartTime = "cube.fact.col.start.time.measure4: 2015-01-01";
       assertTrue(desc.contains(propString));
 
       command.updateFactTable("fact1", new File("target/local-fact1.xml"));
@@ -179,6 +183,7 @@ public class TestLensFactCommands extends LensCliApplicationTest {
       log.debug(desc);
       assertTrue(desc.contains(propString), "The sample property value is not set");
       assertTrue(desc.contains(propString1), "The sample property value is not set");
+      assertTrue(desc.contains(propStringColStartTime), "The sample property value is not set");
 
       newFile.delete();
 

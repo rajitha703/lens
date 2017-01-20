@@ -23,14 +23,11 @@ import static org.apache.hadoop.hive.ql.parse.HiveParser.*;
 import java.util.*;
 
 import org.apache.lens.cube.metadata.*;
-import org.apache.lens.cube.parse.HQLParser.ASTNodeVisitor;
-import org.apache.lens.cube.parse.HQLParser.TreeNode;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.lib.Node;
-import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.session.SessionState;
@@ -76,15 +73,22 @@ public class CandidateFact implements CandidateTable, QueryAST {
   @Getter
   @Setter
   private Integer limitValue;
+  @Getter
+  private String fromString;
   private final List<Integer> selectIndices = Lists.newArrayList();
   private final List<Integer> dimFieldIndices = Lists.newArrayList();
   private Collection<String> columns;
   @Getter
   private final Map<String, ASTNode> storgeWhereClauseMap = new HashMap<>();
   @Getter
+  private final Map<String, String> storgeWhereStringMap = new HashMap<>();
+  @Getter
   private final Map<TimeRange, Map<String, LinkedHashSet<FactPartition>>> rangeToStoragePartMap = new HashMap<>();
   @Getter
   private final Map<TimeRange, Map<String, String>> rangeToStorageWhereMap = new HashMap<>();
+  @Getter
+  @Setter
+  private Map<String, Map<String, Float>> dataCompletenessMap;
 
   CandidateFact(CubeFactTable fact, CubeInterface cube) {
     this.fact = fact;
@@ -150,13 +154,13 @@ public class CandidateFact implements CandidateTable, QueryAST {
 
   // copy ASTs from CubeQueryContext
   public void copyASTs(CubeQueryContext cubeql) throws LensException {
-    setSelectAST(HQLParser.copyAST(cubeql.getSelectAST()));
-    setWhereAST(HQLParser.copyAST(cubeql.getWhereAST()));
+    setSelectAST(MetastoreUtil.copyAST(cubeql.getSelectAST()));
+    setWhereAST(MetastoreUtil.copyAST(cubeql.getWhereAST()));
     if (cubeql.getJoinAST() != null) {
-      setJoinAST(HQLParser.copyAST(cubeql.getJoinAST()));
+      setJoinAST(MetastoreUtil.copyAST(cubeql.getJoinAST()));
     }
     if (cubeql.getGroupByAST() != null) {
-      setGroupByAST(HQLParser.copyAST(cubeql.getGroupByAST()));
+      setGroupByAST(MetastoreUtil.copyAST(cubeql.getGroupByAST()));
     }
   }
 
@@ -164,9 +168,12 @@ public class CandidateFact implements CandidateTable, QueryAST {
   public ASTNode getStorageWhereClause(String storageTable) {
     return storgeWhereClauseMap.get(storageTable);
   }
+  public String getStorageWhereString(String storageTable) {
+    return storgeWhereStringMap.get(storageTable);
+  }
 
   public boolean isExpressionAnswerable(ASTNode node, CubeQueryContext context) throws LensException {
-    return getColumns().containsAll(getColsInExpr(context, context.getCube().getAllFieldNames(), node));
+    return getColumns().containsAll(HQLParser.getColsInExpr(context.getAliasForTableName(context.getCube()), node));
   }
 
   /**
@@ -176,20 +183,20 @@ public class CandidateFact implements CandidateTable, QueryAST {
    * @throws LensException
    */
   public void updateASTs(CubeQueryContext cubeql) throws LensException {
-    Set<String> cubeCols = cubeql.getCube().getAllFieldNames();
-
     // update select AST with selected fields
     int currentChild = 0;
     for (int i = 0; i < cubeql.getSelectAST().getChildCount(); i++) {
       ASTNode selectExpr = (ASTNode) this.selectAST.getChild(currentChild);
-      Set<String> exprCols = getColsInExpr(cubeql, cubeCols, selectExpr);
+      Set<String> exprCols = HQLParser.getColsInExpr(cubeql.getAliasForTableName(cubeql.getCube()), selectExpr);
       if (getColumns().containsAll(exprCols)) {
         selectIndices.add(i);
-        if (cubeql.getCube().getDimAttributeNames().containsAll(exprCols)) {
+        if (exprCols.isEmpty() // no direct fact columns
+          // does not have measure names
+          || (!containsAny(cubeql.getCube().getMeasureNames(), exprCols))) {
           dimFieldIndices.add(i);
         }
         ASTNode aliasNode = HQLParser.findNodeByPath(selectExpr, Identifier);
-        String alias = cubeql.getSelectAlias(i);
+        String alias = cubeql.getSelectPhrases().get(i).getSelectAlias();
         if (aliasNode != null) {
           String queryAlias = aliasNode.getText();
           if (!queryAlias.equals(alias)) {
@@ -216,37 +223,17 @@ public class CandidateFact implements CandidateTable, QueryAST {
     // push down of having clauses happens just after this call in cubequerycontext
   }
 
-  private Set<String> getColsInExpr(final CubeQueryContext cubeql, final Set<String> cubeCols,
-    ASTNode expr) throws LensException {
-    final Set<String> cubeColsInExpr = new HashSet<>();
-    HQLParser.bft(expr, new ASTNodeVisitor() {
-      @Override
-      public void visit(TreeNode visited) {
-        ASTNode node = visited.getNode();
-        ASTNode parent = null;
-        if (visited.getParent() != null) {
-          parent = visited.getParent().getNode();
-        }
-
-        if (node.getToken().getType() == TOK_TABLE_OR_COL && (parent != null && parent.getToken().getType() != DOT)) {
-          // Take child ident.totext
-          ASTNode ident = (ASTNode) node.getChild(0);
-          String column = ident.getText().toLowerCase();
-          if (cubeCols.contains(column)) {
-            cubeColsInExpr.add(column);
-          }
-        } else if (node.getToken().getType() == DOT) {
-          String alias = HQLParser.findNodeByPath(node, TOK_TABLE_OR_COL, Identifier).getText().toLowerCase();
-          ASTNode colIdent = (ASTNode) node.getChild(1);
-          String column = colIdent.getText().toLowerCase();
-          if (cubeql.getAliasForTableName(cubeql.getCube()).equalsIgnoreCase(alias) && cubeCols.contains(column)) {
-            cubeColsInExpr.add(column);
-          }
-        }
+  // The source set contains atleast one column in the colSet
+  static boolean containsAny(Collection<String> srcSet, Collection<String> colSet) {
+    if (colSet == null || colSet.isEmpty()) {
+      return true;
+    }
+    for (String column : colSet) {
+      if (srcSet.contains(column)) {
+        return true;
       }
-    });
-
-    return cubeColsInExpr;
+    }
+    return false;
   }
 
   @Override
@@ -307,18 +294,18 @@ public class CandidateFact implements CandidateTable, QueryAST {
     return result;
   }
 
-  public String getSelectTree() {
+  public String getSelectString() {
     return HQLParser.getString(selectAST);
   }
 
-  public String getWhereTree() {
+  public String getWhereString() {
     if (whereAST != null) {
       return HQLParser.getString(whereAST);
     }
     return null;
   }
 
-  public String getHavingTree() {
+  public String getHavingString() {
     if (havingAST != null) {
       return HQLParser.getString(havingAST);
     }
@@ -326,7 +313,7 @@ public class CandidateFact implements CandidateTable, QueryAST {
   }
 
   @Override
-  public String getOrderByTree() {
+  public String getOrderByString() {
     if (orderByAST != null) {
       return HQLParser.getString(orderByAST);
     }
@@ -347,7 +334,7 @@ public class CandidateFact implements CandidateTable, QueryAST {
     return dimFieldIndices;
   }
 
-  public String getGroupByTree() {
+  public String getGroupByString() {
     if (groupByAST != null) {
       return HQLParser.getString(groupByAST);
     }
@@ -359,16 +346,22 @@ public class CandidateFact implements CandidateTable, QueryAST {
     Set<String> timePartDimensions = new HashSet<String>();
     String singleStorageTable = storageTables.iterator().next();
     List<FieldSchema> partitionKeys = null;
-    try {
-      partitionKeys = query.getMetastoreClient().getTable(singleStorageTable).getPartitionKeys();
-    } catch (HiveException e) {
-      throw new LensException(e);
-    }
+    partitionKeys = query.getMetastoreClient().getTable(singleStorageTable).getPartitionKeys();
     for (FieldSchema fs : partitionKeys) {
       if (cubeTimeDimensions.contains(CubeQueryContext.getTimeDimOfPartitionColumn(baseTable, fs.getName()))) {
         timePartDimensions.add(fs.getName());
       }
     }
     return timePartDimensions;
+  }
+
+  public void updateFromString(CubeQueryContext query, Set<Dimension> queryDims,
+    Map<Dimension, CandidateDim> dimsToQuery) throws LensException {
+    fromString = "%s"; // to update the storage alias later
+    if (query.isAutoJoinResolved()) {
+      fromString =
+        query.getAutoJoinCtx().getFromString(fromString, this, queryDims, dimsToQuery,
+          query, this);
+    }
   }
 }

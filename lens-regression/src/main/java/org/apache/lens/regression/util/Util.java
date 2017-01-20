@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.lens.regression.util;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -26,8 +27,12 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 import javax.xml.bind.*;
@@ -36,10 +41,13 @@ import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 
 import org.apache.lens.api.APIResult;
 import org.apache.lens.api.StringList;
@@ -48,13 +56,19 @@ import org.apache.lens.api.metastore.ObjectFactory;
 import org.apache.lens.api.metastore.XProperties;
 import org.apache.lens.api.metastore.XProperty;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.jcraft.jsch.*;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
+import com.jcraft.jsch.*;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -62,34 +76,31 @@ import lombok.extern.slf4j.Slf4j;
 public class Util {
 
   private static final String PROPERTY_FILE = "lens.properties";
-  private static Properties properties;
-  private static String localFilePath = "src/test/resources/";
+  private static String localFilePath = "target/";
   private static String localFile;
   private static String backupFile;
-  private static String remoteFile;
+
+  private static org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(Util.class);
 
   private Util() {
 
   }
 
-  public static synchronized Properties getPropertiesObj(String filename) {
+  public static Properties getPropertiesObj(String filename) {
     try {
-      if (properties == null) {
-        properties = new Properties();
-        log.info("filename: {}", filename);
-        InputStream confStream = Util.class.getResourceAsStream("/" + filename);
-        properties.load(confStream);
-        confStream.close();
-      }
+      Properties properties = new Properties();
+      log.info("filename: {}", filename);
+      InputStream confStream = Util.class.getResourceAsStream("/" + filename);
+      properties.load(confStream);
+      confStream.close();
       return properties;
-
     } catch (IOException e) {
       log.info("Error in getProperies:", e);
     }
     return null;
   }
 
-  public static String getProperty(String property) {
+  public static String getProperty(String property){
     Properties prop = Util.getPropertiesObj(PROPERTY_FILE);
     return prop.getProperty(property);
   }
@@ -154,8 +165,7 @@ public class Util {
   }
 
   @SuppressWarnings("unchecked")
-  public static <T> Object extractObject(String queryString, Class<T> c)
-    throws InstantiationException, IllegalAccessException {
+  public static <T> Object extractObject(String queryString, Class<T> c) throws IllegalAccessException {
     JAXBContext jaxbContext = null;
     Unmarshaller unmarshaller = null;
     StringReader reader = new StringReader(queryString);
@@ -171,8 +181,7 @@ public class Util {
   }
 
   @SuppressWarnings("unchecked")
-  public static <T> Object getObject(String queryString, Class<T> c)
-    throws InstantiationException, IllegalAccessException {
+  public static <T> Object getObject(String queryString, Class<T> c) throws IllegalAccessException {
     JAXBContext jaxbContext = null;
     Unmarshaller unmarshaller = null;
     StringReader reader = new StringReader(queryString);
@@ -188,8 +197,8 @@ public class Util {
 
   @SuppressWarnings("unchecked")
   public static <T> String convertObjectToXml(T object, Class<T> clazz, String functionName)
-    throws SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException,
-    InvocationTargetException {
+    throws SecurityException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+
     JAXBElement<T> root = null;
     StringWriter stringWriter = new StringWriter();
     ObjectFactory methodObject = new ObjectFactory();
@@ -238,22 +247,16 @@ public class Util {
   }
 
   public static void changeConfig(HashMap<String, String> map, String remotePath) throws Exception {
-    String fileName;
-    remoteFile = remotePath;
 
-    Path p = Paths.get(remoteFile);
-
-    fileName = p.getFileName().toString();
+    Path p = Paths.get(remotePath);
+    String fileName = p.getFileName().toString();
     backupFile = localFilePath + "backup-" + fileName;
     localFile = localFilePath + fileName;
-    log.info("Copying " + remoteFile + " to " + localFile);
-    remoteFile("get", remoteFile, localFile);
-    File locfile = new File(localFile);
-    File remfile = new File(backupFile);
-    Files.copy(locfile.toPath(), remfile.toPath(), REPLACE_EXISTING);
+    log.info("Copying " + remotePath + " to " + localFile);
+    remoteFile("get", remotePath, localFile);
+    Files.copy(new File(localFile).toPath(), new File(backupFile).toPath(), REPLACE_EXISTING);
 
-    DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-    DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+    DocumentBuilder docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     Document doc = docBuilder.parse(new FileInputStream(localFile));
     doc.normalize();
 
@@ -262,8 +265,7 @@ public class Util {
     Element rootElement = (Element) root;
     NodeList property = rootElement.getElementsByTagName("property");
 
-    for (int i = 0; i < property.getLength(); i++)   //Deleting redundant properties from the document
-    {
+    for (int i = 0; i < property.getLength(); i++) {  //Deleting redundant properties from the document
       Node prop = property.item(i);
       Element propElement = (Element) prop;
       Node propChild = propElement.getElementsByTagName("name").item(0);
@@ -273,7 +275,6 @@ public class Util {
         rootElement.removeChild(prop);
         i--;
       }
-
     }
 
     Iterator<Entry<String, String>> ab = map.entrySet().iterator();
@@ -295,7 +296,7 @@ public class Util {
       newNodeElement.appendChild(newValue);
     }
     prettyPrint(doc);
-    remoteFile("put", remoteFile, localFile);
+    remoteFile("put", remotePath, localFile);
   }
 
   /*
@@ -304,7 +305,9 @@ public class Util {
   public static final void prettyPrint(Document xml) throws TransformerFactoryConfigurationError, TransformerException {
     xml.normalize();
     Transformer transformer = TransformerFactory.newInstance().newTransformer();
-    Result output = new StreamResult(new File(localFile));
+    transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+    transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+    StreamResult output = new StreamResult(new File(localFile));
     Source input = new DOMSource(xml);
     transformer.transform(input, output);
   }
@@ -312,8 +315,9 @@ public class Util {
   /*
    * function to download or upload a file to a remote server
    */
-  public static void remoteFile(String function, String remotePath, String localPath)
-    throws JSchException, SftpException {
+  public static void remoteFile(String function, String remotePath, String localPath) throws JSchException,
+      SftpException {
+
     String serverUrl = getProperty("lens.remote.host");
     String serverUname = getProperty("lens.remote.username");
     String serverPass = getProperty("lens.remote.password");
@@ -345,22 +349,16 @@ public class Util {
   }
 
   public static void changeConfig(String remotePath) throws JSchException, SftpException {
-    String fileName;
-    remoteFile = remotePath;
-
-    Path p = Paths.get(remoteFile);
-
-    fileName = p.getFileName().toString();
+    String fileName = Paths.get(remotePath).getFileName().toString();
     backupFile = localFilePath + "backup-" + fileName;
-
-    log.info("Copying " + backupFile + " to " + remoteFile);
-    remoteFile("put", remoteFile, backupFile);
+    log.info("Copying " + backupFile + " to " + remotePath);
+    remoteFile("put", remotePath, backupFile);
   }
 
   public static Map<String, String> mapFromXProperties(XProperties xProperties) {
     Map<String, String> properties = new HashMap<String, String>();
     if (xProperties != null && xProperties.getProperty() != null
-      && !xProperties.getProperty().isEmpty()) {
+        && !xProperties.getProperty().isEmpty()) {
       for (XProperty xp : xProperties.getProperty()) {
         properties.put(xp.getName(), xp.getValue());
       }
@@ -411,6 +409,108 @@ public class Util {
       log.info("Error converting date " + d, e);
       return null;
     }
+  }
+
+  public static String getJobIdFromProgressMsg(String progressMsg){
+    Pattern jobIdPattern = Pattern.compile("(job_\\d*_\\d*)");
+    Matcher matcher = jobIdPattern.matcher(progressMsg);
+    String jobid=null;
+    if (matcher.find()) {
+      jobid = matcher.group(1);
+    }
+    return jobid;
+  }
+
+  public static String getMapredJobPrority(String url, String jobId) throws IOException, IllegalAccessException,
+      InstantiationException, ParserConfigurationException, SAXException {
+
+    String xmlPathExpr = "/conf/property[name='mapreduce.job.priority']/value";
+    String jobConfXml = sendHttpGetRequest(url.replace("JOB_ID", jobId));
+    String priority = getValueFromXml(jobConfXml, xmlPathExpr);
+    return priority;
+  }
+
+  public static String sendHttpGetRequest(String url) throws IOException {
+    HttpGet request = new HttpGet(url);
+    request.addHeader("Accept", "application/xml");
+    HttpResponse response = new DefaultHttpClient().execute(request);
+    BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent(), "UTF-8"));
+    StringBuffer result = new StringBuffer();
+    String line = "";
+    while ((line = rd.readLine()) != null) {
+      result.append(line);
+    }
+    return result.toString();
+  }
+
+  public static Document getDocument(String xmlContent) throws ParserConfigurationException, SAXException, IOException {
+
+    DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    InputSource is = new InputSource();
+    is.setCharacterStream(new StringReader(xmlContent));
+    Document doc = db.parse(is);
+    return doc;
+  }
+
+  public static String getValueFromXml(String xmlContent, String xmlPathExpr) {
+
+    String value    = null;
+    try {
+      Document doc = getDocument(xmlContent);
+      XPath xpath  = XPathFactory.newInstance().newXPath();
+      value        = xpath.compile(xmlPathExpr).evaluate(doc);
+
+    } catch (ParserConfigurationException e) {
+      logger.info(e);
+    } catch (SAXException e) {
+      logger.info(e);
+    } catch (IOException e) {
+      logger.info(e);
+    } catch (XPathExpressionException e) {
+      logger.info(e);
+    }
+    return value;
+  }
+
+
+  public static String getCurrentDate(String format){
+    SimpleDateFormat sdf = new SimpleDateFormat(format);
+    return sdf.format(new Date());
+  }
+
+  public static String getFormattedDate(String epochTime, String format){
+    SimpleDateFormat sdf = new SimpleDateFormat(format);
+    return sdf.format(Long.parseLong(epochTime));
+  }
+
+  public static String modifyDate(String dateString, String format, int calenderIntervalUnit, int diff)
+    throws ParseException {
+
+    SimpleDateFormat sdf = new SimpleDateFormat(format);
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(sdf.parse(dateString));
+    calendar.add(calenderIntervalUnit, diff);
+    return sdf.format(calendar.getTime());
+  }
+
+  public static XMLGregorianCalendar getGregorianCalendar(String date, String format) throws ParseException,
+      DatatypeConfigurationException {
+    GregorianCalendar cal = new GregorianCalendar();
+    cal.setTime(new SimpleDateFormat(format).parse(date));
+    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+    XMLGregorianCalendar calendar = DatatypeFactory.newInstance().newXMLGregorianCalendar(cal);
+    return calendar;
+  }
+
+  public static XMLGregorianCalendar getGregorianCalendar(String date) throws ParseException,
+      DatatypeConfigurationException {
+    return getGregorianCalendar(date, "yyyy-MM-dd HH:mm:ss");  //"yyyy-MM-dd'T'HH:mm:ss.SSSX"
+  }
+
+  public static String getDateStringFromGregorainCalender(XMLGregorianCalendar xcal, String format){
+    Date dt = xcal.toGregorianCalendar().getTime();
+    SimpleDateFormat sdf = new SimpleDateFormat(format);
+    return sdf.format(dt);
   }
 
 }

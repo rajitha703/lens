@@ -18,13 +18,14 @@
  */
 package org.apache.lens.cube.parse;
 
-import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.FactPartition;
 import org.apache.lens.server.api.error.LensException;
+
+import com.google.common.collect.BoundType;
 
 
 /**
@@ -38,22 +39,30 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
     if (rangeParts.size() == 0) {
       return "";
     }
+    //Flag to check if only between range needs to be used
+    boolean useBetweenOnly = cubeQueryContext.getConf().getBoolean(CubeQueryConfUtil.BETWEEN_ONLY_TIME_RANGE_WRITER,
+      CubeQueryConfUtil.DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER);
+
+    //Fetch the date start and end bounds from config
+    BoundType startBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.START_DATE_BOUND_TYPE,
+      CubeQueryConfUtil.DEFAULT_START_BOUND_TYPE));
+    BoundType endBound = BoundType.valueOf(cubeQueryContext.getConf().get(CubeQueryConfUtil.END_DATE_BOUND_TYPE,
+      CubeQueryConfUtil.DEFAULT_END_BOUND_TYPE));
+
     StringBuilder partStr = new StringBuilder();
-    if (rangeParts.size() == 1) {
+    if (!useBetweenOnly && rangeParts.size() == 1) {
       partStr.append("(");
       String partFilter =
         TimeRangeUtils.getTimeRangePartitionFilter(rangeParts.iterator().next(), cubeQueryContext, tableName);
       partStr.append(partFilter);
       partStr.append(")");
     } else {
-      TreeSet<FactPartition> parts = new TreeSet<FactPartition>();
+      TreeSet<FactPartition> parts = new TreeSet<>();
       FactPartition first = null;
-      Iterator<FactPartition> it = rangeParts.iterator();
-      while (it.hasNext()) {
-        FactPartition part = it.next();
+      for (FactPartition part : rangeParts) {
         if (part.hasContainingPart()) {
           throw new LensException(LensCubeErrorCode.CANNOT_USE_TIMERANGE_WRITER.getLensErrorInfo(),
-              "Partition has containing part");
+            "Partition has containing part");
         }
         if (first == null) {
           first = part;
@@ -73,6 +82,14 @@ public class BetweenTimeRangeWriter implements TimeRangeWriter {
 
       FactPartition start = parts.first();
       FactPartition end = parts.last();
+
+      if (startBound.equals(BoundType.OPEN)) {
+        start = start.previous();
+      }
+
+      if (endBound.equals(BoundType.OPEN)) {
+        end = end.next();
+      }
 
       String partCol = start.getPartCol();
       if (cubeQueryContext != null && !cubeQueryContext.shouldReplaceTimeDimWithPart()) {

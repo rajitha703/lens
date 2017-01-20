@@ -40,7 +40,6 @@ import org.apache.lens.server.api.query.ExplainQueryContext;
 import org.apache.lens.server.api.query.PreparedQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.query.cost.QueryCost;
-import org.apache.lens.server.api.user.MockDriverQueryHook;
 import org.apache.lens.server.api.util.LensUtil;
 
 import org.apache.hadoop.conf.Configuration;
@@ -86,7 +85,6 @@ public class TestJdbcDriver {
     baseConf.set(JDBC_USER, "SA");
     baseConf.set(JDBC_PASSWORD, "");
     baseConf.set(JDBC_EXPLAIN_KEYWORD_PARAM, "explain plan for ");
-    baseConf.setClass(JDBC_QUERY_HOOK_CLASS, MockDriverQueryHook.class, DriverQueryHook.class);
     hConf = new HiveConf(baseConf, this.getClass());
 
     driver = new JDBCDriver();
@@ -141,13 +139,17 @@ public class TestJdbcDriver {
   }
 
   synchronized void createTable(String table, Connection conn) throws Exception {
+    runTestSetupQuery(conn, "CREATE TABLE " + table + " (ID INT)");
+  }
+
+  void runTestSetupQuery(Connection conn, String query) throws Exception {
     Statement stmt = null;
     try {
       if (conn == null) {
         conn = driver.getConnection();
       }
       stmt = conn.createStatement();
-      stmt.execute("CREATE TABLE " + table + " (ID INT)");
+      stmt.execute(query);
 
       conn.commit();
     } finally {
@@ -165,13 +167,16 @@ public class TestJdbcDriver {
     insertData(table, null);
   }
 
+  void insertData(String table, Connection conn) throws Exception {
+    insertData(table, conn, 10);
+  }
   /**
    * Insert data.
    *
    * @param table the table
    * @throws Exception the exception
    */
-  void insertData(String table, Connection conn) throws Exception {
+  void insertData(String table, Connection conn, int numRows) throws Exception {
     PreparedStatement stmt = null;
     try {
       if (conn == null) {
@@ -179,7 +184,7 @@ public class TestJdbcDriver {
       }
       stmt = conn.prepareStatement("INSERT INTO " + table + " VALUES(?)");
 
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < numRows; i++) {
         stmt.setInt(1, i);
         stmt.executeUpdate();
       }
@@ -413,9 +418,46 @@ public class TestJdbcDriver {
     }
   }
 
+  @Test
+  public void testJDBCMaxConnectionConstraintCheck() throws Exception {
+    close();
+    // Create table execute_test
+    createTable("max_connection_test");
+    // Insert some data into table
+    insertData("max_connection_test");
+
+    MaxJDBCConnectionCheckConstraintFactory factory = new MaxJDBCConnectionCheckConstraintFactory();
+    MaxJDBCConnectionCheckConstraint constraint = factory.create(driver.getConf());
+
+    // check constraint in driver
+    assertTrue(driver.getQueryConstraints().toString().contains("MaxJDBCConnectionCheckConstraint"));
+
+    String query;
+    QueryContext context = createQueryContext("SELECT * FROM max_connection_test");
+
+    for (int i = 1; i <= JDBC_POOL_MAX_SIZE.getDefaultValue(); i++) {
+      query = "SELECT " + i + " FROM max_connection_test";
+      context = createQueryContext(query);
+      driver.executeAsync(context);
+    }
+
+    //pool max size is same as number of query context hold on driver
+    assertEquals(driver.getQueryContextMap().size(), JDBC_POOL_MAX_SIZE.getDefaultValue());
+
+    //new query shouldn't be allowed
+    QueryContext newcontext = createQueryContext("SELECT 123 FROM max_connection_test");
+    assertNotNull(constraint.allowsLaunchOf(newcontext, null));
+
+    //close one query and launch the previous query again
+    driver.closeQuery(context.getQueryHandle());
+    assertNull(constraint.allowsLaunchOf(newcontext, null));
+    close();
+  }
+
+
   /**
-   * Data provider for test case {@link #testExecuteWithPreFetch()}
-   * @return
+   * Data provider for test case {@link #testExecuteWithPreFetch(int, boolean, int, boolean, long)} ()}
+   * @return data
    */
   @DataProvider
   public Object[][] executeWithPreFetchDP() {
@@ -428,7 +470,7 @@ public class TestJdbcDriver {
     };
   }
 
-  /**
+  /**Testjdbcdri
    * @param rowsToPreFecth  : requested number of rows to be pre-fetched
    * @param isComplteleyFetched : whether the wrapped in memory result has been completely accessed due to pre fetch
    * @param rowsPreFetched : actual rows pre-fetched
@@ -454,6 +496,9 @@ public class TestJdbcDriver {
     QueryContext context = createQueryContext(query, conf);
     context.setExecuteTimeoutMillis(executeTimeoutMillis);
     driver.executeAsync(context);
+    while (!context.getDriverStatus().isFinished()) {
+      Thread.sleep(1000);
+    }
     LensResultSet resultSet = driver.fetchResultSet(context);
     assertNotNull(resultSet);
 
@@ -619,6 +664,28 @@ public class TestJdbcDriver {
   }
 
   /**
+   * Test prepare skip warnings
+   *
+   * @throws Exception the exception
+   */
+  @Test
+  public void testPrepareSkipWarnings() throws Exception {
+    createTable("prepare_test3");
+    createTable("prepare_test3", driver.getEstimateConnection());
+    insertData("prepare_test3");
+    insertData("prepare_test3", driver.getEstimateConnection());
+
+    final String query = "SELECT * from prepare_test3";
+
+    PreparedQueryContext pContext = new PreparedQueryContext(query, "SA", baseConf, drivers);
+    pContext.getDriverConf(driver).setBoolean(JDBC_VALIDATE_SKIP_WARNINGS, true);
+    //run validate
+    driver.validate(pContext);
+    //run prepare
+    driver.prepare(pContext);
+  }
+
+  /**
    * Test execute async.
    *
    * @throws Exception the exception
@@ -647,7 +714,7 @@ public class TestJdbcDriver {
 
     executeAsync(context);
     QueryHandle handle = context.getQueryHandle();
-    driver.registerForCompletionNotification(handle, 0, listener);
+    driver.registerForCompletionNotification(context, 0, listener);
 
     while (true) {
       driver.updateStatus(context);
@@ -746,7 +813,6 @@ public class TestJdbcDriver {
 
   private void executeAsync(QueryContext ctx) throws LensException {
     driver.executeAsync(ctx);
-    assertEquals(ctx.getSelectedDriverConf().get(MockDriverQueryHook.KEY), MockDriverQueryHook.VALUE);
   }
 
   /**
@@ -788,30 +854,59 @@ public class TestJdbcDriver {
     driver.execute(validCtx);
   }
 
+  public static int sleep(int t) {
+    try {
+      log.info("Sleeping for {} seconds", t);
+      Thread.sleep(t * 1000);
+    } catch (InterruptedException ie) {
+      // ignore
+    }
+    return t;
+  }
+
+  @DataProvider(name = "waitBeforeCancel")
+  public Object[][] mediaTypeData() {
+    return new Object[][] {
+      {true},
+      {false},
+    };
+  }
+
+  boolean setupCancel = false;
+  private void setupCancelQuery() throws Exception {
+    if (!setupCancel) {
+      createTable("cancel_query_test");
+      insertData("cancel_query_test", null, 1);
+      final String function = "create function sleep(t int) returns int no sql language java PARAMETER STYLE JAVA"
+        + " EXTERNAL NAME 'CLASSPATH:org.apache.lens.driver.jdbc.TestJdbcDriver.sleep'";
+      runTestSetupQuery(null, function);
+      setupCancel = true;
+    }
+  }
   /**
    * Test cancel query.
    *
    * @throws Exception the exception
    */
-  @Test
-  public void testCancelQuery() throws Exception {
-    createTable("cancel_query_test");
-    insertData("cancel_query_test");
-    final String query = "SELECT * FROM cancel_query_test";
+  @Test(dataProvider = "waitBeforeCancel")
+  public void testCancelQuery(boolean waitBeforeCancel) throws Exception {
+    setupCancelQuery();
+    // picked function as positive with udf mapping to sleep - sothat the signature of both are same.
+    // Here we need a UDF mapping because the function sleep is not available in Hive functions and semantic analysis
+    // would fail otherwise.
+    final String query = "SELECT positive(5) FROM cancel_query_test";
     QueryContext context = createQueryContext(query);
     System.out.println("@@@ test_cancel:" + context.getQueryHandle());
     executeAsync(context);
     QueryHandle handle = context.getQueryHandle();
+    // without wait query may not be launched.
+    if (waitBeforeCancel) {
+      Thread.sleep(1000);
+    }
     boolean isCancelled = driver.cancelQuery(handle);
     driver.updateStatus(context);
-
-    if (isCancelled) {
-      assertEquals(context.getDriverStatus().getState(), DriverQueryState.CANCELED);
-    } else {
-      // Query completed before cancelQuery call
-      assertEquals(context.getDriverStatus().getState(), DriverQueryState.SUCCESSFUL);
-    }
-
+    assertTrue(isCancelled);
+    assertEquals(context.getDriverStatus().getState(), DriverQueryState.CANCELED);
     assertTrue(context.getDriverStatus().getDriverStartTime() > 0);
     assertTrue(context.getDriverStatus().getDriverFinishTime() > 0);
     driver.closeQuery(handle);
@@ -845,22 +940,21 @@ public class TestJdbcDriver {
       public void onCompletion(QueryHandle handle) {
         fail("Was expecting this query to fail " + handle);
       }
+
     };
 
     executeAsync(ctx);
     QueryHandle handle = ctx.getQueryHandle();
-    driver.registerForCompletionNotification(handle, 0, listener);
+    driver.registerForCompletionNotification(ctx, 0, listener);
 
-    while (true) {
+    while (!ctx.getDriverStatus().isFinished()) {
       driver.updateStatus(ctx);
       System.out.println("Query: " + handle + " Status: " + ctx.getDriverStatus());
-      if (ctx.getDriverStatus().isFinished()) {
-        assertEquals(ctx.getDriverStatus().getState(), DriverQueryState.FAILED);
-        assertEquals(ctx.getDriverStatus().getProgress(), 1.0);
-        break;
-      }
       Thread.sleep(500);
     }
+    assertEquals(ctx.getDriverStatus().getState(), DriverQueryState.FAILED);
+    assertEquals(ctx.getDriverStatus().getProgress(), 1.0);
+
     assertTrue(ctx.getDriverStatus().getDriverStartTime() > 0);
     assertTrue(ctx.getDriverStatus().getDriverFinishTime() > 0);
 

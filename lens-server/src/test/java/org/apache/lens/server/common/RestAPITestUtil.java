@@ -77,7 +77,10 @@ public class RestAPITestUtil {
     final Optional<String> query, MediaType mt) {
     return postQuery(target, sessionId, query, Optional.of("estimate"), Optional.<LensConf>absent(), mt);
   }
-
+  public static Response explain(final WebTarget target, final Optional<LensSessionHandle> sessionId,
+                                  final Optional<String> query, MediaType mt) {
+    return postQuery(target, sessionId, query, Optional.of("explain"), Optional.<LensConf>absent(), mt);
+  }
   public static Response execute(final WebTarget target, final Optional<LensSessionHandle> sessionId,
     final Optional<String> query, MediaType mt) {
     return execute(target, sessionId, query, Optional.<LensConf>absent(), mt);
@@ -228,7 +231,7 @@ public class RestAPITestUtil {
   public static LensQuery waitForQueryToFinish(final WebTarget target, final LensSessionHandle lensSessionHandle,
     final QueryHandle handle, QueryStatus.Status status, MediaType mt) throws InterruptedException {
     LensQuery lensQuery = waitForQueryToFinish(target, lensSessionHandle, handle, mt);
-    assertEquals(lensQuery.getStatus().getStatus(), status);
+    assertEquals(lensQuery.getStatus().getStatus(), status, String.valueOf(lensQuery));
     return lensQuery;
   }
 
@@ -245,9 +248,14 @@ public class RestAPITestUtil {
   }
 
   public static PersistentQueryResult getLensQueryResult(final WebTarget target,
-    final LensSessionHandle lensSessionHandle, final QueryHandle handle, MediaType mt) {
+    final LensSessionHandle lensSessionHandle, final QueryHandle handle, MediaType mt) throws InterruptedException {
+    return getLensQueryResult(target, lensSessionHandle, handle, PersistentQueryResult.class, mt);
+  }
+  public static <T> T getLensQueryResult(final WebTarget target, final LensSessionHandle lensSessionHandle,
+    final QueryHandle handle, Class<T> clazz, MediaType mt) throws InterruptedException {
+    waitForQueryToFinish(target, lensSessionHandle, handle, QueryStatus.Status.SUCCESSFUL, mt);
     return target.path("queryapi/queries").path(handle.toString()).path("resultset")
-      .queryParam("sessionid", lensSessionHandle).request(mt).get(PersistentQueryResult.class);
+      .queryParam("sessionid", lensSessionHandle).request(mt).get(clazz);
   }
 
   public static Response getLensQueryHttpResult(final WebTarget target, final LensSessionHandle lensSessionHandle,

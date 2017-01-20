@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.lens.api.LensSessionHandle;
+import org.apache.lens.api.session.UserSessionInfo;
 import org.apache.lens.server.api.error.LensException;
 
 public interface SessionService {
@@ -66,6 +67,13 @@ public interface SessionService {
   void closeSession(LensSessionHandle sessionHandle) throws LensException;
 
   /**
+   * Close idle sessions.
+   *
+   * @throws LensException the lens exception
+   */
+
+  void cleanupIdleSessions() throws LensException;
+  /**
    * Adds the resource.
    *
    * @param sessionHandle the session handle
@@ -108,17 +116,6 @@ public interface SessionService {
   void setSessionParameter(LensSessionHandle sessionHandle, String key, String value);
 
   /**
-   * Adds the resource to all services.
-   *
-   * @param sessionHandle the sessionid
-   * @param type          the type
-   * @param path          the path
-   * @return the number of services that the resource has been added to
-   */
-
-  int addResourceToAllServices(LensSessionHandle sessionHandle, String type, String path);
-
-  /**
    * Lists resources from the session service
    *
    * @param sessionHandle the sessionid
@@ -132,4 +129,10 @@ public interface SessionService {
    * Returns true if the session is open
    */
   boolean isOpen(LensSessionHandle sessionHandle);
+
+  /**
+   *
+   * @return a list of all sessions
+   */
+  List<UserSessionInfo> getSessionInfo();
 }

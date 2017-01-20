@@ -28,23 +28,26 @@ import javax.ws.rs.core.UriBuilder;
 import org.apache.lens.api.jaxb.LensJAXBContextResolver;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.metrics.MetricsService;
-import org.apache.lens.server.error.LensExceptionMapper;
+import org.apache.lens.server.error.GenericExceptionMapper;
 import org.apache.lens.server.error.LensJAXBValidationExceptionMapper;
 import org.apache.lens.server.metrics.MetricsServiceImpl;
 import org.apache.lens.server.model.MappedDiagnosticLogSegregationContext;
-import org.apache.lens.server.ui.UIApp;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 
 import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.servlet.ServletRegistration;
 import org.glassfish.grizzly.servlet.WebappContext;
+import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
 import org.glassfish.jersey.filter.LoggingFilter;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
+import org.glassfish.jersey.process.JerseyProcessingUncaughtExceptionHandler;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import com.codahale.metrics.servlets.AdminServlet;
+import jersey.repackaged.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -86,6 +89,21 @@ public class LensServer {
     String baseURI = conf.get(LensConfConstants.SERVER_BASE_URL, LensConfConstants.DEFAULT_SERVER_BASE_URL);
     HttpServer server = GrizzlyHttpServerFactory.createHttpServer(UriBuilder.fromUri(baseURI).build(), getApp(),
       false);
+
+    int corePoolSize = conf.getInt(LensConfConstants.GRIZZLY_CORE_POOL_SIZE,
+            LensConfConstants.DEFAULT_GRIZZLY_CORE_POOL_SIZE);
+    int maxPoolSize = conf.getInt(LensConfConstants.GRIZZLY_MAX_POOL_SIZE,
+            LensConfConstants.DEFAULT_GRIZZLY_MAX_POOL_SIZE);
+
+    ThreadPoolConfig config = ThreadPoolConfig.defaultConfig();
+    config.setPoolName("lensserver-pool");
+    config.setCorePoolSize(corePoolSize);
+    config.setMaxPoolSize(maxPoolSize);
+    config.setThreadFactory((new ThreadFactoryBuilder()).setNameFormat("grizzly-http-server-%d")
+      .setUncaughtExceptionHandler(new JerseyProcessingUncaughtExceptionHandler()).build());
+
+    NetworkListener listener = server.getListeners().iterator().next();
+    listener.getTransport().setWorkerThreadPoolConfig(config);
     serverList.add(server);
 
     WebappContext adminCtx = new WebappContext("admin", "");
@@ -93,36 +111,20 @@ public class LensServer {
     adminCtx
       .setAttribute("com.codahale.metrics.servlets.MetricsServlet.registry", (metricsService.getMetricRegistry()));
     adminCtx.setAttribute("com.codahale.metrics.servlets.HealthCheckServlet.registry", metricsService.getHealthCheck());
-
     final ServletRegistration sgMetrics = adminCtx.addServlet("admin", new AdminServlet());
     sgMetrics.addMapping("/admin/*");
-
     adminCtx.deploy(server);
-
-    if (conf.getBoolean(LensConfConstants.SERVER_UI_ENABLE,
-      LensConfConstants.DEFAULT_SERVER_UI_ENABLE)) {
-      String uiServerURI = conf.get(LensConfConstants.SERVER_UI_URI, LensConfConstants.DEFAULT_SERVER_UI_URI);
-      HttpServer uiServer = GrizzlyHttpServerFactory.createHttpServer(UriBuilder.fromUri(uiServerURI).build(),
-        getUIApp(), false);
-      serverList.add(uiServer);
-    }
   }
 
   private ResourceConfig getApp() {
 
     ResourceConfig app = ResourceConfig.forApplicationClass(LensApplication.class);
     app.register(new LoggingFilter(Logger.getLogger(LensServer.class.getName() + ".request"), true));
-    app.register(LensExceptionMapper.class);
+    app.register(GenericExceptionMapper.class);
     app.register(LensJAXBValidationExceptionMapper.class);
     app.register(LensJAXBContextResolver.class);
     app.setApplicationName("AllApps");
     return app;
-  }
-
-  private ResourceConfig getUIApp() {
-    ResourceConfig uiApp = ResourceConfig.forApplicationClass(UIApp.class);
-    uiApp.setApplicationName("Lens UI");
-    return uiApp;
   }
 
   /**

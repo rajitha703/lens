@@ -64,4 +64,17 @@ public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBased
   public int compareTo(final FactPartitionBasedQueryCost o) {
     return new Double(partitionCost).compareTo(o.partitionCost);
   }
+
+  @Override
+  public String toString() {
+    return getQueryCostType() + "(" + getEstimatedResourceUsage() + ")";
+  }
+
+  public static class Parser implements org.apache.lens.api.parse.Parser<FactPartitionBasedQueryCost> {
+
+    @Override
+    public FactPartitionBasedQueryCost parse(String value) {
+      return new FactPartitionBasedQueryCost(Double.parseDouble(value));
+    }
+  }
 }

@@ -55,14 +55,17 @@ public final class MetastoreConstants {
   public static final String FACT_RELATIVE_START_TIME = "cube.fact.relative.start.time";
   public static final String FACT_ABSOLUTE_END_TIME = "cube.fact.absolute.end.time";
   public static final String FACT_RELATIVE_END_TIME = "cube.fact.relative.end.time";
+  public static final String FACT_COL_START_TIME_PFX = "cube.fact.col.start.time.";
+  public static final String FACT_COL_END_TIME_PFX = "cube.fact.col.end.time.";
+  public static final String FACT_DATA_COMPLETENESS_TAG = "cube.fact.datacompleteness.tag";
 
-  // cube segmentation constants
+  // Segmentation constants
   public static final String SEGMENTATION_KEY_PFX = "cube.segmentation.internal.";
   public static final String SEGMENTATION_ABSOLUTE_START_TIME = "cube.segmentation.absolute.start.time";
   public static final String SEGMENTATION_RELATIVE_START_TIME = "cube.segmentation.relative.start.time";
   public static final String SEGMENTATION_ABSOLUTE_END_TIME = "cube.segmentation.absolute.end.time";
   public static final String SEGMENTATION_RELATIVE_END_TIME = "cube.segmentation.relative.end.time";
-  public static final String SEGMENTATION_CUBE_SEGMENT_SFX = ".cubesegments";
+  public static final String SEGMENTATION_CUBE_SEGMENT_SFX = ".segments";
   public static final String SEGMENT_PROP_SFX = ".props.";
 
   // dim table constants
@@ -83,6 +86,7 @@ public final class MetastoreConstants {
   public static final String DESC_SFX = ".description";
   public static final String DISPLAY_SFX = ".displaystring";
   public static final String NUM_DISTINCT_VALUES = ".num.distinct.values";
+  public static final String TAGS_PFX = ".tags.";
 
   // measure constants
   public static final String MEASURE_KEY_PFX = "cube.measure.";
@@ -92,6 +96,7 @@ public final class MetastoreConstants {
   public static final String MAX_SFX = ".max";
   public static final String EXPR_SFX = ".expr";
   public static final String FORMATSTRING_SFX = ".format";
+  public static final String MEASURE_DATACOMPLETENESS_TAG = "cube.measure.datacompleteness.tag";
 
   // dimension constants
   public static final String DIM_KEY_PFX = "cube.dimension.";

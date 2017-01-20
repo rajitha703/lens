@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,24 +21,34 @@ package org.apache.lens.server.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.sql.DataSource;
 
+import org.apache.lens.api.scheduler.SchedulerJobHandle;
+import org.apache.lens.api.scheduler.SchedulerJobInstanceHandle;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.error.UnSupportedOpException;
 
 import org.apache.commons.dbcp.*;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableUtils;
 
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The Class UtilityMethods.
  */
+@Slf4j
 public final class UtilityMethods {
   private UtilityMethods() {
 
@@ -68,7 +78,7 @@ public final class UtilityMethods {
    * @return the string
    */
   public static String removeDomain(String username) {
-    if (username.contains("@")) {
+    if (username != null && username.contains("@")) {
       username = username.substring(0, username.indexOf("@"));
     }
     return username;
@@ -131,30 +141,29 @@ public final class UtilityMethods {
    */
   public static BasicDataSource getDataSourceFromConf(Configuration conf) {
     BasicDataSource tmp = new BasicDataSource();
-    tmp.setDriverClassName(conf.get(LensConfConstants.SERVER_DB_DRIVER_NAME,
-      LensConfConstants.DEFAULT_SERVER_DB_DRIVER_NAME));
+    tmp.setDriverClassName(
+        conf.get(LensConfConstants.SERVER_DB_DRIVER_NAME, LensConfConstants.DEFAULT_SERVER_DB_DRIVER_NAME));
     tmp.setUrl(conf.get(LensConfConstants.SERVER_DB_JDBC_URL, LensConfConstants.DEFAULT_SERVER_DB_JDBC_URL));
     tmp.setUsername(conf.get(LensConfConstants.SERVER_DB_JDBC_USER, LensConfConstants.DEFAULT_SERVER_DB_USER));
     tmp.setPassword(conf.get(LensConfConstants.SERVER_DB_JDBC_PASS, LensConfConstants.DEFAULT_SERVER_DB_PASS));
-    tmp.setValidationQuery(conf.get(LensConfConstants.SERVER_DB_VALIDATION_QUERY,
-      LensConfConstants.DEFAULT_SERVER_DB_VALIDATION_QUERY));
-    tmp.setDefaultAutoCommit(false);
+    tmp.setValidationQuery(
+        conf.get(LensConfConstants.SERVER_DB_VALIDATION_QUERY, LensConfConstants.DEFAULT_SERVER_DB_VALIDATION_QUERY));
+    tmp.setDefaultAutoCommit(true);
     return tmp;
   }
 
   public static DataSource getPoolingDataSourceFromConf(Configuration conf) {
     final ConnectionFactory cf = new DriverManagerConnectionFactory(
-      conf.get(LensConfConstants.SERVER_DB_JDBC_URL, LensConfConstants.DEFAULT_SERVER_DB_JDBC_URL),
-      conf.get(LensConfConstants.SERVER_DB_JDBC_USER, LensConfConstants.DEFAULT_SERVER_DB_USER),
-      conf.get(LensConfConstants.SERVER_DB_JDBC_PASS, LensConfConstants.DEFAULT_SERVER_DB_PASS));
+        conf.get(LensConfConstants.SERVER_DB_JDBC_URL, LensConfConstants.DEFAULT_SERVER_DB_JDBC_URL),
+        conf.get(LensConfConstants.SERVER_DB_JDBC_USER, LensConfConstants.DEFAULT_SERVER_DB_USER),
+        conf.get(LensConfConstants.SERVER_DB_JDBC_PASS, LensConfConstants.DEFAULT_SERVER_DB_PASS));
     final GenericObjectPool connectionPool = new GenericObjectPool();
     connectionPool.setTestOnBorrow(false);
     connectionPool.setTestOnReturn(false);
     connectionPool.setTestWhileIdle(true);
-    new PoolableConnectionFactory(cf, connectionPool, null
-      , conf.get(LensConfConstants.SERVER_DB_VALIDATION_QUERY,
-        LensConfConstants.DEFAULT_SERVER_DB_VALIDATION_QUERY), false, false)
-      .setDefaultAutoCommit(true);
+    new PoolableConnectionFactory(cf, connectionPool, null,
+        conf.get(LensConfConstants.SERVER_DB_VALIDATION_QUERY, LensConfConstants.DEFAULT_SERVER_DB_VALIDATION_QUERY),
+        false, false).setDefaultAutoCommit(true);
     return new PoolingDataSource(connectionPool);
   }
 
@@ -185,6 +194,57 @@ public final class UtilityMethods {
     while ((n = is.read(buffer)) > -1) {
       os.write(buffer, 0, n);
       os.flush();
+    }
+  }
+
+  /**
+   * Generates a md5 hash of a writable object.
+   *
+   * @param writable
+   * @return hash of a writable object
+   */
+  public static byte[] generateHashOfWritable(Writable writable) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("MD5");
+      byte[] lensConfBytes = WritableUtils.toByteArray(writable);
+      md.update(lensConfBytes);
+      byte[] digest = md.digest();
+      return digest;
+    } catch (NoSuchAlgorithmException e) {
+      log.warn("MD5: No such method error " + writable);
+      return null;
+    }
+  }
+
+  /**
+   * @param conf
+   * @return
+   */
+  public static BasicDataSource getDataSourceFromConfForScheduler(Configuration conf) {
+    BasicDataSource basicDataSource = getDataSourceFromConf(conf);
+    basicDataSource.setDefaultAutoCommit(true);
+    return basicDataSource;
+  }
+
+  public static SchedulerJobHandle generateSchedulerJobHandle() {
+    return new SchedulerJobHandle(UUID.randomUUID());
+  }
+
+  public static SchedulerJobInstanceHandle generateSchedulerJobInstanceHandle() {
+    return new SchedulerJobInstanceHandle(UUID.randomUUID());
+  }
+  public static <T extends Enum<T>> T checkAndGetOperation(final String operation, Class<T> enumType,
+    T... supportedOperations) throws UnSupportedOpException {
+    try {
+      T op = Enum.valueOf(enumType, operation.toUpperCase());
+      for (T supportedOperation : supportedOperations) {
+        if (op.equals(supportedOperation)) {
+          return op;
+        }
+      }
+      throw new UnSupportedOpException(supportedOperations);
+    } catch (IllegalArgumentException e) {
+      throw new UnSupportedOpException(e, supportedOperations);
     }
   }
 }

@@ -38,7 +38,6 @@ public final class JDBCDriverConfConstants {
 
   /** The Constant JDBC_QUERY_REWRITER_CLASS. */
   public static final String JDBC_QUERY_REWRITER_CLASS = JDBC_DRIVER_PFX + "query.rewriter";
-  public static final String JDBC_QUERY_HOOK_CLASS = JDBC_DRIVER_PFX + "query.hook.class";
 
   /** The Constant JDBC_DRIVER_CLASS. */
   public static final String JDBC_DRIVER_CLASS = JDBC_DRIVER_PFX + "driver.class";
@@ -97,6 +96,24 @@ public final class JDBCDriverConfConstants {
   /** The Constant DEFAULT_JDBC_VALIDATE_THROUGH_PREPARE. */
   public static final boolean DEFAULT_JDBC_VALIDATE_THROUGH_PREPARE = true;
 
+  /** The Constant JDBC_VALIDATE_SKIP_WARNINGS */
+  public static final String JDBC_VALIDATE_SKIP_WARNINGS = JDBC_DRIVER_PFX + "validate.skip.warnings";
+
+  /** The Constant DEFAULT_JDBC_VALIDATE_SKIP_WARNINGS. */
+  public static final boolean DEFAULT_JDBC_VALIDATE_SKIP_WARNINGS = false;
+
+  /** The Constant JDBC_HAVING_SUPPORT. */
+  public static final String JDBC_IS_HAVING_SUPPORTED = JDBC_DRIVER_PFX + "is.having.supported";
+
+  /** The Constant JDBC_ORDERBY_SUPPORT. */
+  public static final String JDBC_IS_ORDERBY_SUPPORTED = JDBC_DRIVER_PFX + "is.orderby.supported";
+
+  /** The Constant Default JDBC_HAVING_SUPPORT. */
+  public static final boolean DEFAULT_JDBC_IS_HAVING_SUPPORTED = true;
+
+  /** The Constant Default JDBC_ORDERBY_SUPPORT. */
+  public static final boolean DEFAULT_JDBC_IS_ORDERBY_SUPPORTED = true;
+
   public static final String JDBC_ENABLE_RESULTSET_STREAMING_RETRIEVAL =
     JDBC_DRIVER_PFX + "enable.resultset.streaming.retrieval";
   public static final boolean DEFAULT_JDBC_ENABLE_RESULTSET_STREAMING_RETRIEVAL = false;
@@ -104,10 +121,8 @@ public final class JDBCDriverConfConstants {
   public static final String JDBC_FETCH_SIZE = JDBC_DRIVER_PFX + "fetch.size";
   public static final int DEFAULT_JDBC_FETCH_SIZE = 1000;
 
-  public static final String QUERY_LAUNCHING_CONSTRAINT_FACTORIES_KEY = JDBC_DRIVER_PFX
-    + "query.launching.constraint.factories";
-
-  public static final String WAITING_QUERIES_SELECTION_POLICY_FACTORIES_KEY = JDBC_DRIVER_PFX
-    + "waiting.queries.selection.policy.factories";
   public static final String REGEX_REPLACEMENT_VALUES = JDBC_DRIVER_PFX + "regex.replacement.values";
+  public static final String STATEMENT_CANCEL_SUPPORTED = JDBC_DRIVER_PFX + "statement.cancel.supported";
+  public static final boolean DEFAULT_STATEMENT_CANCEL_SUPPORTED = true;
+
 }

@@ -23,8 +23,6 @@ import assign from 'object-assign';
 import { EventEmitter } from 'events';
 
 function receiveDatabases (payload) {
-  databases = [];
-
   databases = payload.databases.stringList &&
     payload.databases.stringList.elements &&
     payload.databases.stringList.elements.slice();
@@ -32,12 +30,10 @@ function receiveDatabases (payload) {
 
 let CHANGE_EVENT = 'change';
 var databases = [];
-
 let DatabaseStore = assign({}, EventEmitter.prototype, {
   getDatabases () {
     return databases;
   },
-
   emitChange () {
     this.emit(CHANGE_EVENT);
   },

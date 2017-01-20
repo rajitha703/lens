@@ -25,7 +25,6 @@ import org.apache.lens.cube.metadata.UpdatePeriod;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-
 /**
  * Contains all configurations of cube query rewriting.
  */
@@ -46,6 +45,7 @@ public final class CubeQueryConfUtil {
   public static final String NON_EXISTING_PARTITIONS = "lens.cube.query.nonexisting.partitions";
   public static final String QUERY_MAX_INTERVAL = "lens.cube.query.max.interval";
   public static final String PROCESS_TIME_PART_COL = "lens.cube.query.process.time" + ".partition.column";
+  public static final String COMPLETENESS_CHECK_PART_COL = "lens.cube.query.completeness.check.partition.column";
   public static final String LOOK_AHEAD_PT_PARTS_PFX = "lens.cube.query.lookahead.ptparts.forinterval.";
   public static final String ENABLE_GROUP_BY_TO_SELECT = "lens.cube.query.promote.groupby.toselect";
   public static final String ENABLE_SELECT_TO_GROUPBY = "lens.cube.query.promote.select.togroupby";
@@ -103,6 +103,12 @@ public final class CubeQueryConfUtil {
   public static final String LIGHTEST_FACT_FIRST = "lens.cube.query.pick.lightest.fact.first";
   public static final boolean DEFAULT_LIGHTEST_FACT_FIRST = false;
   public static final String TIME_RANGE_WRITER_CLASS = "lens.cube.query.time.range.writer.class";
+  public static final boolean DEFAULT_BETWEEN_ONLY_TIME_RANGE_WRITER = false;
+  public static final String BETWEEN_ONLY_TIME_RANGE_WRITER = "lens.cube.query.between.only.time.range.writer";
+  public static final String DEFAULT_START_BOUND_TYPE = "CLOSED";
+  public static final String DEFAULT_END_BOUND_TYPE = "CLOSED";
+  public static final String START_DATE_BOUND_TYPE = "lens.cube.query.time.range.writer.start.bound.type";
+  public static final String END_DATE_BOUND_TYPE = "lens.cube.query.time.range.writer.end.bound.type";
   public static final Class<? extends TimeRangeWriter> DEFAULT_TIME_RANGE_WRITER = ORTimeRangeWriter.class
     .asSubclass(TimeRangeWriter.class);
   public static final String PART_WHERE_CLAUSE_DATE_FORMAT = "lens.cube.query.partition.where.clause.format";
@@ -110,4 +116,13 @@ public final class CubeQueryConfUtil {
   public static final boolean DEFAULT_ENABLE_FLATTENING_FOR_BRIDGETABLES = false;
   public static final String BRIDGE_TABLE_FIELD_AGGREGATOR = "lens.cube.query.bridge.table.field.aggregator";
   public static final String DEFAULT_BRIDGE_TABLE_FIELD_AGGREGATOR = "collect_set";
+  public static final String DO_FLATTENING_OF_BRIDGE_TABLE_EARLY =
+    "lens.cube.query.flatten.bridge.tables.early";
+  public static final boolean DEFAULT_DO_FLATTENING_OF_BRIDGE_TABLE_EARLY = false;
+  public static final String BRIDGE_TABLE_FIELD_ARRAY_FILTER = "lens.cube.query.bridge.table.field.array.filter";
+  public static final String DEFAULT_BRIDGE_TABLE_FIELD_ARRAY_FILTER = "array_contains";
+  public static final String REWRITE_DIM_FILTER_TO_FACT_FILTER = "lens.cube.query.rewrite.dim.filter.to.fact.filter";
+  public static final boolean DEFAULT_REWRITE_DIM_FILTER_TO_FACT_FILTER = false;
+  public static final String COMPLETENESS_THRESHOLD = "lens.cube.query.completeness.threshold";
+  public static final float DEFAULT_COMPLETENESS_THRESHOLD = 100f;
 }

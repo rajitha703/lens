@@ -25,18 +25,21 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.ws.rs.core.Application;
+
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
 import org.apache.lens.api.Priority;
+import org.apache.lens.api.query.FailedAttempt;
 import org.apache.lens.api.query.LensQuery;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryStatus;
 import org.apache.lens.driver.jdbc.JDBCResultSet;
+import org.apache.lens.server.LensJerseyTest;
 import org.apache.lens.server.LensServices;
+import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.driver.MockDriver;
-import org.apache.lens.server.api.query.FinishedLensQuery;
-import org.apache.lens.server.api.query.QueryContext;
-import org.apache.lens.server.api.query.QueryExecutionService;
+import org.apache.lens.server.api.query.*;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -44,6 +47,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -51,7 +55,12 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Test(groups = "unit-test")
 @Slf4j
-public class TestLensDAO {
+public class TestLensDAO extends LensJerseyTest {
+
+  @Override
+  protected Application configure() {
+    return new TestQueryService.QueryServiceTestApp();
+  }
 
   /**
    * Test lens server dao.
@@ -61,17 +70,35 @@ public class TestLensDAO {
   @Test
   public void testLensServerDAO() throws Exception {
     QueryExecutionServiceImpl service = LensServices.get().getService(QueryExecutionService.NAME);
+    String driverQuery = "SELECT aliasName1.Id FROM driverTable1 aliasName1";
+    String userQuery = "SELECT ID FROM testTable";
 
     // Test insert query
-    QueryContext queryContext = service.createContext("SELECT ID FROM testTable", "foo@localhost", new LensConf(),
-      new Configuration(), 0);
+    QueryContext queryContext = service.createContext(userQuery, "foo@localhost", new LensConf(),
+            new Configuration(), 0);
     long submissionTime = queryContext.getSubmissionTime();
     queryContext.setQueryName("daoTestQuery1");
     queryContext.getDriverContext().setSelectedDriver(new MockDriver());
+    queryContext.getLensConf().addProperty("prop", "value");
+
+    LensDriver mockDriver = new MockDriver();
+    DriverSelectorQueryContext mockDriverContext = new DriverSelectorQueryContext(userQuery,
+            new Configuration(), Lists.newArrayList(mockDriver), false);
+
+    queryContext.setDriverContext(mockDriverContext);
+    queryContext.getDriverContext().setSelectedDriver(mockDriver);
+    // Add a query for the selected driver
+    queryContext.getDriverContext().setDriverQuery(mockDriver, driverQuery);
+    Assert.assertEquals(queryContext.getDriverContext().getSelectedDriverQuery(), driverQuery);
+
     FinishedLensQuery finishedLensQuery = new FinishedLensQuery(queryContext);
     finishedLensQuery.setStatus(QueryStatus.Status.SUCCESSFUL.name());
     finishedLensQuery.setPriority(Priority.NORMAL.toString());
 
+    finishedLensQuery.setFailedAttempts(Lists.newArrayList(
+      new FailedAttempt("driver1", 1.0, "progress full", "no error", 0L, 1L),
+      new FailedAttempt("driver2", 1.0, "progress also full", "no error at all", 2L, 3L)
+    ));
     // Validate JDBC driver RS Meta can be deserialized
 
     // Create a valid JDBCResultSet
@@ -112,17 +139,25 @@ public class TestLensDAO {
 
     FinishedLensQuery actual = service.lensServerDao.getQuery(finishedHandle);
 
+    Assert.assertEquals(finishedLensQuery, actual);
+    Assert.assertEquals(actual.getConf().getProperty("prop"), "value");
+
     // Try to read back result set metadata class, should not throw deserialize exception
     JDBCResultSet.JDBCResultSetMetadata actualRsMeta = MAPPER.readValue(actual.getMetadata(),
       JDBCResultSet.JDBCResultSetMetadata.class);
     // Assert
     Assert.assertNotNull(actualRsMeta, "Should be able to read back metadata for jdbc queries");
-    // Validate metadat
+    // Validate metadata
     Assert.assertEquals(actualRsMeta.getColumns().size(), 1);
     Assert.assertEquals(actualRsMeta.getColumns().get(0).getName().toLowerCase(), "handle");
 
     Assert.assertEquals(actual.getHandle(), finishedHandle);
     Assert.assertEquals(Priority.valueOf(actual.getPriority()), Priority.NORMAL);
+    Assert.assertEquals(actual.getDriverQuery(), driverQuery);
+    // when driver list contains the selected driver, selected driver should get set correctly in context
+    QueryContext retrievedQueryContext = actual.toQueryContext(new Configuration(),
+      Lists.newArrayList(mockDriver));
+    Assert.assertEquals(retrievedQueryContext.getSelectedDriverQuery(), driverQuery);
 
     // Test find finished queries
     LensSessionHandle session = service.openSession("foo@localhost", "bar", new HashMap<String, String>());
@@ -140,9 +175,9 @@ public class TestLensDAO {
     }
 
     System.out.println("@@ State = " + queryContext.getStatus().getStatus().name());
-    List<QueryHandle> daoTestQueryHandles = service.lensServerDao.findFinishedQueries(finishedLensQuery.getStatus(),
-        queryContext.getSubmittedUser(), queryContext.getSelectedDriver().getFullyQualifiedName(), "daotestquery1", -1L,
-      Long.MAX_VALUE);
+    List<QueryHandle> daoTestQueryHandles = service.lensServerDao.findFinishedQueries(
+      Lists.newArrayList(QueryStatus.Status.valueOf(finishedLensQuery.getStatus())), queryContext.getSubmittedUser(),
+      queryContext.getSelectedDriver().getFullyQualifiedName(), "daotestquery1", -1L, Long.MAX_VALUE);
     Assert.assertEquals(daoTestQueryHandles.size(), 1);
     Assert.assertEquals(daoTestQueryHandles.get(0).getHandleId().toString(), finishedHandle);
     service.closeSession(session);

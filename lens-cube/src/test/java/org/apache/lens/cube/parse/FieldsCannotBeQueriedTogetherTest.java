@@ -47,7 +47,6 @@ public class FieldsCannotBeQueriedTogetherTest extends TestQueryRewrite {
     conf.setBoolean(CubeQueryConfUtil.ENABLE_SELECT_TO_GROUPBY, true);
     conf.setBoolean(CubeQueryConfUtil.DISABLE_AGGREGATE_RESOLVER, false);
     conf.setBoolean(CubeQueryConfUtil.DISABLE_AUTO_JOINS, false);
-
   }
 
   @Test
@@ -229,7 +228,6 @@ public class FieldsCannotBeQueriedTogetherTest extends TestQueryRewrite {
     cityState.name is a dimension attribute used in where clause(filter) and referenced through join chain name
     cityState. It is queryable through source column basecube.cityid. basecube.cityid and msr1 are not present in the
     same derived cube. However since cityState.name is only present in the case statement, the query is allowed. */
-
     rewrite("select SUM(CASE WHEN cityState.name ='foo' THEN msr1 END) from basecube where " + TWO_DAYS_RANGE, conf);
   }
 

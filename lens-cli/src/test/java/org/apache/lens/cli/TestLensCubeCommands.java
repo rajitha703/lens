@@ -51,18 +51,17 @@ public class TestLensCubeCommands extends LensCliApplicationTest {
    */
   @Test
   public void testCubeCommands() throws Exception {
-    LensClient client = new LensClient();
-    try {
+    try(LensClient client = new LensClient()) {
       LensDimensionCommands dimensionCommand = new LensDimensionCommands();
       dimensionCommand.setClient(client);
       dimensionCommand.createDimension(new File(
-          TestLensCubeCommands.class.getClassLoader().getResource("test-detail.xml").toURI()));
+          TestLensCubeCommands.class.getClassLoader().getResource("schema/dimensions/test-detail.xml").toURI()));
       dimensionCommand.createDimension(new File(
-          TestLensCubeCommands.class.getClassLoader().getResource("test-dimension.xml").toURI()));
+          TestLensCubeCommands.class.getClassLoader().getResource("schema/dimensions/test-dimension.xml").toURI()));
       LensCubeCommands command = new LensCubeCommands();
       command.setClient(client);
       LOG.debug("Starting to test cube commands");
-      URL cubeSpec = TestLensCubeCommands.class.getClassLoader().getResource("sample-cube.xml");
+      URL cubeSpec = TestLensCubeCommands.class.getClassLoader().getResource("schema/cubes/base/sample-cube.xml");
       String cubeList = command.showCubes();
       assertFalse(cubeList.contains("sample_cube"));
       command.createCube(new File(cubeSpec.toURI()));
@@ -83,8 +82,6 @@ public class TestLensCubeCommands extends LensCliApplicationTest {
       assertFalse(cubeList.contains("sample_cube"));
       dimensionCommand.dropDimension("test_detail");
       dimensionCommand.dropDimension("test_dim");
-    } finally {
-      client.closeConnection();
     }
   }
 
@@ -137,7 +134,8 @@ public class TestLensCubeCommands extends LensCliApplicationTest {
   private void testFields(LensCubeCommands command) {
     String fields = command.showQueryableFields("sample_cube", true);
     for (String field : Arrays
-      .asList("dim1", "dim2", "dim3", "dimdetail", "measure1", "measure2", "measure3", "measure4", "expr_msr5")) {
+      .asList("dim1", "dim2", "dim3", "dimdetail", "dim4", "measure1", "measure2", "measure3", "measure4",
+          "measure5", "measure6", "expr_msr5")) {
       assertTrue(fields.contains(field), fields + " do not contain " + field);
     }
     assertTrue(fields.contains("measure3 + measure4 + 0.01"));
@@ -175,7 +173,6 @@ public class TestLensCubeCommands extends LensCliApplicationTest {
       writer.close();
 
       String desc = command.describeCube("sample_cube");
-      LensClient client = command.getClient();
       LOG.debug(desc);
       String propString = "sample_cube.prop: sample";
       String propString1 = "sample_cube.prop1: sample1";

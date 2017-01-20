@@ -30,13 +30,6 @@
   </property>
 
   <property>
-     
-    <name>hive.metastore.local</name>
-     
-    <value>true</value>
-  </property>
-
-  <property>
     <name>hive.metastore.warehouse.dir</name>
     <value>${project.build.directory}/hive/warehouse</value>
   </property>
@@ -80,6 +73,13 @@
   <property>
     <name>lens.driver.test.drivername</name>
     <value>hive/hive2</value>
+  </property>
+
+  <property>
+    <name>lens.driver.hive.query.hook.classes</name>
+    <value>org.apache.lens.server.api.user.MockDriverQueryHook</value>
+    <description>The query hook class for hive driver.
+    </description>
   </property>
 
 </configuration>

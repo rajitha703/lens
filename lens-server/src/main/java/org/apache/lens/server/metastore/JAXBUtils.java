@@ -36,7 +36,6 @@ import org.apache.lens.server.api.error.LensException;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.Order;
-import org.apache.hadoop.hive.ql.io.HiveFileFormatUtils;
 import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Partition;
@@ -182,7 +181,8 @@ public final class JAXBUtils {
         endDate,
         null,
         xd.getNumDistinctValues(),
-        xd.getValues()
+        xd.getValues(),
+        mapFromXProperties(xd.getTags())
       );
     } else {
       hiveDim = new BaseDimAttribute(new FieldSchema(xd.getName(), xd.getType().toLowerCase(),
@@ -192,7 +192,8 @@ public final class JAXBUtils {
         endDate,
         null,
         xd.getNumDistinctValues(),
-        xd.getValues()
+        xd.getValues(),
+        mapFromXProperties(xd.getTags())
       );
     }
     return hiveDim;
@@ -264,7 +265,14 @@ public final class JAXBUtils {
     xm.setEndTime(getXMLGregorianCalendar(cm.getEndTime()));
     xm.setMin(cm.getMin());
     xm.setMax(cm.getMax());
+    xm.setTags(getXProperties(xPropertiesFromMap(cm.getTags())));
     return xm;
+  }
+
+  public static XProperties getXProperties(List<XProperty> prop) {
+    XProperties properties = XCF.createXProperties();
+    properties.getProperty().addAll(prop);
+    return properties;
   }
 
   /**
@@ -281,6 +289,7 @@ public final class JAXBUtils {
     xe.setDescription(ec.getDescription());
     xe.setDisplayString(ec.getDisplayString());
     xe.getExprSpec().addAll(xExprSpecFromExprColumn(ec.getExpressionSpecs()));
+    xe.setTags(getXProperties(xPropertiesFromMap(ec.getTags())));
     return xe;
   }
 
@@ -314,6 +323,7 @@ public final class JAXBUtils {
     xd.setDisplayString(cd.getDisplayString());
     xd.setStartTime(getXMLGregorianCalendar(cd.getStartTime()));
     xd.setEndTime(getXMLGregorianCalendar(cd.getEndTime()));
+    xd.setTags(getXProperties(xPropertiesFromMap(cd.getTags())));
     if (cd instanceof ReferencedDimAttribute) {
       ReferencedDimAttribute rd = (ReferencedDimAttribute) cd;
       if (!rd.getChainRefColumns().isEmpty()) {
@@ -423,7 +433,8 @@ public final class JAXBUtils {
       endDate,
       null,
       xm.getMin(),
-      xm.getMax()
+      xm.getMax(),
+      mapFromXProperties(xm.getTags())
     );
     return cm;
   }
@@ -454,6 +465,7 @@ public final class JAXBUtils {
     ExprColumn ec = new ExprColumn(new FieldSchema(xe.getName(), xe.getType().toLowerCase(),
       xe.getDescription()),
       xe.getDisplayString(),
+      mapFromXProperties(xe.getTags()),
       exprSpecFromXExprColumn(xe.getExprSpec()));
     return ec;
   }
@@ -490,20 +502,20 @@ public final class JAXBUtils {
     return xpList;
   }
 
-  public static Set<XCubeSegment> xCubeSegmentsFromCubeSegments(Set<CubeSegment> segs) {
-    Set<XCubeSegment> xsegs = new HashSet<XCubeSegment>();
+  public static Set<XSegment> xSegmentsFromSegments(Set<Segment> segs) {
+    Set<XSegment> xsegs = new HashSet<XSegment>();
     if (segs != null && !segs.isEmpty()) {
-      for (CubeSegment seg : segs) {
-        XCubeSegment xcubeSeg = XCF.createXCubeSegment();
+      for (Segment seg : segs) {
+        XSegment xcubeSeg = XCF.createXSegment();
         xcubeSeg.setCubeName(seg.getName());
-        xcubeSeg.setSegmentParameters(getXpropertiesFromCubeSegment(seg));
+        xcubeSeg.setSegmentParameters(getXpropertiesFromSegment(seg));
         xsegs.add(xcubeSeg);
       }
     }
     return xsegs;
   }
 
-  public static XProperties getXpropertiesFromCubeSegment(CubeSegment  cseg) {
+  public static XProperties getXpropertiesFromSegment(Segment cseg) {
     XProperties xproperties = XCF.createXProperties();
     for (String prop : cseg.getProperties().keySet()) {
       String segPrefix = MetastoreUtil.getSegmentPropertyKey(cseg.getName());
@@ -544,6 +556,22 @@ public final class JAXBUtils {
         fsList.add(fieldSchemaFromColumn(c));
       }
       return fsList;
+    }
+    return null;
+  }
+
+  public static Map<String, String> columnStartAndEndTimeFromXColumns(XColumns columns) {
+    if (columns != null && !columns.getColumn().isEmpty()) {
+      Map<String, String> colStartTimeMap = new HashMap<String, String>();
+      for (XColumn c : columns.getColumn()) {
+        if (!(c.getStartTime() == null)) {
+          colStartTimeMap.put(MetastoreConstants.FACT_COL_START_TIME_PFX.concat(c.getName()), c.getStartTime());
+        }
+        if (!(c.getEndTime() == null)) {
+          colStartTimeMap.put(MetastoreConstants.FACT_COL_END_TIME_PFX.concat(c.getName()), c.getEndTime());
+        }
+      }
+      return colStartTimeMap;
     }
     return null;
   }
@@ -687,7 +715,7 @@ public final class JAXBUtils {
       mapFromXProperties(fact.getProperties()));
   }
 
-  public static CubeSegmentation cubeSegmentationFromXCubeSegmentation(XCubeSegmentation seg) throws LensException {
+  public static Segmentation segmentationFromXSegmentation(XSegmentation seg) throws LensException {
 
     Map<String, String> props = new HashMap<>();
     // Skip properties with keyword internal. These properties are internal to lens
@@ -697,9 +725,9 @@ public final class JAXBUtils {
         props.put(prop, mapFromXProperties(seg.getProperties()).get(prop));
       }
     }
-    return new CubeSegmentation(seg.getCubeName(),
+    return new Segmentation(seg.getCubeName(),
             seg.getName(),
-            cubeSegmentsFromXCubeSegments(seg.getCubeSegements()),
+            segmentsFromXSegments(seg.getSegements()),
             seg.getWeight(),
             props);
   }
@@ -719,18 +747,18 @@ public final class JAXBUtils {
     return fact;
   }
 
-  public static XCubeSegmentation xsegmentationFromCubeSegmentation(CubeSegmentation cSeg) {
-    XCubeSegmentation seg = XCF.createXCubeSegmentation();
+  public static XSegmentation xsegmentationFromSegmentation(Segmentation cSeg) {
+    XSegmentation seg = XCF.createXSegmentation();
     seg.setName(cSeg.getName());
     seg.setProperties(new XProperties());
-    seg.setCubeSegements(new XCubeSegments());
+    seg.setSegements(new XSegments());
     seg.setWeight(cSeg.weight());
     seg.setCubeName(cSeg.getBaseCube());
     if (xPropertiesFromMap(cSeg.getProperties()) != null) {
       seg.getProperties().getProperty().addAll(xPropertiesFromMap(cSeg.getProperties()));
     }
-    seg.getCubeSegements().getCubeSegment().
-            addAll(xCubeSegmentsFromCubeSegments(cSeg.getCubeSegments()));
+    seg.getSegements().getSegment().
+            addAll(xSegmentsFromSegments(cSeg.getSegments()));
     return seg;
   }
 
@@ -831,16 +859,16 @@ public final class JAXBUtils {
     return storageTableMap;
   }
 
-  public static Set<CubeSegment> cubeSegmentsFromXCubeSegments(XCubeSegments segs) {
-    Set<CubeSegment> cubeSegs = new HashSet<>();
-    for (XCubeSegment xcube : segs.getCubeSegment()){
+  public static Set<Segment> segmentsFromXSegments(XSegments segs) {
+    Set<Segment> cubeSegs = new HashSet<>();
+    for (XSegment xcube : segs.getSegment()){
       Map<String, String> segProp = new HashMap<>();
       if (xcube.getSegmentParameters() != null) {
         for (XProperty prop : xcube.getSegmentParameters().getProperty()) {
           segProp.put(prop.getName(), prop.getValue());
         }
       }
-      cubeSegs.add(new CubeSegment(xcube.getCubeName(), segProp));
+      cubeSegs.add(new Segment(xcube.getCubeName(), segProp));
     }
     return cubeSegs;
   }
@@ -940,9 +968,6 @@ public final class JAXBUtils {
       Class<? extends HiveOutputFormat> outputFormatClass =
         Class.forName(xp.getOutputFormat()).asSubclass(HiveOutputFormat.class);
       partition.setOutputFormatClass(outputFormatClass);
-      // Again a hack, for the issue described in HIVE-11278
-      partition.getTPartition().getSd().setOutputFormat(
-        HiveFileFormatUtils.getOutputFormatSubstitute(outputFormatClass, false).getName());
     }
     partition.getParameters().put(MetastoreConstants.PARTITION_UPDATE_PERIOD, xp.getUpdatePeriod().name());
     partition.getTPartition().getSd().getSerdeInfo().setSerializationLib(xp.getSerdeClassname());
