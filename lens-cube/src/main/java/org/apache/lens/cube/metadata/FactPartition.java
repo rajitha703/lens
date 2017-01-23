@@ -87,13 +87,15 @@ public class FactPartition implements Comparable<FactPartition> {
   }
 
   public FactPartition previous() throws LensException {
-    return new FactPartition(getPartCol(), getTimePartition().previous(), getContainingPart(), getStorageTables());
-
+    TimePartition previousPartition = getTimePartition().previous();
+    return new FactPartition(getPartCol(), previousPartition.getDate(), previousPartition.getUpdatePeriod(),
+            getContainingPart(), getPartFormat(), getStorageTables());
   }
 
   public FactPartition next() throws LensException {
-    return new FactPartition(getPartCol(), getTimePartition().next(), getContainingPart(), getStorageTables());
-
+    TimePartition nextPartition = getTimePartition().next();
+    return new FactPartition(getPartCol(), nextPartition.getDate(), nextPartition.getUpdatePeriod(),
+            getContainingPart(), getPartFormat(), getStorageTables());
   }
 
   public String getPartString() {
