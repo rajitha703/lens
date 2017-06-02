@@ -46,7 +46,16 @@ import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-import org.apache.lens.cube.metadata.*;
+import org.apache.lens.cube.metadata.AbstractCubeTable;
+import org.apache.lens.cube.metadata.CubeFactTable;
+import org.apache.lens.cube.metadata.CubeInterface;
+import org.apache.lens.cube.metadata.DateUtil;
+import org.apache.lens.cube.metadata.Dimension;
+import org.apache.lens.cube.metadata.FactPartition;
+import org.apache.lens.cube.metadata.MetastoreConstants;
+import org.apache.lens.cube.metadata.MetastoreUtil;
+import org.apache.lens.cube.metadata.TimeRange;
+import org.apache.lens.cube.metadata.UpdatePeriod;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.DataCompletenessChecker;
 
@@ -117,7 +126,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
    * Participating fact, storage and dimensions for this StorageCandidate
    */
   @Getter
-  private FactTable fact;
+  private CubeFactTable fact;
   @Getter
   private String storageName;
   @Getter
@@ -171,7 +180,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     this.answerableMeasurePhraseIndices = sc.answerableMeasurePhraseIndices;
   }
 
-  public StorageCandidate(CubeInterface cube, FactTable fact, String storageName, CubeQueryContext cubeQueryContext)
+  public StorageCandidate(CubeInterface cube, CubeFactTable fact, String storageName, CubeQueryContext cubeQueryContext)
     throws LensException {
     this.cube = cube;
     this.fact = fact;
@@ -180,8 +189,8 @@ public class StorageCandidate implements Candidate, CandidateTable {
       throw new IllegalArgumentException("Cube,fact and storageName should be non null");
     }
     this.storageName = storageName;
-    this.storageTable = MetastoreUtil.getFactOrDimtableStorageTableName(fact.getSourceFactName(), storageName);
-    this.name = fact.getName();
+    this.storageTable = MetastoreUtil.getFactOrDimtableStorageTableName(fact.getName(), storageName);
+    this.name = getFact().getName();
     this.processTimePartCol = getConf().get(CubeQueryConfUtil.PROCESS_TIME_PART_COL);
     String formatStr = getConf().get(CubeQueryConfUtil.PART_WHERE_CLAUSE_DATE_FORMAT);
     if (formatStr != null) {
@@ -190,8 +199,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     completenessPartCol = getConf().get(CubeQueryConfUtil.COMPLETENESS_CHECK_PART_COL);
     completenessThreshold = getConf()
       .getFloat(CubeQueryConfUtil.COMPLETENESS_THRESHOLD, CubeQueryConfUtil.DEFAULT_COMPLETENESS_THRESHOLD);
-
-    Set<String> storageTblNames = getCubeMetastoreClient().getStorageTables(fact, storageName);
+    Set<String> storageTblNames = getCubeMetastoreClient().getStorageTables(fact.getName(), storageName);
     isStorageTblsAtUpdatePeriodLevel = storageTblNames.size() > 1
       || !storageTblNames.iterator().next().equalsIgnoreCase(storageTable);
     setStorageStartAndEndDate();
@@ -251,8 +259,8 @@ public class StorageCandidate implements Candidate, CandidateTable {
     List<Date> startDates = new ArrayList<>();
     List<Date> endDates = new ArrayList<>();
     for (String storageTablePrefix : getValidStorageTableNames()) {
-      startDates.add(getCubeMetastoreClient().getStorageTableStartDate(storageTablePrefix, fact.getSourceFactName()));
-      endDates.add(getCubeMetastoreClient().getStorageTableEndDate(storageTablePrefix, fact.getSourceFactName()));
+      startDates.add(getCubeMetastoreClient().getStorageTableStartDate(storageTablePrefix, fact.getName()));
+      endDates.add(getCubeMetastoreClient().getStorageTableEndDate(storageTablePrefix, fact.getName()));
     }
     this.startTime = Collections.min(startDates);
     this.endTime = Collections.max(endDates);
@@ -270,7 +278,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       return uniqueStorageTables;
     } else {
       //Get all storage tables.
-      return getCubeMetastoreClient().getStorageTables(fact, storageName);
+      return getCubeMetastoreClient().getStorageTables(fact.getName(), storageName);
     }
   }
 
@@ -294,6 +302,11 @@ public class StorageCandidate implements Candidate, CandidateTable {
   }
 
   @Override
+  public AbstractCubeTable getTable() {
+    return fact;
+  }
+
+  @Override
   public AbstractCubeTable getBaseTable() {
     return (AbstractCubeTable) cube;
   }
@@ -307,17 +320,14 @@ public class StorageCandidate implements Candidate, CandidateTable {
     return phrase.isEvaluable(this);
   }
 
-  public AbstractCubeTable getTable() {
-    return (AbstractCubeTable) fact;
-  }
-
+  @Override
   public Optional<Date> getColumnStartTime(String column) {
     Date startTime = null;
     for (String key : getTable().getProperties().keySet()) {
       if (key.contains(MetastoreConstants.FACT_COL_START_TIME_PFX)) {
         String propCol = StringUtils.substringAfter(key, MetastoreConstants.FACT_COL_START_TIME_PFX);
         if (column.equals(propCol)) {
-          startTime = MetastoreUtil.getDateFromProperty(getTable().getProperties().get(key), false, true);
+          startTime = getTable().getDateFromProperty(key, false, true);
         }
       }
     }
@@ -331,7 +341,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       if (key.contains(MetastoreConstants.FACT_COL_END_TIME_PFX)) {
         String propCol = StringUtils.substringAfter(key, MetastoreConstants.FACT_COL_END_TIME_PFX);
         if (column.equals(propCol)) {
-          endTime = MetastoreUtil.getDateFromProperty(getTable().getProperties().get(key), false, true);
+          endTime = getTable().getDateFromProperty(key, false, true);
         }
       }
     }
@@ -367,7 +377,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
   private void updatePartitionStorage(FactPartition part) throws LensException {
     try {
       if (getCubeMetastoreClient().factPartitionExists(fact, part, storageTable)) {
-        part.getStorageTables().add(storageTable);
+        part.getStorageTables().add(name);
         part.setFound(true);
       }
     } catch (HiveException e) {
@@ -417,16 +427,16 @@ public class StorageCandidate implements Candidate, CandidateTable {
       && cubeQueryContext.getRangeWriter().getClass().equals(BetweenTimeRangeWriter.class)) {
       FactPartition part = new FactPartition(partCol, fromDate, maxInterval, null, partWhereClauseFormat);
       partitions.add(part);
-      part.getStorageTables().add(storageTable);
+      part.getStorageTables().add(storageName);
       part = new FactPartition(partCol, toDate, maxInterval, null, partWhereClauseFormat);
       partitions.add(part);
-      part.getStorageTables().add(storageTable);
+      part.getStorageTables().add(storageName);
       this.participatingUpdatePeriods.add(maxInterval);
       log.info("Added continuous fact partition for storage table {}", storageName);
       return true;
     }
 
-    if (!getCubeMetastoreClient().partColExists(this.getFact(), storageName, partCol)) {
+    if (!getCubeMetastoreClient().partColExists(this.getFact().getName(), storageName, partCol)) {
       log.info("{} does not exist in {}", partCol, name);
       return false;
     }
@@ -534,7 +544,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
             missingPartitions.add(part);
             if (!failOnPartialData) {
               partitions.add(part);
-              part.getStorageTables().add(storageTable);
+              part.getStorageTables().add(storageName);
             }
           } else {
             log.info("No finer granualar partitions exist for {}", part);
@@ -577,6 +587,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     Set<FactPartition> rangeParts = getPartitions(timeRange, validUpdatePeriods, true, failOnPartialData, missingParts);
     String partCol = timeRange.getPartitionColumn();
     boolean partColNotSupported = rangeParts.isEmpty();
+    String storageTableName = getStorageTable();
 
     if (storagePruningMsgs.containsKey(this)) {
       List<CandidateTablePruneCause> causes = storagePruningMsgs.get(this);
@@ -593,13 +604,11 @@ public class StorageCandidate implements Candidate, CandidateTable {
     String sep = "";
     while (rangeParts.isEmpty()) {
       String timeDim = cubeQueryContext.getBaseCube().getTimeDimOfPartitionColumn(partCol);
-      if (getFact() instanceof CubeFactTable) {
-        if (partColNotSupported && !((CubeFactTable) getFact()).hasColumn(timeDim)) {
-          unsupportedTimeDims.add(
-            cubeQueryContext.getBaseCube().getTimeDimOfPartitionColumn(timeRange.getPartitionColumn())
-          );
-          break;
-        }
+      if (partColNotSupported && !getFact().hasColumn(timeDim)) {
+        unsupportedTimeDims.add(
+          cubeQueryContext.getBaseCube().getTimeDimOfPartitionColumn(timeRange.getPartitionColumn())
+        );
+        break;
       }
       TimeRange fallBackRange = getFallbackRange(prevRange, this.getFact().getName(), cubeQueryContext);
       log.info("No partitions for range:{}. fallback range: {}", timeRange, fallBackRange);
@@ -729,7 +738,6 @@ public class StorageCandidate implements Candidate, CandidateTable {
 
   @Override
   public boolean isDimAttributeEvaluable(String dim) throws LensException {
-
     return getCubeQueryContext().getDeNormCtx()
       .addRefUsage(getCubeQueryContext(), this, dim, getCubeQueryContext().getCube().getName());
   }
@@ -923,6 +931,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       StorageCandidate updatePeriodSpecificSc;
       for (UpdatePeriod period : participatingUpdatePeriods) {
         updatePeriodSpecificSc = copy();
+        updatePeriodSpecificSc.truncatePartitions(period);
         updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getName(),
           storageName, period));
         periodSpecificScList.add(updatePeriodSpecificSc);
@@ -942,7 +951,6 @@ public class StorageCandidate implements Candidate, CandidateTable {
     while (rangeItr.hasNext()) {
       Map.Entry<TimeRange, Set<FactPartition>> rangeEntry = rangeItr.next();
       rangeEntry.getValue().removeIf(factPartition -> !factPartition.getPeriod().equals(updatePeriod));
-
       if (rangeEntry.getValue().isEmpty()) {
         rangeItr.remove();
       }
@@ -956,5 +964,4 @@ public class StorageCandidate implements Candidate, CandidateTable {
     ast.copyFrom(getCubeQueryContext());
     return new StorageCandidateHQLContext(this, Maps.newHashMap(dimsToQuery), ast, rootCubeQueryContext);
   }
-
 }
