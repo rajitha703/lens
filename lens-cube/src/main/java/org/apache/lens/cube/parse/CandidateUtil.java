@@ -110,7 +110,6 @@ public final class CandidateUtil {
   private static void getStorageCandidates(Collection<? extends Candidate> candidates,
     Collection<StorageCandidate> storageCandidateSet) {
     for (Candidate candidate : candidates) {
-
       getStorageCandidates(candidate, storageCandidateSet);
     }
   }
