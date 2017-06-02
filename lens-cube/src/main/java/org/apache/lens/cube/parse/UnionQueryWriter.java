@@ -278,7 +278,8 @@ public class UnionQueryWriter extends SimpleHQLContext {
    * @throws LensException
    */
   private ASTNode setDefaultValueInExprForAggregateNodes(ASTNode node, StorageCandidate sc) throws LensException {
-    if (HQLParser.isAggregateAST(node)) {
+    if (HQLParser.isAggregateAST(node)
+        && isNodeNotAnswerableForStorageCandidate(sc, node)) {
       node.setChild(1, getSelectExpr(null, null, true));
     }
     for (int i = 0; i < node.getChildCount(); i++) {
@@ -429,7 +430,8 @@ public class UnionQueryWriter extends SimpleHQLContext {
         // Select phrase is expression
       } else {
         for (StorageCandidateHQLContext sc : storageCandidates) {
-          if (sc.getStorageCandidate().getAnswerableMeasurePhraseIndices().contains(phrase.getPosition())) {
+          if (phrase.isEvaluable(sc.getStorageCandidate())
+              || sc.getStorageCandidate().getAnswerableMeasurePhraseIndices().contains(phrase.getPosition())) {
             ASTNode exprWithOutAlias = (ASTNode) sc.getQueryAst().getSelectAST().getChild(i).getChild(0);
             storageCandidateToSelectAstMap.get(sc.getStorageCandidate().toString()).
                 addChild(getSelectExpr(exprWithOutAlias, aliasNode, false));

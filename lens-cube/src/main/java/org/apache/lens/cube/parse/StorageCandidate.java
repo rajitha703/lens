@@ -925,7 +925,6 @@ public class StorageCandidate implements Candidate, CandidateTable {
         updatePeriodSpecificSc = copy();
         updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getName(),
           storageName, period));
-        updatePeriodSpecificSc.truncatePartitions(period);
         periodSpecificScList.add(updatePeriodSpecificSc);
       }
       periodSpecificStorageCandidates = periodSpecificScList;
@@ -943,10 +942,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     while (rangeItr.hasNext()) {
       Map.Entry<TimeRange, Set<FactPartition>> rangeEntry = rangeItr.next();
       rangeEntry.getValue().removeIf(factPartition -> !factPartition.getPeriod().equals(updatePeriod));
-      rangeEntry.getValue().forEach(factPartition -> {
-        factPartition.getStorageTables().remove(storageTable);
-        factPartition.getStorageTables().add(resolvedName);
-      });
+
       if (rangeEntry.getValue().isEmpty()) {
         rangeItr.remove();
       }
@@ -961,9 +957,4 @@ public class StorageCandidate implements Candidate, CandidateTable {
     return new StorageCandidateHQLContext(this, Maps.newHashMap(dimsToQuery), ast, rootCubeQueryContext);
   }
 
-  @Override
-  public Set<Integer> decideMeasuresToAnswer(Set<Integer> measureIndices) {
-    answerableMeasurePhraseIndices.retainAll(measureIndices);
-    return answerableMeasurePhraseIndices;
-  }
 }

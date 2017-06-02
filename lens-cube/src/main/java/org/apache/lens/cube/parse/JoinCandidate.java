@@ -178,18 +178,6 @@ public class JoinCandidate implements Candidate {
     return this;
   }
 
-  @Override
-  public Set<Integer> decideMeasuresToAnswer(Set<Integer> measureIndices) throws LensException {
-    Set<Integer> remaining = Sets.newHashSet(measureIndices);
-    Set<Integer> allCovered = Sets.newHashSet();
-    for (Candidate child : children) {
-      Set<Integer> covered = child.decideMeasuresToAnswer(remaining);
-      allCovered.addAll(covered);
-      remaining = Sets.difference(remaining, covered);
-    }
-    return allCovered;
-  }
-
   private String getToString() {
     return children.stream().map(Object::toString).collect(joining("; ", "JOIN[", "]"));
   }
