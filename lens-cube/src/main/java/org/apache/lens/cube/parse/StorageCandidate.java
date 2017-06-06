@@ -181,7 +181,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     }
     this.storageName = storageName;
     this.storageTable = MetastoreUtil.getFactOrDimtableStorageTableName(fact.getSourceFactName(), storageName);
-    this.name = fact.getName();
+    this.name = getFact().getName();
     this.processTimePartCol = getConf().get(CubeQueryConfUtil.PROCESS_TIME_PART_COL);
     String formatStr = getConf().get(CubeQueryConfUtil.PART_WHERE_CLAUSE_DATE_FORMAT);
     if (formatStr != null) {
@@ -367,7 +367,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
   private void updatePartitionStorage(FactPartition part) throws LensException {
     try {
       if (getCubeMetastoreClient().factPartitionExists(fact, part, storageTable)) {
-        part.getStorageTables().add(storageTable);
+        part.getStorageTables().add(name);
         part.setFound(true);
       }
     } catch (HiveException e) {
@@ -417,10 +417,10 @@ public class StorageCandidate implements Candidate, CandidateTable {
       && cubeQueryContext.getRangeWriter().getClass().equals(BetweenTimeRangeWriter.class)) {
       FactPartition part = new FactPartition(partCol, fromDate, maxInterval, null, partWhereClauseFormat);
       partitions.add(part);
-      part.getStorageTables().add(storageTable);
+      part.getStorageTables().add(storageName);
       part = new FactPartition(partCol, toDate, maxInterval, null, partWhereClauseFormat);
       partitions.add(part);
-      part.getStorageTables().add(storageTable);
+      part.getStorageTables().add(storageName);
       this.participatingUpdatePeriods.add(maxInterval);
       log.info("Added continuous fact partition for storage table {}", storageName);
       return true;
@@ -534,7 +534,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
             missingPartitions.add(part);
             if (!failOnPartialData) {
               partitions.add(part);
-              part.getStorageTables().add(storageTable);
+              part.getStorageTables().add(storageName);
             }
           } else {
             log.info("No finer granualar partitions exist for {}", part);
@@ -729,7 +729,6 @@ public class StorageCandidate implements Candidate, CandidateTable {
 
   @Override
   public boolean isDimAttributeEvaluable(String dim) throws LensException {
-
     return getCubeQueryContext().getDeNormCtx()
       .addRefUsage(getCubeQueryContext(), this, dim, getCubeQueryContext().getCube().getName());
   }
