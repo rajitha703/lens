@@ -264,7 +264,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       Set<String> uniqueStorageTables = new HashSet<>();
       for (UpdatePeriod updatePeriod : validUpdatePeriods) {
         uniqueStorageTables.add(
-          getCubeMetastoreClient().getStorageTableName(fact.getName(), storageName, updatePeriod)
+          getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(), storageName, updatePeriod)
         );
       }
       return uniqueStorageTables;
@@ -882,7 +882,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       return this.startTime;
     }
     return getCubeMetastoreClient().getStorageTableStartDate(
-      getCubeMetastoreClient().getStorageTableName(fact.getName(), storageName, interval), fact.getName());
+      getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(), storageName, interval), fact.getName());
   }
 
   private Date getStorageTableEndDate(UpdatePeriod interval) throws LensException {
@@ -891,7 +891,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       return this.endTime;
     }
     return getCubeMetastoreClient().getStorageTableEndDate(
-      getCubeMetastoreClient().getStorageTableName(fact.getName(), storageName, interval), fact.getName());
+      getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(), storageName, interval), fact.getName());
   }
 
 
@@ -923,7 +923,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
       for (UpdatePeriod period : participatingUpdatePeriods) {
         updatePeriodSpecificSc = copy();
         updatePeriodSpecificSc.truncatePartitions(period);
-        updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getName(),
+        updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(),
           storageName, period));
         periodSpecificScList.add(updatePeriodSpecificSc);
       }
