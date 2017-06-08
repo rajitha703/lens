@@ -41,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -298,6 +299,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     return (AbstractCubeTable) cube;
   }
 
+  @Override
   public StorageCandidate copy() throws LensException {
     return new StorageCandidate(this);
   }
@@ -307,6 +309,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
     return phrase.isEvaluable(this);
   }
 
+  @Override
   public AbstractCubeTable getTable() {
     return (AbstractCubeTable) fact;
   }
@@ -350,8 +353,8 @@ public class StorageCandidate implements Candidate, CandidateTable {
   }
 
   @Override
-  public double getCost() {
-    return fact.weight();
+  public OptionalDouble getCost() {
+    return OptionalDouble.of(fact.weight());
   }
 
   @Override
@@ -367,7 +370,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
   private void updatePartitionStorage(FactPartition part) throws LensException {
     try {
       if (getCubeMetastoreClient().factPartitionExists(fact, part, storageTable)) {
-        part.getStorageTables().add(name);
+        part.getStorageTables().add(storageTable);
         part.setFound(true);
       }
     } catch (HiveException e) {
@@ -417,10 +420,10 @@ public class StorageCandidate implements Candidate, CandidateTable {
       && cubeQueryContext.getRangeWriter().getClass().equals(BetweenTimeRangeWriter.class)) {
       FactPartition part = new FactPartition(partCol, fromDate, maxInterval, null, partWhereClauseFormat);
       partitions.add(part);
-      part.getStorageTables().add(storageName);
+      part.getStorageTables().add(storageTable);
       part = new FactPartition(partCol, toDate, maxInterval, null, partWhereClauseFormat);
       partitions.add(part);
-      part.getStorageTables().add(storageName);
+      part.getStorageTables().add(storageTable);
       this.participatingUpdatePeriods.add(maxInterval);
       log.info("Added continuous fact partition for storage table {}", storageName);
       return true;
@@ -534,7 +537,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
             missingPartitions.add(part);
             if (!failOnPartialData) {
               partitions.add(part);
-              part.getStorageTables().add(storageName);
+              part.getStorageTables().add(storageTable);
             }
           } else {
             log.info("No finer granualar partitions exist for {}", part);
@@ -651,6 +654,10 @@ public class StorageCandidate implements Candidate, CandidateTable {
   }
 
   private boolean evaluateMeasuresCompleteness(TimeRange timeRange) throws LensException {
+    if (getCubeMetastoreClient() == null || !getCubeMetastoreClient().isDataCompletenessCheckEnabled()) {
+      log.info("Skipping availability check for the fact table: {} as dataCompleteness check is not enabled", fact);
+      return true;
+    }
     String factDataCompletenessTag = fact.getDataCompletenessTag();
     if (factDataCompletenessTag == null) {
       log.info("Not checking completeness for the fact table:{} as the dataCompletenessTag is not set", fact);
@@ -673,7 +680,8 @@ public class StorageCandidate implements Candidate, CandidateTable {
       log.info("No Queried measures with the dataCompletenessTag, hence skipping the availability check");
       return true;
     }
-    boolean isDataComplete = false;
+    // default completenessTag will be true
+    boolean isDataComplete = true;
     DataCompletenessChecker completenessChecker = getCubeMetastoreClient().getCompletenessChecker();
     DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -695,6 +703,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
             String measureorExprFromTag = tagToMeasureOrExprMap.get(tag);
             dataCompletenessMap.computeIfAbsent(measureorExprFromTag, k -> new HashMap<>())
               .put(formatter.format(completenessResult.getKey()), completenessResult.getValue());
+            // set completeness to false if availability for measure is below threshold
             isDataComplete = false;
           }
         }
@@ -922,9 +931,9 @@ public class StorageCandidate implements Candidate, CandidateTable {
       StorageCandidate updatePeriodSpecificSc;
       for (UpdatePeriod period : participatingUpdatePeriods) {
         updatePeriodSpecificSc = copy();
-        updatePeriodSpecificSc.truncatePartitions(period);
         updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(),
           storageName, period));
+        updatePeriodSpecificSc.truncatePartitions(period);
         periodSpecificScList.add(updatePeriodSpecificSc);
       }
       periodSpecificStorageCandidates = periodSpecificScList;
@@ -942,6 +951,10 @@ public class StorageCandidate implements Candidate, CandidateTable {
     while (rangeItr.hasNext()) {
       Map.Entry<TimeRange, Set<FactPartition>> rangeEntry = rangeItr.next();
       rangeEntry.getValue().removeIf(factPartition -> !factPartition.getPeriod().equals(updatePeriod));
+      rangeEntry.getValue().forEach(factPartition -> {
+        factPartition.getStorageTables().remove(storageTable);
+        factPartition.getStorageTables().add(resolvedName);
+      });
       if (rangeEntry.getValue().isEmpty()) {
         rangeItr.remove();
       }
@@ -954,5 +967,11 @@ public class StorageCandidate implements Candidate, CandidateTable {
     DefaultQueryAST ast = DefaultQueryAST.fromStorageCandidate(null, getCubeQueryContext());
     ast.copyFrom(getCubeQueryContext());
     return new StorageCandidateHQLContext(this, Maps.newHashMap(dimsToQuery), ast, rootCubeQueryContext);
+  }
+
+  @Override
+  public Set<Integer> decideMeasurePhrasesToAnswer(Set<Integer> measureIndices) {
+    answerableMeasurePhraseIndices.retainAll(measureIndices);
+    return answerableMeasurePhraseIndices;
   }
 }
