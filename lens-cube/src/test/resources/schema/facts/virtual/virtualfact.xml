@@ -19,7 +19,7 @@
   under the License.
 
 -->
-<x_virtual_fact_table source_fact_name="summary1" cube_name="virtualcube" name="virtualfact1" xmlns="uri:lens:cube:0.1"
+<x_virtual_fact_table source_fact_name="testfact9_base" cube_name="virtualcube" name="virtualfact1" xmlns="uri:lens:cube:0.1"
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="uri:lens:cube:0.1 cube-0.1.xsd ">
   <properties>
     <property name="cube.fact.query.where.filter" value=" dim1 = 10 "/>
