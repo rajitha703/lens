@@ -19,7 +19,7 @@
   under the License.
 
 -->
-<x_fact_table name="testfact9_base" cube_name="testcube_2" weight="5.0" xmlns="uri:lens:cube:0.1">
+<x_fact_table name="testfact9_base" cube_name="testcube2" weight="5.0" xmlns="uri:lens:cube:0.1">
   <columns>
 
     <column name="msr1" _type="float" comment="second measure"/>
