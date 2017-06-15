@@ -23,6 +23,7 @@ import static org.apache.lens.cube.metadata.DateFactory.*;
 import static org.apache.lens.cube.parse.CubeQueryConfUtil.*;
 import static org.apache.lens.cube.parse.CubeQueryConfUtil.DISABLE_AGGREGATE_RESOLVER;
 import static org.apache.lens.cube.parse.CubeTestSetup.*;
+
 import static org.testng.Assert.assertEquals;
 
 import org.apache.lens.server.api.LensServerAPITestUtil;
@@ -39,8 +40,8 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
   @BeforeTest
   public void setupDriver() throws Exception {
     conf = LensServerAPITestUtil.getConfiguration(
-      DRIVER_SUPPORTED_STORAGES, "C0,C1,C2",
-      DISABLE_AUTO_JOINS, true,
+      DRIVER_SUPPORTED_STORAGES, "C1",
+      DISABLE_AUTO_JOINS, false,
       ENABLE_SELECT_TO_GROUPBY, true,
       ENABLE_GROUP_BY_TO_SELECT, true,
       DISABLE_AGGREGATE_RESOLVER, false);
@@ -53,8 +54,6 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
 
   @Test
   public void testVirtualFactDayQuery() throws Exception {
-    Configuration conf = getConf();
-    conf.set(DRIVER_SUPPORTED_STORAGES, "C1");
     CubeQueryContext rewrittenQuery =
       rewriteCtx("select SUM(msr1) from virtualCube where " + TWO_DAYS_RANGE, getConfWithStorages("C1"));
     String expected = getExpectedQuery(VIRTUAL_CUBE_NAME, "select sum(virtualcube.msr1) as `sum(msr1)` FROM ",
@@ -66,8 +65,6 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
 
   @Test
   public void testVirtualFactMonthQuery() throws Exception {
-    Configuration conf = getConf();
-    conf.set(DRIVER_SUPPORTED_STORAGES, "C1");
 
     CubeQueryContext rewrittenQuery =
       rewriteCtx("select SUM(msr1) from virtualCube where " + TWO_MONTHS_RANGE_UPTO_HOURS, getConfWithStorages("C1"));
@@ -84,8 +81,6 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
 
   @Test
   public void testVirtualFactUnionQuery() throws Exception {
-    Configuration conf = getConf();
-    conf.set(DRIVER_SUPPORTED_STORAGES, "C1");
 
     String expectedInnerSelect = getExpectedQuery("virtualcube", "SELECT (virtualcube.cityid) AS `alias0`,"
         + " sum((virtualcube.msr2)) AS `alias1`,0.0 AS `alias2` FROM ",
@@ -97,8 +92,8 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
       getWhereForDailyAndHourly2days("virtualcube", "c1_testfact7_base"));
 
 
-    String expected = "SELECT (virtualcube.alias0) AS `cityid`," +
-      " sum((virtualcube.alias1)) AS `sum(msr2)`, sum((virtualcube.alias2)) AS `sum(msr3)`"
+    String expected = "SELECT (virtualcube.alias0) AS `cityid`,"
+      + " sum((virtualcube.alias1)) AS `sum(msr2)`, sum((virtualcube.alias2)) AS `sum(msr3)`"
       + " FROM (" + expectedInnerSelect + ") AS virtualcube GROUP BY (virtualcube.alias0)";
 
     CubeQueryContext rewrittenQuery =
@@ -110,10 +105,6 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
 
   @Test
   public void testVirtualFactJoinQuery() throws Exception {
-    Configuration conf = getConf();
-    conf.set(DRIVER_SUPPORTED_STORAGES, "C1");
-    conf.setBoolean(CubeQueryConfUtil.DISABLE_AUTO_JOINS, false);
-
     String query, hqlQuery, expected;
 
     // Single joinchain with direct link
