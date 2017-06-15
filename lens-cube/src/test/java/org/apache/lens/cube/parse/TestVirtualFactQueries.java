@@ -87,19 +87,19 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
     Configuration conf = getConf();
     conf.set(DRIVER_SUPPORTED_STORAGES, "C1");
 
-    String expectedInnerSelect = getExpectedQuery("virtualcube", "SELECT (virtualcube.cityid) AS `alias0`," +
-          " sum((virtualcube.msr2)) AS `alias1`,0.0 AS `alias2` FROM ",
-        null, null, "GROUP BY (virtualcube.cityid)", null,
-          getWhereForDailyAndHourly2days("virtualcube", "c1_testfact8_base"))
-          + " UNION ALL " + getExpectedQuery("virtualcube", "SELECT (virtualcube.cityid) AS `alias0`," +
-          "0.0 AS `alias1`, sum((virtualcube.msr3)) AS `alias2` FROM ",
-        null, null, "GROUP BY (virtualcube.cityid)", null,
+    String expectedInnerSelect = getExpectedQuery("virtualcube", "SELECT (virtualcube.cityid) AS `alias0`,"
+        + " sum((virtualcube.msr2)) AS `alias1`,0.0 AS `alias2` FROM ",
+      null, null, "GROUP BY (virtualcube.cityid)", null,
+      getWhereForDailyAndHourly2days("virtualcube", "c1_testfact8_base"))
+      + " UNION ALL " + getExpectedQuery("virtualcube", "SELECT (virtualcube.cityid) AS `alias0`,"
+        + "0.0 AS `alias1`, sum((virtualcube.msr3)) AS `alias2` FROM ",
+      null, null, "GROUP BY (virtualcube.cityid)", null,
       getWhereForDailyAndHourly2days("virtualcube", "c1_testfact7_base"));
 
 
     String expected = "SELECT (virtualcube.alias0) AS `cityid`," +
-      " sum((virtualcube.alias1)) AS `sum(msr2)`, sum((virtualcube.alias2)) AS `sum(msr3)`" +
-      " FROM (" + expectedInnerSelect + ") AS virtualcube GROUP BY (virtualcube.alias0)";
+      " sum((virtualcube.alias1)) AS `sum(msr2)`, sum((virtualcube.alias2)) AS `sum(msr3)`"
+      + " FROM (" + expectedInnerSelect + ") AS virtualcube GROUP BY (virtualcube.alias0)";
 
     CubeQueryContext rewrittenQuery =
       rewriteCtx("select cityid as `cityid`, SUM(msr2), SUM(msr3) from virtualcube where " + TWO_DAYS_RANGE,
