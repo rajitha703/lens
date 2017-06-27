@@ -161,7 +161,8 @@ public class CubeMetastoreClient {
     for (FactTable fact : getAllFacts(cube)) {
       for (String storage : fact.getStorages()) {
         for (UpdatePeriod updatePeriod : fact.getUpdatePeriods().get(storage)) {
-          PartitionTimeline timeline = partitionTimelineCache.get(fact.getSourceFactName(), storage, updatePeriod, partCol);
+          PartitionTimeline timeline = partitionTimelineCache.get(fact.getSourceFactName(), storage, updatePeriod,
+            partCol);
           if (timeline != null) {// this storage table is partitioned by partCol or not.
             Date latest = timeline.getLatestDate();
             if (latest != null && latest.after(max)) {
@@ -1078,8 +1079,8 @@ public class CubeMetastoreClient {
       List<Partition> partsAdded = new ArrayList<>();
       // first update in memory, then add to hive table's partitions. delete is reverse.
       partitionTimelineCache.updateForAddition(factOrDimTable, storageName, updatePeriod,
-              getTimePartSpecs(storagePartitionDescs, getStorageTableStartDate(storageTableName, getFactTable(factOrDimTable)),
-                      getStorageTableEndDate(storageTableName, getFactTable(factOrDimTable))));
+              getTimePartSpecs(storagePartitionDescs, getStorageTableStartDate(storageTableName,
+                getFactTable(factOrDimTable)), getStorageTableEndDate(storageTableName, getFactTable(factOrDimTable))));
       // Adding partition in fact table.
       if (storagePartitionDescs.size() > 0) {
         partsAdded = getStorage(storageName).addPartitions(getClient(), factOrDimTable, updatePeriod,
