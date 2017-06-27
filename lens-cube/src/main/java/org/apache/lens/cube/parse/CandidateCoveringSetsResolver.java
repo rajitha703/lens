@@ -106,16 +106,6 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
     return true;
   }
 
-  private void pruneUnionCandidatesNotCoveringAllRanges(List<UnionCandidate> ucs, CubeQueryContext cubeql) {
-    for (Iterator<UnionCandidate> itr = ucs.iterator(); itr.hasNext();) {
-      UnionCandidate uc = itr.next();
-      if (!isCandidateCoveringTimeRanges(uc, cubeql.getTimeRanges())) {
-        itr.remove();
-        cubeql.addCandidatePruningMsg(uc, CandidateTablePruneCause.storageNotAvailableInRange(cubeql.getTimeRanges()));
-      }
-    }
-  }
-
   private List<Candidate> resolveTimeRangeCoveringFactSet(CubeQueryContext cubeql,
       Set<QueriedPhraseContext> queriedMsrs, List<QueriedPhraseContext> qpcList) throws LensException {
     List<Candidate> candidateSet = new ArrayList<>();
@@ -138,8 +128,6 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
         getCombinations(new ArrayList<>(allCandidatesPartiallyValid), cubeql);
     // Sort the Collection based on no of elements
     unionCoveringSet.sort(Comparator.comparing(Candidate::getChildrenCount));
-    // prune non covering sets
-    pruneUnionCandidatesNotCoveringAllRanges(unionCoveringSet, cubeql);
     // prune candidate set which doesn't contain any common measure i
     if (!queriedMsrs.isEmpty()) {
       pruneUnionCoveringSetWithoutAnyCommonMeasure(unionCoveringSet, queriedMsrs);
@@ -197,7 +185,10 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
         clonedI = clonedI >>> 1;
         --count;
       }
-      combinations.add(new UnionCandidate(individualCombinationList, cubeql));
+      UnionCandidate uc = new UnionCandidate(individualCombinationList, cubeql);
+      if (isCandidateCoveringTimeRanges(uc, cubeql.getTimeRanges())) {
+        combinations.add(uc);
+      }
     }
     return combinations;
   }
@@ -208,19 +199,22 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
     List<Candidate> ucSet = new ArrayList<>(candidates);
     // Check if a single set can answer all the measures and exprsWithMeasures
     for (Iterator<Candidate> i = ucSet.iterator(); i.hasNext();) {
-      boolean evaluable = false;
+      boolean allEvaluable = true;
+      boolean anyEvaluable = false;
       Candidate uc = i.next();
       for (QueriedPhraseContext msr : msrs) {
-        evaluable = uc.isPhraseAnswerable(msr);
-        if (!evaluable) {
-          break;
-        }
+        boolean evaluable = uc.isPhraseAnswerable(msr);
+        allEvaluable &= evaluable;
+        anyEvaluable |= evaluable;
       }
-      if (evaluable) {
+      if (allEvaluable) {
         // single set can answer all the measures as an UnionCandidate
         List<Candidate> one = new ArrayList<>();
         one.add(uc);
         msrCoveringSets.add(one);
+        i.remove();
+      }
+      if (!anyEvaluable) { // none evaluable
         i.remove();
       }
     }
