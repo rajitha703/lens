@@ -1172,6 +1172,7 @@ public class CubeQueryContext extends TracksQueriedColumns implements QueryAST, 
         && node.getToken().getType() != HiveParser.KW_AND) {
       // if node is the only child
       allFilters.add(HQLParser.getString((ASTNode) node));
+      return;
     }
     for (int i = 0; i < node.getChildCount(); i++) {
       ASTNode child = (ASTNode) node.getChild(i);
