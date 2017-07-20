@@ -26,6 +26,7 @@ import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.TimeRange;
 import org.apache.lens.server.api.error.LensException;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -124,16 +125,14 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
       }
     }
     // Get all covering fact sets
-    List<UnionCandidate> unionCoveringSet =
-        getCombinations(new ArrayList<>(allCandidatesPartiallyValid), cubeql);
+//    List<UnionCandidate> unionCoveringSet = getCombinations(new ArrayList<>(allCandidatesPartiallyValid), cubeql);
+    List<UnionCandidate> unionCoveringSet = getCombinationTailIterative(allCandidatesPartiallyValid, cubeql);
     // Sort the Collection based on no of elements
     unionCoveringSet.sort(Comparator.comparing(Candidate::getChildrenCount));
     // prune candidate set which doesn't contain any common measure i
     if (!queriedMsrs.isEmpty()) {
       pruneUnionCoveringSetWithoutAnyCommonMeasure(unionCoveringSet, queriedMsrs);
     }
-    // prune redundant covering sets
-    pruneRedundantUnionCoveringSets(unionCoveringSet);
     // pruing done in the previous steps, now create union candidates
     candidateSet.addAll(unionCoveringSet);
     updateQueriableMeasures(candidateSet, qpcList);
@@ -155,7 +154,7 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
       }
     }
   }
-
+  @Deprecated
   private void pruneRedundantUnionCoveringSets(List<UnionCandidate> candidates) {
     for (int i = 0; i < candidates.size(); i++) {
       UnionCandidate current = candidates.get(i);
@@ -168,7 +167,7 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
       }
     }
   }
-
+  @Deprecated
   private List<UnionCandidate> getCombinations(final List<Candidate> candidates, CubeQueryContext cubeql) {
     List<UnionCandidate> combinations = new LinkedList<>();
     int size = candidates.size();
@@ -191,6 +190,44 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
       }
     }
     return combinations;
+  }
+
+  /**
+   * The following function is iterative rewrite of the following tail-recursive implementation:
+   * (ignoring cubeql for clarity)
+   * getCombinations(candidates) = getCombinationsTailRecursive(emptyList(), candidates)
+   *
+   * getCombinationsTailRecursive(incompleteCombinations: List[List[Candidate]], candidates: List[Candidate]) =
+   *   head, tail = head and tail of linked List candidates
+   *   add head to all elements of incompleteCombinations.
+   *   complete = remove now complete combinations from incompleteCombinations
+   *   return complete ++ getCombinationsTailRecursive(incompleteCombinations, tail)
+   * @param candidates
+   * @param cubeql
+   * @return
+   */
+  private List<UnionCandidate> getCombinationTailIterative(List<Candidate> candidates, CubeQueryContext cubeql) {
+    LinkedList<Candidate> candidateLinkedList = Lists.newLinkedList(candidates);
+    List<List<Candidate>> incompleteCombinations = Lists.newArrayList();
+    incompleteCombinations.add(Lists.newArrayList());
+    List<UnionCandidate> unionCandidates = Lists.newArrayList();
+
+    while(!candidateLinkedList.isEmpty()) {
+      List<List<Candidate>> moreIncomplete = Lists.newArrayList();
+      Candidate candidate = candidateLinkedList.remove();
+      for (List<Candidate> combination : incompleteCombinations) {
+        List<Candidate> incompleteCombination = Lists.newArrayList(combination);
+        incompleteCombination.add(candidate);
+        UnionCandidate unionCandidate = new UnionCandidate(incompleteCombination, cubeql);
+        if (isCandidateCoveringTimeRanges(unionCandidate, cubeql.getTimeRanges())) {
+          unionCandidates.add(unionCandidate);
+        } else {
+          moreIncomplete.add(incompleteCombination);
+        }
+      }
+      incompleteCombinations.addAll(moreIncomplete);
+    }
+    return unionCandidates;
   }
 
   private List<List<Candidate>> resolveJoinCandidates(List<Candidate> candidates,
@@ -218,6 +255,9 @@ public class CandidateCoveringSetsResolver implements ContextRewriter {
         i.remove();
       }
     }
+    // sorting will make sure storage candidates come before complex candidates.
+    // ensuring maximum columns get selected from simpler candidates.
+    ucSet.sort(Comparator.comparing(Candidate::getChildrenCount));
     // Sets that contain all measures or no measures are removed from iteration.
     // find other facts
     for (Iterator<Candidate> i = ucSet.iterator(); i.hasNext();) {
