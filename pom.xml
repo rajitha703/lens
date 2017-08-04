@@ -1423,12 +1423,7 @@
         <artifactId>jersey-media-multipart</artifactId>
         <version>${jersey.version}</version>
       </dependency>
-<dependency>
-    <groupId>org.apache.parquet</groupId>
-    <artifactId>parquet-avro</artifactId>
-    <version>1.8.1</version>
-</dependency>
-      <dependency>
+     <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-moxy</artifactId>
         <version>${jersey.version}</version>
