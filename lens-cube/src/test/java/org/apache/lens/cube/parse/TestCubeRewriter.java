@@ -510,12 +510,10 @@ public class TestCubeRewriter extends TestQueryRewrite {
     conf.setBoolean(REWRITE_DIM_FILTER_TO_FACT_FILTER, true);
 
     // No filter
-    String hql = rewrite(
-      "select cityid , msr2 from testCube where " + TWO_DAYS_RANGE, conf);
+    String hql = rewrite("select cityid , msr2 from testCube where " + TWO_DAYS_RANGE, conf);
 
     String expectedQuery =  getExpectedQuery(TEST_CUBE_NAME, "select (testcube.cityid) as `cityid`, sum((testcube.msr2)) as `msr2` from ",
       null, "group by testcube.cityid", getWhereForHourly2days(TEST_CUBE_NAME, "c3_testfact2_raw"));
-
     compareQueries(expectedQuery, hql);
 
     // filter with =
