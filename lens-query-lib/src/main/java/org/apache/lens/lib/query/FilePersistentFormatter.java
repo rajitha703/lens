@@ -117,30 +117,20 @@ public class FilePersistentFormatter extends WrappedFileFormatter implements Per
 
       for (Map.Entry<PartFile, FileStatus> entry : partFileMap.entrySet()) {
         log.info("Processing file:{}", entry.getValue().getPath());
-      //  BufferedReader in = null;
-        AvroParquetReader<GenericRecord> reader = null;
+        BufferedReader in = null;
         try {
           // default encoding in hadoop filesystem is utf-8
-        //  in = new BufferedReader(new InputStreamReader(persistFs.open(entry.getValue().getPath()), "UTF-8"));
-//          String row = in.readLine();
-//          while (row != null) {
-//            writeRow(row);
-//            row = in.readLine();
-//          }
-           reader = (AvroParquetReader<GenericRecord>) AvroParquetReader.<GenericRecord>builder(entry.getValue().getPath()).build();
-          String row = reader.read().toString();
-
+          in = new BufferedReader(new InputStreamReader(persistFs.open(entry.getValue().getPath()), "UTF-8"));
+          String row = in.readLine();
           while (row != null) {
             writeRow(row);
-            row = reader.read().toString();
+            row = in.readLine();
           }
-
 
         } finally {
-          if (reader != null) {
-            reader.close();
+          if (in != null) {
+            in.close();
           }
-
         }
       }
     } catch (ParseException e) {
