@@ -18,8 +18,6 @@
  */
 package org.apache.lens.lib.query;
 
-import static org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.InputType.file;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -31,12 +29,10 @@ import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.query.PersistedOutputFormatter;
 import org.apache.lens.server.api.query.QueryContext;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.parquet.avro.AvroParquetReader;
 
 import lombok.extern.slf4j.Slf4j;
 

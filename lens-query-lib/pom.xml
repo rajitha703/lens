@@ -35,12 +35,6 @@
 
   <dependencies>
     <dependency>
-        <groupId>org.apache.parquet</groupId>
-        <artifactId>parquet-avro</artifactId>
-        <version>1.8.2</version>
-    </dependency>
-
-    <dependency>
       <groupId>org.apache.lens</groupId>
       <artifactId>lens-server-api</artifactId>
       <version>${project.version}</version>
