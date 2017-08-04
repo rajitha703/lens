@@ -114,7 +114,6 @@ public class FilePersistentFormatter extends WrappedFileFormatter implements Per
       for (FileStatus file : partFiles) {
         partFileMap.put(new PartFile(file.getPath().getName()), file);
       }
-
       for (Map.Entry<PartFile, FileStatus> entry : partFileMap.entrySet()) {
         log.info("Processing file:{}", entry.getValue().getPath());
         BufferedReader in = null;
