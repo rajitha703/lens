@@ -509,8 +509,17 @@ public class TestCubeRewriter extends TestQueryRewrite {
     conf.setBoolean(DISABLE_AUTO_JOINS, false);
     conf.setBoolean(REWRITE_DIM_FILTER_TO_FACT_FILTER, true);
 
-    // filter with =
+    // No filter
     String hql = rewrite(
+      "select cityid , msr2 from testCube where " + TWO_DAYS_RANGE, conf);
+
+    String expectedQuery =  getExpectedQuery(TEST_CUBE_NAME, "select (testcube.cityid) as `cityid`, sum((testcube.msr2)) as `msr2` from ",
+      null, "group by testcube.cityid", getWhereForHourly2days(TEST_CUBE_NAME, "c3_testfact2_raw"));
+
+    compareQueries(expectedQuery, hql);
+
+    // filter with =
+    hql = rewrite(
         "select cubecountry.name, msr2 from" + " testCube" + " where cubecountry.region = 'asia' and "
             + TWO_DAYS_RANGE, conf);
     String filterSubquery = "testcube.countryid in ( select id from TestQueryRewrite.c3_countrytable_partitioned "
