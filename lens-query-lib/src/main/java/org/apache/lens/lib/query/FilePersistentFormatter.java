@@ -18,6 +18,8 @@
  */
 package org.apache.lens.lib.query;
 
+import static org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.InputType.file;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,10 +31,12 @@ import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.query.PersistedOutputFormatter;
 import org.apache.lens.server.api.query.QueryContext;
 
+import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
+import org.apache.parquet.avro.AvroParquetReader;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -117,19 +121,30 @@ public class FilePersistentFormatter extends WrappedFileFormatter implements Per
 
       for (Map.Entry<PartFile, FileStatus> entry : partFileMap.entrySet()) {
         log.info("Processing file:{}", entry.getValue().getPath());
-        BufferedReader in = null;
+      //  BufferedReader in = null;
+        AvroParquetReader<GenericRecord> reader = null;
         try {
           // default encoding in hadoop filesystem is utf-8
-          in = new BufferedReader(new InputStreamReader(persistFs.open(entry.getValue().getPath()), "UTF-8"));
-          String row = in.readLine();
+        //  in = new BufferedReader(new InputStreamReader(persistFs.open(entry.getValue().getPath()), "UTF-8"));
+//          String row = in.readLine();
+//          while (row != null) {
+//            writeRow(row);
+//            row = in.readLine();
+//          }
+           reader = (AvroParquetReader<GenericRecord>) AvroParquetReader.<GenericRecord>builder(entry.getValue().getPath()).build();
+          String row = reader.read().toString();
+
           while (row != null) {
             writeRow(row);
-            row = in.readLine();
+            row = reader.read().toString();
           }
+
+
         } finally {
-          if (in != null) {
-            in.close();
+          if (reader != null) {
+            reader.close();
           }
+
         }
       }
     } catch (ParseException e) {
