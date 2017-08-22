@@ -126,7 +126,7 @@ public class TestVirtualFactQueries extends TestQueryRewrite {
   public void testVirtualFactValidColumns() throws Exception {
 
     try {
-      crewriteCtx("select SUM(msr4) from virtualCube where " + TWO_DAYS_RANGE, getConfWithStorages("C1"));
+      rewriteCtx("select SUM(msr4) from virtualCube where " + TWO_DAYS_RANGE, getConfWithStorages("C1"));
       fail("Rewrite should not succeed here");
     } catch (LensException exc) {
       assertEquals(exc.getErrorCode(), LensCubeErrorCode.COLUMN_NOT_FOUND.getLensErrorInfo().getErrorCode());
