@@ -934,7 +934,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
         updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(),
           storageName, period));
         updatePeriodSpecificSc.truncatePartitions(period);
-        if(!updatePeriodSpecificSc.getRangeToPartitions().isEmpty()) {
+        if (!updatePeriodSpecificSc.getRangeToPartitions().isEmpty()) {
           periodSpecificScList.add(updatePeriodSpecificSc);
         }
       }
