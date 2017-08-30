@@ -1018,9 +1018,9 @@ public class CubeTestSetup {
 
   private void createPIParts(CubeMetastoreClient client, CubeFactTable fact, String storageName)
     throws Exception {
-    // Add partitions in PE storage
-    //daily partition registered  for pt=day1, et = day1
-    //hourly partitions registered for pt=day1-hours[0-23] et=day1-hours[0-23]
+    // Add partitions in PI storage
+    //daily partition registered  for pt=day1, it = day1
+    //hourly partitions registered for pt=day1-hours[0-23] it=day1-hours[0-23]
     Calendar pcal = Calendar.getInstance();
     pcal.setTime(ONEDAY_BACK);
     pcal.set(HOUR_OF_DAY, 0);
