@@ -127,6 +127,7 @@ public class CubeTestSetup {
   private static String c3 = "C3";
   private static String c4 = "C4";
   private static String c5 = "C5";
+  private static String c98 = "C98";
   private static String c99 = "C99";
   private static Map<String, String> factValidityProperties = Maps.newHashMap();
   @Getter
@@ -882,7 +883,7 @@ public class CubeTestSetup {
 
     factName = "summary5";
     CubeFactTable fact5 = client.getCubeFactTable(factName);
-    createPIEParts2(client, fact5, c5);
+    createPEParts(client, fact5, c98);
   }
 
   private void createBaseCubeFactPartitions(CubeMetastoreClient client) throws HiveException, LensException {
@@ -1015,9 +1016,11 @@ public class CubeTestSetup {
   }
 
 
-  private void createPIEParts2(CubeMetastoreClient client, CubeFactTable fact, String storageName)
+  private void createPEParts(CubeMetastoreClient client, CubeFactTable fact, String storageName)
     throws Exception {
-    // Add partitions in PIE storage
+    // Add partitions in PE storage
+    //daily partition registered  for pt=day1, et = day1
+    //hourly partitions registered for pt=day1-hours[0-23] et=day1-hours[0-23]
     Calendar pcal = Calendar.getInstance();
     pcal.setTime(ONEDAY_BACK);
     pcal.set(HOUR_OF_DAY, 0);
@@ -1025,66 +1028,24 @@ public class CubeTestSetup {
     ical.setTime(ONEDAY_BACK);
     ical.set(HOUR_OF_DAY, 0);
 
-//    Map<UpdatePeriod, TreeSet<Date>> pTimes = Maps.newHashMap();
-//    pTimes.put(DAILY, Sets.<Date>newTreeSet());
-//    pTimes.put(HOURLY, Sets.<Date>newTreeSet());
-//    Map<UpdatePeriod, TreeSet<Date>> iTimes = Maps.newHashMap();
-//    iTimes.put(DAILY, Sets.<Date>newTreeSet());
-//    iTimes.put(HOURLY, Sets.<Date>newTreeSet());
-//
-    // pt=day1 and it=day1
-    // pt=day2-hour[0-3] it = day1-hour[20-23]
-    // pt=day2 and it=day1
-    // pt=day2-hour[4-23] it = day2-hour[0-19]
-    // pt=day2 and it=day2
-    // pt=day3-hour[0-3] it = day2-hour[20-23]
-    // pt=day3-hour[4-23] it = day3-hour[0-19]
-    //for (int p = 1; p <= 3; p++) {
-      Date ptime = pcal.getTime();
-      Date itime = ical.getTime();
-      Map<String, Date> timeParts = new HashMap<String, Date>();
-//      if (p == 1) { // day1
-//        timeParts.put("pt", ptime);
-//        timeParts.put("it", itime);
-//        timeParts.put("et", itime);
-//        StoragePartitionDesc sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, DAILY);
-//        pTimes.get(DAILY).add(ptime);
-//        iTimes.get(DAILY).add(itime);
-//        client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
-//        pcal.add(DAY_OF_MONTH, 1);
-//        ical.add(HOUR_OF_DAY, 20);
-//      } else
-//        if (p == 2) { // day2
-        // pt=day2-hour[0-3] it = day1-hour[20-23]
-        // pt=day2 and it=day1
-        // pt=day2-hour[4-23] it = day2-hour[0-19]
-        // pt=day2 and it=day2
-        ptime = pcal.getTime();
-        itime = ical.getTime();
-        timeParts.put("pt", ptime);
-        timeParts.put("et", itime);
-        // pt=day2 and it=day1
-        StoragePartitionDesc sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, DAILY);
-//        pTimes.get(DAILY).add(ptime);
-//        iTimes.get(DAILY).add(itime);
-        client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
-        // pt=day2-hour[0-3] it = day1-hour[20-23]
-        // pt=day2-hour[4-23] it = day2-hour[0-19]
-        for (int i = 0; i < 24; i++) {
-          ptime = pcal.getTime();
-          itime = ical.getTime();
-          timeParts.put("pt", ptime);
-          timeParts.put("et", itime);
-          sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, HOURLY);
-//          pTimes.get(HOURLY).add(ptime);
-//          iTimes.get(HOURLY).add(itime);
-          client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
-          pcal.add(HOUR_OF_DAY, 1);
-          ical.add(HOUR_OF_DAY, 1);
-        }
+    Date ptime = pcal.getTime();
+    Date itime = ical.getTime();
+    Map<String, Date> timeParts = new HashMap<String, Date>();
 
-//      }
-//    }
+    timeParts.put("pt", ptime);
+    timeParts.put("et", itime);
+    StoragePartitionDesc sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, DAILY);
+    client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
+    for (int i = 0; i < 24; i++) {
+      ptime = pcal.getTime();
+      itime = ical.getTime();
+      timeParts.put("pt", ptime);
+      timeParts.put("et", itime);
+      sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, HOURLY);
+      client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
+      pcal.add(HOUR_OF_DAY, 1);
+      ical.add(HOUR_OF_DAY, 1);
+    }
   }
 
   public static void printQueryAST(String query, String label) throws LensException {

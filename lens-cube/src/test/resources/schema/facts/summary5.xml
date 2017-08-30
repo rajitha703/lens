@@ -33,7 +33,7 @@
   </properties>
   <storage_tables>
     <storage_table>
-      <storage_name>C5</storage_name>
+      <storage_name>C98</storage_name>
       <update_periods>
         <update_period_table_descriptor>
           <update_period>HOURLY</update_period>

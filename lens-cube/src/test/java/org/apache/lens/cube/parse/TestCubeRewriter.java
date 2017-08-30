@@ -65,7 +65,7 @@ public class TestCubeRewriter extends TestQueryRewrite {
   @BeforeTest
   public void setupDriver() throws Exception {
     conf = LensServerAPITestUtil.getConfiguration(
-      DRIVER_SUPPORTED_STORAGES, "C0,C1,C2,C5",
+      DRIVER_SUPPORTED_STORAGES, "C0,C1,C2,C98",
       DISABLE_AUTO_JOINS, true,
       ENABLE_SELECT_TO_GROUPBY, true,
       ENABLE_GROUP_BY_TO_SELECT, true,
@@ -1470,15 +1470,15 @@ public class TestCubeRewriter extends TestQueryRewrite {
   }
 
   @Test
-  public void testLookAhead2() throws Exception {
-
+  public void testTimeRangeIn() throws Exception {
+    //check whether time_range_in is resolving in cube rewrite
     Configuration conf = getConf();
     conf.set(CubeQueryConfUtil.PROCESS_TIME_PART_COL, "pt");
     conf.setClass(CubeQueryConfUtil.TIME_RANGE_WRITER_CLASS, AbridgedTimeRangeWriter.class, TimeRangeWriter.class);
     CubeQueryContext ctx = rewriteCtx("select dim1, sum(msr23)" + " from testCube" + " where " + ONE_DAY_RANGE_ET,
       conf);
     String rewrittenQuery = ctx.toHQL();
-    System.out.println(rewrittenQuery);
+    assertTrue(!rewrittenQuery.contains("time_range_in"));
   }
 
   @Test
