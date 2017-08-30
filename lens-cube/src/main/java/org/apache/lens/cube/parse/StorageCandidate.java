@@ -533,7 +533,7 @@ public class StorageCandidate implements Candidate, CandidateTable {
           log.debug("Adding non existing partition {}", part);
           if (addNonExistingParts) {
             // Add non existing partitions for all cases of whether we populate all non existing or not.
-       //     this.participatingUpdatePeriods.add(maxInterval);
+            this.participatingUpdatePeriods.add(maxInterval);
             missingPartitions.add(part);
             if (!failOnPartialData) {
               partitions.add(part);
@@ -934,9 +934,9 @@ public class StorageCandidate implements Candidate, CandidateTable {
         updatePeriodSpecificSc.setResolvedName(getCubeMetastoreClient().getStorageTableName(fact.getSourceFactName(),
           storageName, period));
         updatePeriodSpecificSc.truncatePartitions(period);
-       // if (!updatePeriodSpecificSc.getRangeToPartitions().isEmpty()) {
+        if (!updatePeriodSpecificSc.getRangeToPartitions().isEmpty()) {
           periodSpecificScList.add(updatePeriodSpecificSc);
-       // }
+        }
       }
       periodSpecificStorageCandidates = periodSpecificScList;
     }
