@@ -27,9 +27,9 @@
   </columns>
   <properties>
     <property name="cube.fact.relative.start.time" value="now.year - 90 days"/>
-    <property name="cube.table.summary4.weight" value="15.0"/>
-    <property name="cube.fact.summary4.storages" value="C5"/>
-    <property name="cube.fact.summary4.c5.updateperiods" value="HOURLY,DAILY"/>
+    <property name="cube.table.summary5.weight" value="15.0"/>
+    <property name="cube.fact.summary5.storages" value="C98"/>
+    <property name="cube.fact.summary5.c98.updateperiods" value="HOURLY,DAILY"/>
   </properties>
   <storage_tables>
     <storage_table>
