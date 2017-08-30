@@ -21,7 +21,7 @@
 -->
 <x_fact_table name="summary5" cube_name="testCube" weight="15.0" xmlns="uri:lens:cube:0.1">
   <columns>
-    <column name="msr23" _type="float" comment="23 measure"/>
+    <column name="msr23" _type="float" comment="twenty third measure"/>
     <column name="dim1" _type="string" comment="dim1"/>
     <column name="dim2" _type="string" comment="dim2"/>
   </columns>

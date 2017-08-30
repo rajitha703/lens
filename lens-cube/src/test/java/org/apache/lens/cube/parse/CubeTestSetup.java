@@ -883,7 +883,7 @@ public class CubeTestSetup {
 
     factName = "summary5";
     CubeFactTable fact5 = client.getCubeFactTable(factName);
-    createPEParts(client, fact5, c98);
+    createPIParts(client, fact5, c98);
   }
 
   private void createBaseCubeFactPartitions(CubeMetastoreClient client) throws HiveException, LensException {
@@ -1016,7 +1016,7 @@ public class CubeTestSetup {
   }
 
 
-  private void createPEParts(CubeMetastoreClient client, CubeFactTable fact, String storageName)
+  private void createPIParts(CubeMetastoreClient client, CubeFactTable fact, String storageName)
     throws Exception {
     // Add partitions in PE storage
     //daily partition registered  for pt=day1, et = day1
@@ -1033,14 +1033,14 @@ public class CubeTestSetup {
     Map<String, Date> timeParts = new HashMap<String, Date>();
 
     timeParts.put("pt", ptime);
-    timeParts.put("et", itime);
+    timeParts.put("it", itime);
     StoragePartitionDesc sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, DAILY);
     client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
     for (int i = 0; i < 24; i++) {
       ptime = pcal.getTime();
       itime = ical.getTime();
       timeParts.put("pt", ptime);
-      timeParts.put("et", itime);
+      timeParts.put("it", itime);
       sPartSpec = new StoragePartitionDesc(fact.getName(), timeParts, null, HOURLY);
       client.addPartition(sPartSpec, storageName, CubeTableType.FACT);
       pcal.add(HOUR_OF_DAY, 1);
