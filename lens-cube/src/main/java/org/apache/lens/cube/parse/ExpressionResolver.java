@@ -317,7 +317,7 @@ class ExpressionResolver implements ContextRewriter {
     }
 
     ExpressionContext getExpressionContext(String expr, String alias) {
-      if(allExprsQueried.get(expr) != null) {
+      if (allExprsQueried.get(expr) != null) {
         for (ExpressionContext ec : allExprsQueried.get(expr)) {
           if (ec.getSrcAlias().equals(alias)) {
             return ec;
@@ -543,8 +543,10 @@ class ExpressionResolver implements ContextRewriter {
       expressionContexts.add(expressionContext);
       for (StorageCandidate sc : scSet) {
         storageTableNames.add(sc.getStorageTable());
-        if (sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.getExprCol().getName(), expressionContext.getSrcAlias()) != null) {
-          expressionContexts.add(sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.getExprCol().getName(), expressionContext.getSrcAlias()));
+        if (sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.getExprCol().getName(),
+          expressionContext.getSrcAlias()) != null) {
+          expressionContexts.add(sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.
+            getExprCol().getName(), expressionContext.getSrcAlias()));
         }
       }
       for (ExpressionContext ec : expressionContexts) {
