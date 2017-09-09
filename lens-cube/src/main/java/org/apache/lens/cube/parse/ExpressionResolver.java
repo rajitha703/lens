@@ -325,7 +325,6 @@ class ExpressionResolver implements ContextRewriter {
         }
       }
       return null;
-     // throw new IllegalArgumentException("no expression available for " + expr + " alias:" + alias);
     }
 
     boolean hasMeasures(String expr, CubeInterface cube) {
