@@ -542,10 +542,10 @@ class ExpressionResolver implements ContextRewriter {
       expressionContexts.add(expressionContext);
       for (StorageCandidate sc : scSet) {
         storageTableNames.add(sc.getStorageTable());
-        if (sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.getExprCol().getName(),
-          expressionContext.getSrcAlias()) != null) {
-          expressionContexts.add(sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.
-            getExprCol().getName(), expressionContext.getSrcAlias()));
+        ExpressionContext ex = sc.getCubeQueryContext().getExprCtx().getExpressionContext(expressionContext.
+            getExprCol().getName(), expressionContext.getSrcAlias());
+        if (ex != null) {
+          expressionContexts.add(ex);
         }
       }
       for (ExpressionContext ec : expressionContexts) {
