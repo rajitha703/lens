@@ -315,11 +315,17 @@ public class StorageCandidate implements Candidate, CandidateTable {
 
   public Optional<Date> getColumnStartTime(String column) {
     Date startTime = null;
-    for (String key : getTable().getProperties().keySet()) {
+    Map<String, String > propertiesMap;
+    if(this.getFact() instanceof CubeVirtualFactTable) {
+      propertiesMap = ((CubeVirtualFactTable) this.getFact()).getSourceCubeFactTable().getProperties();
+    }else {
+      propertiesMap = this.getFact().getProperties();
+    }
+    for (String key : propertiesMap.keySet()) {
       if (key.contains(MetastoreConstants.FACT_COL_START_TIME_PFX)) {
         String propCol = StringUtils.substringAfter(key, MetastoreConstants.FACT_COL_START_TIME_PFX);
         if (column.equals(propCol)) {
-          startTime = MetastoreUtil.getDateFromProperty(getTable().getProperties().get(key), false, true);
+          startTime = MetastoreUtil.getDateFromProperty(this.getFact().getProperties().get(key), false, true);
         }
       }
     }
