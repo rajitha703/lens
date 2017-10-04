@@ -315,8 +315,8 @@ public class StorageCandidate implements Candidate, CandidateTable {
 
   public Optional<Date> getColumnStartTime(String column) {
     Date startTime = null;
-    Map<String, String > propertiesMap;
-    if(this.getFact() instanceof CubeVirtualFactTable) {
+    Map<String, String> propertiesMap;
+    if (this.getFact() instanceof CubeVirtualFactTable) {
       propertiesMap = ((CubeVirtualFactTable) this.getFact()).getSourceCubeFactTable().getProperties();
     }else {
       propertiesMap = this.getFact().getProperties();
