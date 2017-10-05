@@ -335,7 +335,13 @@ public class StorageCandidate implements Candidate, CandidateTable {
   @Override
   public Optional<Date> getColumnEndTime(String column) {
     Date endTime = null;
-    for (String key : getTable().getProperties().keySet()) {
+    Map<String, String> propertiesMap;
+    if (this.getFact() instanceof CubeVirtualFactTable) {
+      propertiesMap = ((CubeVirtualFactTable) this.getFact()).getSourceCubeFactTable().getProperties();
+    }else {
+      propertiesMap = this.getFact().getProperties();
+    }
+    for (String key : propertiesMap.keySet()) {
       if (key.contains(MetastoreConstants.FACT_COL_END_TIME_PFX)) {
         String propCol = StringUtils.substringAfter(key, MetastoreConstants.FACT_COL_END_TIME_PFX);
         if (column.equals(propCol)) {
