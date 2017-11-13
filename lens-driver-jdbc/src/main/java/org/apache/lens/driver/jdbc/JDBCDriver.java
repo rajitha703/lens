@@ -109,7 +109,7 @@ public class JDBCDriver extends AbstractLensDriver {
    */
   public static final String JDBC_COST_TYPE_RANGES = "lens.driver.jdbc.cost.type.ranges";
 
-  public static final String JDBC_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,-1.0,LOW,0.0,HIGH";
+  public static final String JDBC_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,0.0,LOW,0.1,HIGH";
 
   /**
    * Data related to a query submitted to JDBCDriver.

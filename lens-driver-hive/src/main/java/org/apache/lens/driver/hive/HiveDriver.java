@@ -97,7 +97,7 @@ public class HiveDriver extends AbstractLensDriver {
   // Default values of conf params
   public static final long DEFAULT_EXPIRY_DELAY = 600 * 1000;
   public static final String HS2_PRIORITY_DEFAULT_RANGES = "VERY_HIGH,7.0,HIGH,30.0,NORMAL,90,LOW";
-  public static final String HS2_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,-1.0,LOW,0.0,HIGH";
+  public static final String HS2_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,0.0,LOW,0.1,HIGH";
   public static final String SESSION_KEY_DELIMITER = ".";
 
   /** The HiveConf - used for connecting to hive server and metastore */

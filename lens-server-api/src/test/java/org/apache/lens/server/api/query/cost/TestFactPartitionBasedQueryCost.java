@@ -25,15 +25,17 @@ import static org.testng.Assert.*;
 
 import org.apache.lens.api.query.QueryCostType;
 import org.apache.lens.api.serialize.SerializationTest;
+import org.apache.lens.server.api.error.LensException;
 
 import org.junit.Before;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 
 public class TestFactPartitionBasedQueryCost {
-  CostRangeQueryTypeDecider costRangeQueryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf("VERY_LOW,-1.0,LOW,0.0,HIGH"));
+
+  CostRangeQueryTypeDecider costRangeQueryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf("VERY_LOW,0.0,LOW,0.1,HIGH"));
   QueryCost cost0 = new FactPartitionBasedQueryCost(0.0);
- // cost0.setQueryCostType(costRangeQueryTypeDecider.)
   QueryCost cost1 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost11 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost2 = new FactPartitionBasedQueryCost(0.3);
@@ -41,6 +43,16 @@ public class TestFactPartitionBasedQueryCost {
   QueryCost scost1 = new StaticQueryCost(0.0);
   QueryCost scost2 = new StaticQueryCost(1.0);
 
+  @BeforeTest
+  public void beforeTest() throws LensException {
+    cost0.setQueryCostType(costRangeQueryTypeDecider.decideCostType(cost0));
+    cost1.setQueryCostType(costRangeQueryTypeDecider.decideCostType(cost1));
+    cost11.setQueryCostType(costRangeQueryTypeDecider.decideCostType(cost11));
+    cost2.setQueryCostType(costRangeQueryTypeDecider.decideCostType(cost2));
+    scost0.setQueryCostType(costRangeQueryTypeDecider.decideCostType(scost0));
+    scost1.setQueryCostType(costRangeQueryTypeDecider.decideCostType(scost1));
+    scost2.setQueryCostType(costRangeQueryTypeDecider.decideCostType(scost2));
+  }
   @Test(expectedExceptions = {IllegalArgumentException.class})
   public void testInvalid() {
     new FactPartitionBasedQueryCost(-0.5);
