@@ -26,11 +26,14 @@ import static org.testng.Assert.*;
 import org.apache.lens.api.query.QueryCostType;
 import org.apache.lens.api.serialize.SerializationTest;
 
+import org.junit.Before;
 import org.testng.annotations.Test;
 
 
 public class TestFactPartitionBasedQueryCost {
+  CostRangeQueryTypeDecider costRangeQueryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf("VERY_LOW,-1.0,LOW,0.0,HIGH"));
   QueryCost cost0 = new FactPartitionBasedQueryCost(0.0);
+ // cost0.setQueryCostType(costRangeQueryTypeDecider.)
   QueryCost cost1 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost11 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost2 = new FactPartitionBasedQueryCost(0.3);

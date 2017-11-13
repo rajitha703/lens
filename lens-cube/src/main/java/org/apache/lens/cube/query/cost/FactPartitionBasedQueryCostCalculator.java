@@ -91,7 +91,7 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
   @Override
   public QueryCost calculateCost(final AbstractQueryContext queryContext, LensDriver driver, QueryTypeDecider queryTypeDecider) throws LensException {
     Double cost = getTotalPartitionCost(queryContext, driver);
-    FactPartitionBasedQueryCost queryCost =  cost == null ? null : new FactPartitionBasedQueryCost(cost);
+    QueryCost queryCost =  cost == null ? null : new FactPartitionBasedQueryCost(cost);
     if(queryCost != null) {
       queryCost.setQueryCostType(queryTypeDecider.decideCostType(queryCost));
     }

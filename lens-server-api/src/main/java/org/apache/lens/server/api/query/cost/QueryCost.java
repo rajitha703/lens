@@ -37,6 +37,8 @@ public interface QueryCost<T extends QueryCost> extends Comparable<T> {
 
   QueryCostType getQueryCostType();
 
+  void setQueryCostType(QueryCostType queryCostType);
+
   long getEstimatedExecTimeMillis() throws UnsupportedOperationException;
 
   double getEstimatedResourceUsage() throws UnsupportedOperationException;

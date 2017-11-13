@@ -58,11 +58,6 @@ public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBased
   }
 
   @Override
-  public QueryCostType getQueryCostType() {
-    return this.queryCostType;
-  }
-
-  @Override
   public long getEstimatedExecTimeMillis() throws UnsupportedOperationException {
     throw new UnsupportedOperationException("Estimated time is not implemented");
   }

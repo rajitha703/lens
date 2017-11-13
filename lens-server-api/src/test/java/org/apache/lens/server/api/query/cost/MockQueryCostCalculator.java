@@ -25,7 +25,7 @@ import org.apache.lens.server.api.query.AbstractQueryContext;
 
 public class MockQueryCostCalculator implements QueryCostCalculator {
   @Override
-  public QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver) throws LensException {
+  public QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver, QueryTypeDecider queryTypeDecider) throws LensException {
     return new FactPartitionBasedQueryCost(10.0);
   }
 }
