@@ -70,10 +70,10 @@ public class QueryCostBasedQueryHookTest {
   public void testParse(String rangeString, Double[] includes, Double[] excludes) {
     RangeSet<FactPartitionBasedQueryCost> range = hook.parseRangeSet(rangeString);
     for (Double cost : includes) {
-      assertTrue(range.contains(new FactPartitionBasedQueryCost(cost,null)));
+      assertTrue(range.contains(new FactPartitionBasedQueryCost(cost)));
     }
     for (Double cost : excludes) {
-      assertFalse(range.contains(new FactPartitionBasedQueryCost(cost, null)));
+      assertFalse(range.contains(new FactPartitionBasedQueryCost(cost)));
     }
   }
 

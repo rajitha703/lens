@@ -27,14 +27,14 @@ import org.apache.lens.api.query.QueryCostType;
 import org.apache.lens.api.serialize.SerializationTest;
 import org.apache.lens.server.api.error.LensException;
 
-import org.junit.Before;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 
 public class TestFactPartitionBasedQueryCost {
 
-  CostRangeQueryTypeDecider costRangeQueryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf("VERY_LOW,0.0,LOW,0.1,HIGH"));
+  CostRangeQueryTypeDecider costRangeQueryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(
+    "VERY_LOW,0.0,LOW,0.1,HIGH"));
   QueryCost cost0 = new FactPartitionBasedQueryCost(0.0);
   QueryCost cost1 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost11 = new FactPartitionBasedQueryCost(0.2);

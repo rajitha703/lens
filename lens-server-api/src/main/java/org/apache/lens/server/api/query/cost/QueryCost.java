@@ -21,11 +21,7 @@
  */
 package org.apache.lens.server.api.query.cost;
 
-
 import org.apache.lens.api.query.QueryCostType;
-
-import lombok.Getter;
-import lombok.Setter;
 
 /**
  * QueryCost Interface.
