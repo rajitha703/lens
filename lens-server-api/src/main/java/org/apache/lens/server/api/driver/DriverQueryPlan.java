@@ -25,6 +25,7 @@ import java.util.*;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryPlan;
 import org.apache.lens.api.query.QueryPrepareHandle;
+import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.cost.QueryCost;
 import org.apache.lens.server.api.query.cost.QueryCostTOBuilder;
 
@@ -302,7 +303,7 @@ public abstract class DriverQueryPlan {
    * @return the query plan
    * @throws UnsupportedEncodingException the unsupported encoding exception
    */
-  public QueryPlan toQueryPlan() throws UnsupportedEncodingException {
+  public QueryPlan toQueryPlan() throws UnsupportedEncodingException, LensException {
     return new QueryPlan(new ArrayList<>(tablesQueried), hasSubQuery, execMode != null ? execMode.name() : null,
       scanMode != null ? scanMode.name() : null, handle,
       URLEncoder.encode(getPlan(), "UTF-8"), new QueryCostTOBuilder(getCost()).build());

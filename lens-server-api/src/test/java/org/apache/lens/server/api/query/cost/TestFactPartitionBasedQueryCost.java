@@ -34,6 +34,9 @@ public class TestFactPartitionBasedQueryCost {
   QueryCost cost1 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost11 = new FactPartitionBasedQueryCost(0.2);
   QueryCost cost2 = new FactPartitionBasedQueryCost(0.3);
+  QueryCost scost0 = new StaticQueryCost(-1.0);
+  QueryCost scost1 = new StaticQueryCost(0.0);
+  QueryCost scost2 = new StaticQueryCost(1.0);
 
   @Test(expectedExceptions = {IllegalArgumentException.class})
   public void testInvalid() {
@@ -50,6 +53,7 @@ public class TestFactPartitionBasedQueryCost {
     assertEquals(cost1.getQueryCostType(), QueryCostType.HIGH);
     assertEquals(cost2.getQueryCostType(), QueryCostType.HIGH);
     assertEquals(cost0.getQueryCostType(), QueryCostType.LOW);
+    assertEquals(scost0.getQueryCostType(), QueryCostType.VERY_LOW);
   }
 
   @Test(expectedExceptions = {UnsupportedOperationException.class})
@@ -67,6 +71,9 @@ public class TestFactPartitionBasedQueryCost {
     assertEquals(cost1.compareTo(cost2), -1);
     assertEquals(cost2.compareTo(cost1), 1);
     assertEquals(cost1.compareTo(cost11), 0);
+    assertEquals(scost1.compareTo(scost0), 1);
+    assertEquals(scost0.compareTo(scost1), -1);
+    assertEquals(scost2.compareTo(scost0), 1);
   }
 
   @Test
@@ -79,5 +86,10 @@ public class TestFactPartitionBasedQueryCost {
   @Test
   public void testFactPartitionBasedQueryCostIsSerializable() {
     new SerializationTest().verifySerializationAndDeserialization(new FactPartitionBasedQueryCost(Double.MAX_VALUE));
+  }
+
+  @Test
+  public void testStaticQueryCostIsSerializable() {
+    new SerializationTest().verifySerializationAndDeserialization(new StaticQueryCost(Double.MAX_VALUE));
   }
 }

@@ -22,6 +22,7 @@
 package org.apache.lens.server.api.query.cost;
 
 import org.apache.lens.api.result.QueryCostTO;
+import org.apache.lens.server.api.error.LensException;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class QueryCostTOBuilder {
   @NonNull private final QueryCost cost;
 
-  public QueryCostTO build() {
+  public QueryCostTO build() throws LensException {
     Long estimatedExecTimeMillis = null;
     Double estimatedResourceUsage = null;
     try {

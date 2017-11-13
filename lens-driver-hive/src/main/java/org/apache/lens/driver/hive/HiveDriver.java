@@ -18,6 +18,7 @@
  */
 package org.apache.lens.driver.hive;
 
+import static org.apache.lens.server.api.LensConfConstants.DRIVER_COST_QUERY_DECIDER;
 import static org.apache.lens.server.api.error.LensDriverErrorCode.*;
 
 import java.io.ByteArrayInputStream;
@@ -44,9 +45,7 @@ import org.apache.lens.server.api.events.LensEventListener;
 import org.apache.lens.server.api.query.AbstractQueryContext;
 import org.apache.lens.server.api.query.PreparedQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
-import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
-import org.apache.lens.server.api.query.cost.QueryCost;
-import org.apache.lens.server.api.query.cost.QueryCostCalculator;
+import org.apache.lens.server.api.query.cost.*;
 import org.apache.lens.server.api.query.priority.CostRangePriorityDecider;
 import org.apache.lens.server.api.query.priority.CostToPriorityRangeConf;
 import org.apache.lens.server.api.query.priority.QueryPriorityDecider;
@@ -90,9 +89,15 @@ public class HiveDriver extends AbstractLensDriver {
    */
   public static final String HS2_PRIORITY_RANGES = "lens.driver.hive.priority.ranges";
 
+  /**
+   * Config param for defining query type ranges.
+   */
+  public static final String HS2_COST_TYPE_RANGES = "lens.driver.hive.cost.type.ranges";
+
   // Default values of conf params
   public static final long DEFAULT_EXPIRY_DELAY = 600 * 1000;
   public static final String HS2_PRIORITY_DEFAULT_RANGES = "VERY_HIGH,7.0,HIGH,30.0,NORMAL,90,LOW";
+  public static final String HS2_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,-1.0,LOW,0.0,HIGH";
   public static final String SESSION_KEY_DELIMITER = ".";
 
   /** The HiveConf - used for connecting to hive server and metastore */
@@ -136,6 +141,7 @@ public class HiveDriver extends AbstractLensDriver {
 
   QueryCostCalculator queryCostCalculator;
   QueryPriorityDecider queryPriorityDecider;
+  QueryTypeDecider queryTypeDecider;
   // package-local. Test case can change.
   boolean whetherCalculatePriority;
   private static final Map<String, String> SESSION_CONF = new HashMap<String, String>() {
@@ -347,13 +353,14 @@ public class HiveDriver extends AbstractLensDriver {
     queryPriorityDecider = new CostRangePriorityDecider(
       new CostToPriorityRangeConf(getConf().get(HS2_PRIORITY_RANGES, HS2_PRIORITY_DEFAULT_RANGES))
     );
+    queryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES)));
 
     log.info("Hive driver {} configured successfully", getFullyQualifiedName());
   }
 
   private QueryCost calculateQueryCost(AbstractQueryContext qctx) throws LensException {
     if (qctx.isOlapQuery()) {
-      QueryCost cost = queryCostCalculator.calculateCost(qctx, this);
+      QueryCost cost = queryCostCalculator.calculateCost(qctx, this, queryTypeDecider);
       if (cost != null) {
         return cost;
       }

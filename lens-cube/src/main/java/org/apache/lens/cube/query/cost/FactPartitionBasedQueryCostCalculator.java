@@ -26,9 +26,7 @@ import org.apache.lens.cube.metadata.UpdatePeriod;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.AbstractQueryContext;
-import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
-import org.apache.lens.server.api.query.cost.QueryCost;
-import org.apache.lens.server.api.query.cost.QueryCostCalculator;
+import org.apache.lens.server.api.query.cost.*;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -91,9 +89,13 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
   }
 
   @Override
-  public QueryCost calculateCost(final AbstractQueryContext queryContext, LensDriver driver) throws LensException {
+  public QueryCost calculateCost(final AbstractQueryContext queryContext, LensDriver driver, QueryTypeDecider queryTypeDecider) throws LensException {
     Double cost = getTotalPartitionCost(queryContext, driver);
-    return cost == null ? null : new FactPartitionBasedQueryCost(cost);
+    FactPartitionBasedQueryCost queryCost =  cost == null ? null : new FactPartitionBasedQueryCost(cost);
+    if(queryCost != null) {
+      queryCost.setQueryCostType(queryTypeDecider.decideCostType(queryCost));
+    }
+    return queryCost;
   }
 
   public Map<String, Set<?>> getAllPartitions(AbstractQueryContext queryContext, LensDriver driver) {

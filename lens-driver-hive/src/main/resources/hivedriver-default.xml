@@ -165,4 +165,17 @@
     implementation of org.apache.lens.server.api.query.collect.WaitingQueriesSelectionPolicy.</description>
   </property>
 
+  <property>
+    <name>lens.driver.cost.query.decider.class</name>
+    <value>org.apache.lens.server.api.query.cost.CostRangeQueryTypeDecider</value>
+    <description>Cost calculator class. By default calculating cost through static values </description>
+  </property>
+
+  <property>
+    <name>lens.driver.hive.cost.type.ranges</name>
+    <value>VERY_LOW,-1.0,LOW,0.0,HIGH</value>
+    <description>Cost based Query type mapping</description>
+  </property>
+
+
 </configuration>

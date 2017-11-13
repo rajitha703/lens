@@ -16,29 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-/*
- *
- */
 package org.apache.lens.server.api.query.cost;
 
 
 import org.apache.lens.api.query.QueryCostType;
+import org.apache.lens.server.api.error.LensException;
 
-import lombok.Getter;
-import lombok.Setter;
+public interface QueryTypeDecider {
 
-/**
- * QueryCost Interface.
- * @param <T>
- */
-public interface QueryCost<T extends QueryCost> extends Comparable<T> {
-
-  T add(final T queryCost);
-
-  QueryCostType getQueryCostType();
-
-  long getEstimatedExecTimeMillis() throws UnsupportedOperationException;
-
-  double getEstimatedResourceUsage() throws UnsupportedOperationException;
-
+  /**
+   * @param cost
+   * @return calculate queryType based on the pre calculated query cost
+   * @throws LensException when can't decide queryType.
+   */
+  QueryCostType decideCostType(QueryCost cost) throws LensException;
 }

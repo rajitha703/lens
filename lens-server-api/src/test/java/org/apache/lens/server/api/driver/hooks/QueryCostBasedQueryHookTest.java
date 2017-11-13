@@ -70,10 +70,10 @@ public class QueryCostBasedQueryHookTest {
   public void testParse(String rangeString, Double[] includes, Double[] excludes) {
     RangeSet<FactPartitionBasedQueryCost> range = hook.parseRangeSet(rangeString);
     for (Double cost : includes) {
-      assertTrue(range.contains(new FactPartitionBasedQueryCost(cost)));
+      assertTrue(range.contains(new FactPartitionBasedQueryCost(cost,null)));
     }
     for (Double cost : excludes) {
-      assertFalse(range.contains(new FactPartitionBasedQueryCost(cost)));
+      assertFalse(range.contains(new FactPartitionBasedQueryCost(cost, null)));
     }
   }
 
@@ -97,7 +97,7 @@ public class QueryCostBasedQueryHookTest {
   @Test(dataProvider = "provideData")
   public void testHook(Double cost, boolean success)
     throws Exception {
-    when(ctx.getDriverQueryCost(driver)).thenReturn(new FactPartitionBasedQueryCost(cost));
+    when(ctx.getDriverQueryCost(driver)).thenReturn(new FactPartitionBasedQueryCost(cost, null));
     try {
       hook.postEstimate(ctx);
       assertTrue(success);

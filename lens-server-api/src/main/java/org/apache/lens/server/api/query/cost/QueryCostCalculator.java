@@ -28,5 +28,5 @@ public interface QueryCostCalculator {
    * @return calculated cost based on anything available in abstract query context
    * @throws LensException when can't calculate cost
    */
-  QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver) throws LensException;
+  QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver, QueryTypeDecider queryTypeDecider) throws LensException;
 }

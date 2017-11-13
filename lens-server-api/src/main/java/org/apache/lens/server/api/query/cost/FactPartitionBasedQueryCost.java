@@ -27,6 +27,8 @@ import org.apache.lens.api.query.QueryCostType;
 
 import com.google.common.base.Preconditions;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 
 @ToString
@@ -34,10 +36,20 @@ import lombok.ToString;
 public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBasedQueryCost>, Serializable {
 
   private final double partitionCost;
+  @Getter
+  @Setter
+  private QueryCostType queryCostType;
 
   public FactPartitionBasedQueryCost(final double partitionCost) {
     Preconditions.checkArgument(partitionCost >= 0, "Cost can't be negative");
     this.partitionCost = partitionCost;
+    this.queryCostType = QueryCostType.HIGH;
+  }
+
+  public FactPartitionBasedQueryCost(final double partitionCost, final QueryCostType queryCostType) {
+    Preconditions.checkArgument(partitionCost >= 0, "Cost can't be negative");
+    this.partitionCost = partitionCost;
+    this.queryCostType = queryCostType;
   }
 
   @Override
@@ -47,7 +59,7 @@ public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBased
 
   @Override
   public QueryCostType getQueryCostType() {
-    return partitionCost == 0 ? QueryCostType.LOW : QueryCostType.HIGH;
+    return this.queryCostType;
   }
 
   @Override

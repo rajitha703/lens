@@ -25,6 +25,7 @@ import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.*;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.ConnectionPoolProperties.*;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.lens.server.api.LensConfConstants.DRIVER_COST_QUERY_DECIDER;
 
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -40,6 +41,7 @@ import org.apache.lens.api.LensConf;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryPrepareHandle;
 import org.apache.lens.cube.parse.HQLParser;
+import org.apache.lens.cube.query.cost.StaticCostCalculator;
 import org.apache.lens.server.api.driver.*;
 import org.apache.lens.server.api.driver.DriverQueryStatus.DriverQueryState;
 import org.apache.lens.server.api.error.LensDriverErrorCode;
@@ -51,8 +53,7 @@ import org.apache.lens.server.api.query.AbstractQueryContext;
 import org.apache.lens.server.api.query.PreparedQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.query.constraint.MaxConcurrentDriverQueriesConstraintFactory;
-import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
-import org.apache.lens.server.api.query.cost.QueryCost;
+import org.apache.lens.server.api.query.cost.*;
 import org.apache.lens.server.api.query.rewrite.QueryRewriter;
 import org.apache.lens.server.api.util.LensUtil;
 import org.apache.lens.server.model.LogSegregationContext;
@@ -98,6 +99,17 @@ public class JDBCDriver extends AbstractLensDriver {
   private LogSegregationContext logSegregationContext;
 
   private boolean isStatementCancelSupported;
+
+  QueryCostCalculator queryCostCalculator;
+
+  QueryTypeDecider queryTypeDecider;
+
+  /**
+   * Config param for defining query type ranges.
+   */
+  public static final String JDBC_COST_TYPE_RANGES = "lens.driver.jdbc.cost.type.ranges";
+
+  public static final String JDBC_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,-1.0,LOW,0.0,HIGH";
 
   /**
    * Data related to a query submitted to JDBCDriver.
@@ -382,6 +394,16 @@ public class JDBCDriver extends AbstractLensDriver {
     super.configure(conf, driverType, driverName);
     init();
     configured = true;
+    Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(JDBC_COST_CALCULATOR,
+      StaticCostCalculator.class, QueryCostCalculator.class);
+    try {
+      queryCostCalculator = queryCostCalculatorClass.newInstance();
+    } catch (InstantiationException | IllegalAccessException e) {
+      throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
+    }
+
+    queryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES)));
+
     log.info("JDBC Driver {} configured", getFullyQualifiedName());
   }
 
@@ -421,6 +443,10 @@ public class JDBCDriver extends AbstractLensDriver {
       DEFAULT_STATEMENT_CANCEL_SUPPORTED);
   }
 
+  public QueryCost calculateQueryCost(AbstractQueryContext qctx) throws LensException {
+      return queryCostCalculator.calculateCost(qctx, this, queryTypeDecider);
+
+  }
   /**
    * Check configured.
    *
@@ -513,21 +539,20 @@ public class JDBCDriver extends AbstractLensDriver {
     return rewrittenQuery;
   }
 
-  static final QueryCost JDBC_DRIVER_COST = new FactPartitionBasedQueryCost(0);
-
   /**
    * Dummy JDBC query Plan class to get min cost selector working.
    */
   private static class JDBCQueryPlan extends DriverQueryPlan {
+
+    @Getter
+    private final QueryCost cost;
+
+    JDBCQueryPlan(QueryCost cost){
+      this.cost = cost;
+    }
     @Override
     public String getPlan() {
       return "";
-    }
-
-    @Override
-    public QueryCost getCost() {
-      // this means that JDBC driver is only selected for tables with just DB storage.
-      return JDBC_DRIVER_COST;
     }
   }
 
@@ -542,7 +567,7 @@ public class JDBCDriver extends AbstractLensDriver {
       VALIDATE_GAUGE);
     validate(qctx);
     validateGauge.markSuccess();
-    return JDBC_DRIVER_COST;
+    return calculateQueryCost(qctx);
   }
 
   /**
@@ -590,7 +615,7 @@ public class JDBCDriver extends AbstractLensDriver {
         result.close();
       }
     }
-    JDBCQueryPlan jqp = new JDBCQueryPlan();
+    JDBCQueryPlan jqp = new JDBCQueryPlan(calculateQueryCost(explainCtx));
     explainCtx.getDriverContext().setDriverQueryPlan(this, jqp);
     return jqp;
   }
@@ -802,7 +827,7 @@ public class JDBCDriver extends AbstractLensDriver {
   public DriverQueryPlan explainAndPrepare(PreparedQueryContext pContext) throws LensException {
     checkConfigured();
     prepare(pContext);
-    return new JDBCQueryPlan();
+    return new JDBCQueryPlan(calculateQueryCost(pContext));
   }
 
   /**

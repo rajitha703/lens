@@ -21,6 +21,7 @@ package org.apache.lens.driver.jdbc;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.*;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.ConnectionPoolProperties.*;
 
+import static org.apache.lens.server.api.LensConfConstants.DRIVER_QUERY_COST;
 import static org.testng.Assert.*;
 
 import java.sql.*;
@@ -40,6 +41,7 @@ import org.apache.lens.server.api.query.ExplainQueryContext;
 import org.apache.lens.server.api.query.PreparedQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.query.cost.QueryCost;
+import org.apache.lens.server.api.query.cost.StaticQueryCost;
 import org.apache.lens.server.api.util.LensUtil;
 
 import org.apache.hadoop.conf.Configuration;
@@ -71,6 +73,8 @@ public class TestJdbcDriver {
   JDBCDriver driver;
 
   Collection<LensDriver> drivers;
+
+  static final StaticQueryCost JDBC_COST = new StaticQueryCost(0.0);
 
   /**
    * Test create jdbc driver.
@@ -263,7 +267,7 @@ public class TestJdbcDriver {
     ExplainQueryContext ctx = createExplainContext(query1, baseConf);
     Assert.assertNull(ctx.getFinalDriverQuery(driver));
     QueryCost cost = driver.estimate(ctx);
-    Assert.assertEquals(cost, JDBCDriver.JDBC_DRIVER_COST);
+    Assert.assertEquals(cost, JDBC_COST);
     Assert.assertNotNull(ctx.getFinalDriverQuery(driver));
 
     // Test connection leak for estimate
@@ -336,7 +340,7 @@ public class TestJdbcDriver {
     // run estimate and execute - because server would first run estimate and then execute with same context
     QueryContext ctx = createQueryContext(query1, metricConf);
     QueryCost cost = driver.estimate(ctx);
-    Assert.assertEquals(cost, JDBCDriver.JDBC_DRIVER_COST);
+    Assert.assertEquals(cost, JDBC_COST);
     LensResultSet result = driver.execute(ctx);
     Assert.assertNotNull(result);
 
@@ -344,13 +348,13 @@ public class TestJdbcDriver {
     // run estimate and prepare - because server would first run estimate and then prepare with same context
     PreparedQueryContext pContext = new PreparedQueryContext(query1, "SA", metricConf, drivers);
     cost = driver.estimate(pContext);
-    Assert.assertEquals(cost, JDBCDriver.JDBC_DRIVER_COST);
+    Assert.assertEquals(cost, JDBC_COST);
     driver.prepare(pContext);
 
     // test explain and prepare
     PreparedQueryContext pContext2 = new PreparedQueryContext(query1, "SA", metricConf, drivers);
     cost = driver.estimate(pContext2);
-    Assert.assertEquals(cost, JDBCDriver.JDBC_DRIVER_COST);
+    Assert.assertEquals(cost, JDBC_COST);
     driver.prepare(pContext2);
     driver.explainAndPrepare(pContext2);
   }
