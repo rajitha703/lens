@@ -352,7 +352,8 @@ public class HiveDriver extends AbstractLensDriver {
     queryPriorityDecider = new CostRangePriorityDecider(
       new CostToPriorityRangeConf(getConf().get(HS2_PRIORITY_RANGES, HS2_PRIORITY_DEFAULT_RANGES))
     );
-    queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES)));
+    queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf()
+      .get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES)));
 
     log.info("Hive driver {} configured successfully", getFullyQualifiedName());
   }
