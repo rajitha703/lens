@@ -167,7 +167,7 @@
 
   <property>
     <name>lens.driver.cost.query.decider.class</name>
-    <value>org.apache.lens.server.api.query.cost.CostRangeQueryTypeDecider</value>
+    <value>org.apache.lens.server.api.query.cost.RangeBasedQueryCostTypeDecider</value>
     <description>Cost calculator class. By default calculating cost through static values </description>
   </property>
 

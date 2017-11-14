@@ -26,8 +26,8 @@ public interface QueryCostTypeDecider {
 
   /**
    * @param cost
-   * @return calculate queryType based on the pre calculated query cost
-   * @throws LensException when can't decide queryType.
+   * @return calculate queryCostType based on the pre calculated query cost
+   * @throws LensException when can't decide queryCostType.
    */
   QueryCostType decideCostType(QueryCost cost) throws LensException;
 }

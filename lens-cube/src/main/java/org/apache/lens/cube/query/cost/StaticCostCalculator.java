@@ -31,13 +31,21 @@ import org.apache.lens.server.api.query.cost.*;
 
 public class StaticCostCalculator implements QueryCostCalculator {
 
+  private QueryCost queryCost;
+  private QueryCostTypeDecider queryCostTypeDecider;
+
+  StaticCostCalculator(String queryCostTypeRange) {
+    queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf(queryCostTypeRange));
+  }
+
   @Override
-  public QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver,
-    QueryCostTypeDecider queryCostTypeDecider) throws LensException {
-    Double cost = getStaticCostFromConf(driver);
-    QueryCost queryCost = new StaticQueryCost(cost);
-    queryCost.setQueryCostType(queryCostTypeDecider.decideCostType(queryCost));
-    return queryCost;
+  public QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver) throws LensException {
+    if (null == this.queryCost) {
+      Double cost = getStaticCostFromConf(driver);
+      this.queryCost = new StaticQueryCost(cost);
+      this.queryCost.setQueryCostType(queryCostTypeDecider.decideCostType(this.queryCost));
+    }
+    return this.queryCost;
   }
 
   private Double getStaticCostFromConf(LensDriver driver) {

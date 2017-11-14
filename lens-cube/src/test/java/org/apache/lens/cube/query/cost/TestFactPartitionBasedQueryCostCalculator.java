@@ -35,8 +35,8 @@ import org.apache.lens.cube.metadata.UpdatePeriod;
 import org.apache.lens.server.api.driver.DriverQueryPlan;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.query.AbstractQueryContext;
-import org.apache.lens.server.api.query.cost.CostRangeQueryTypeDecider;
-import org.apache.lens.server.api.query.cost.CostToQueryTypeRangeConf;
+import org.apache.lens.server.api.query.cost.RangeBasedQueryCostTypeDecider;
+import org.apache.lens.server.api.query.cost.QueryCostTypeRangeConf;
 import org.apache.lens.server.api.query.cost.QueryCost;
 import org.apache.lens.server.api.query.cost.QueryCostTypeDecider;
 
@@ -50,9 +50,7 @@ import com.google.common.collect.Sets;
 
 public class TestFactPartitionBasedQueryCostCalculator {
   AbstractQueryContext queryContext;
-  FactPartitionBasedQueryCostCalculator calculator = new FactPartitionBasedQueryCostCalculator();
-  QueryCostTypeDecider queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(
-    "VERY_LOW,0.0,LOW,0.1,HIGH"));
+  FactPartitionBasedQueryCostCalculator calculator = new FactPartitionBasedQueryCostCalculator("VERY_LOW,0.0,LOW,0.1,HIGH");
   LensDriver driver;
   private static String latest = "latest";
 
@@ -91,7 +89,7 @@ public class TestFactPartitionBasedQueryCostCalculator {
 
   @Test
   public void testCalculateCost() throws Exception {
-    QueryCost cost = calculator.calculateCost(queryContext, driver, queryCostTypeDecider);
+    QueryCost cost = calculator.calculateCost(queryContext, driver);
     assertTrue(cost.getEstimatedResourceUsage() > 19.0, "Estimated resource usage:" + cost.getEstimatedResourceUsage());
     assertTrue(cost.getEstimatedResourceUsage() < 20.0, "Estimated resource usage:" + cost.getEstimatedResourceUsage());
   }
@@ -106,7 +104,7 @@ public class TestFactPartitionBasedQueryCostCalculator {
     when(queryContext2.getDriverRewriterPlan(driver)).thenReturn(plan);
     when(plan.getPartitions()).thenReturn(partitions);
     when(calculator.getAllPartitions(queryContext2, driver)).thenReturn(partitions);
-    QueryCost cost = calculator.calculateCost(queryContext2, driver, queryCostTypeDecider);
+    QueryCost cost = calculator.calculateCost(queryContext2, driver);
     assertTrue(cost.getEstimatedResourceUsage() == 2.0, "Estimated resource usage:" + cost.getEstimatedResourceUsage());
   }
 }

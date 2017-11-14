@@ -35,6 +35,12 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
 
   public static final String UPDATE_PERIOD_WEIGHT_PREFIX = "update.period.weight.";
 
+  private QueryCost queryCost;
+  private QueryCostTypeDecider queryCostTypeDecider;
+
+  FactPartitionBasedQueryCostCalculator(String queryCostTypeRange) {
+    queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf(queryCostTypeRange));
+  }
   /**
    * Calculates total cost based on weights of selected tables and their selected partitions
    *
@@ -89,10 +95,9 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
   }
 
   @Override
-  public QueryCost calculateCost(final AbstractQueryContext queryContext, LensDriver driver,
-    QueryCostTypeDecider queryCostTypeDecider) throws LensException {
+  public QueryCost calculateCost(final AbstractQueryContext queryContext, LensDriver driver) throws LensException {
     Double cost = getTotalPartitionCost(queryContext, driver);
-    QueryCost queryCost =  cost == null ? null : new FactPartitionBasedQueryCost(cost);
+    queryCost =  cost == null ? null : new FactPartitionBasedQueryCost(cost);
     if (queryCost != null) {
       queryCost.setQueryCostType(queryCostTypeDecider.decideCostType(queryCost));
     }

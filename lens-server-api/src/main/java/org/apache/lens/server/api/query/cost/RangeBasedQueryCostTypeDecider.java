@@ -27,14 +27,14 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
-public class CostRangeQueryTypeDecider implements QueryCostTypeDecider {
+public class RangeBasedQueryCostTypeDecider implements QueryCostTypeDecider {
 
   @NonNull
-  private final CostToQueryTypeRangeConf costToQueryTypeRangeMap;
+  private final QueryCostTypeRangeConf queryCostTypeRangeMap;
 
   @Override
   public QueryCostType decideCostType(@NonNull final QueryCost cost) throws LensException {
-    QueryCostType q = costToQueryTypeRangeMap.get(cost.getEstimatedResourceUsage());
+    QueryCostType q = queryCostTypeRangeMap.get(cost.getEstimatedResourceUsage());
     log.info("cost was: {}, decided querytype: {}", cost, q);
     return q;
   }

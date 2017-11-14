@@ -33,7 +33,7 @@ import org.testng.annotations.Test;
 
 public class TestFactPartitionBasedQueryCost {
 
-  CostRangeQueryTypeDecider costRangeQueryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(
+  RangeBasedQueryCostTypeDecider costRangeQueryTypeDecider = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf(
     "VERY_LOW,0.0,LOW,0.1,HIGH"));
   QueryCost cost0 = new FactPartitionBasedQueryCost(0.0);
   QueryCost cost1 = new FactPartitionBasedQueryCost(0.2);

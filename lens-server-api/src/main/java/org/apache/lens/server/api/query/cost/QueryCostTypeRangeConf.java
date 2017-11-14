@@ -25,14 +25,14 @@ package org.apache.lens.server.api.query.cost;
 import org.apache.lens.api.query.QueryCostType;
 import org.apache.lens.server.api.query.priority.RangeConf;
 
-public class CostToQueryTypeRangeConf extends RangeConf<Double, QueryCostType> {
+public class QueryCostTypeRangeConf extends RangeConf<Double, QueryCostType> {
   /**
    * Super constructor
    *
    * @param confValue
    * @see RangeConf#RangeConf(String)
    */
-  public CostToQueryTypeRangeConf(String confValue) {
+  public QueryCostTypeRangeConf(String confValue) {
     super(confValue);
   }
 

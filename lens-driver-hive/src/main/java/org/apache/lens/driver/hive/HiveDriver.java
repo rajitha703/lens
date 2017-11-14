@@ -96,7 +96,7 @@ public class HiveDriver extends AbstractLensDriver {
   // Default values of conf params
   public static final long DEFAULT_EXPIRY_DELAY = 600 * 1000;
   public static final String HS2_PRIORITY_DEFAULT_RANGES = "VERY_HIGH,7.0,HIGH,30.0,NORMAL,90,LOW";
-  public static final String HS2_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,0.0,LOW,10.0,HIGH";
+  public static final String HS2_QUERYTYPE_DEFAULT_RANGES = "LOW,0.0,HIGH";
   public static final String SESSION_KEY_DELIMITER = ".";
 
   /** The HiveConf - used for connecting to hive server and metastore */
@@ -140,7 +140,6 @@ public class HiveDriver extends AbstractLensDriver {
 
   QueryCostCalculator queryCostCalculator;
   QueryPriorityDecider queryPriorityDecider;
-  QueryCostTypeDecider queryCostTypeDecider;
   // package-local. Test case can change.
   boolean whetherCalculatePriority;
   private static final Map<String, String> SESSION_CONF = new HashMap<String, String>() {
@@ -352,15 +351,13 @@ public class HiveDriver extends AbstractLensDriver {
     queryPriorityDecider = new CostRangePriorityDecider(
       new CostToPriorityRangeConf(getConf().get(HS2_PRIORITY_RANGES, HS2_PRIORITY_DEFAULT_RANGES))
     );
-    queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf()
-      .get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES)));
 
     log.info("Hive driver {} configured successfully", getFullyQualifiedName());
   }
 
   private QueryCost calculateQueryCost(AbstractQueryContext qctx) throws LensException {
     if (qctx.isOlapQuery()) {
-      QueryCost cost = queryCostCalculator.calculateCost(qctx, this, queryCostTypeDecider);
+      QueryCost cost = queryCostCalculator.calculateCost(qctx, this);
       if (cost != null) {
         return cost;
       }

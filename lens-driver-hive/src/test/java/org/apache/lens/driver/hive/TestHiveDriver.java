@@ -37,8 +37,8 @@ import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.ExplainQueryContext;
 import org.apache.lens.server.api.query.PreparedQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
-import org.apache.lens.server.api.query.cost.CostRangeQueryTypeDecider;
-import org.apache.lens.server.api.query.cost.CostToQueryTypeRangeConf;
+import org.apache.lens.server.api.query.cost.RangeBasedQueryCostTypeDecider;
+import org.apache.lens.server.api.query.cost.QueryCostTypeRangeConf;
 import org.apache.lens.server.api.query.cost.QueryCost;
 import org.apache.lens.server.api.query.priority.CostRangePriorityDecider;
 import org.apache.lens.server.api.query.priority.CostToPriorityRangeConf;
@@ -92,8 +92,8 @@ public class TestHiveDriver {
   private CostRangePriorityDecider alwaysNormalPriorityDecider
     = new CostRangePriorityDecider(new CostToPriorityRangeConf(""));
 
-  private CostRangeQueryTypeDecider queryCostTypeDecider
-    = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf("VERY_LOW,0.0,LOW,0.1,HIGH"));
+  private RangeBasedQueryCostTypeDecider queryCostTypeDecider
+    = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf("VERY_LOW,0.0,LOW,0.1,HIGH"));
 
   /**
    * Before test.
