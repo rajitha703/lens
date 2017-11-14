@@ -16,9 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-/*
- *
- */
 package org.apache.lens.server.api.query.cost;
 
 import org.apache.lens.api.query.QueryCostType;
