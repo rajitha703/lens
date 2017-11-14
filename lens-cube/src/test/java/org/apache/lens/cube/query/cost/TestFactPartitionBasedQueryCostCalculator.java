@@ -35,10 +35,7 @@ import org.apache.lens.cube.metadata.UpdatePeriod;
 import org.apache.lens.server.api.driver.DriverQueryPlan;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.query.AbstractQueryContext;
-import org.apache.lens.server.api.query.cost.RangeBasedQueryCostTypeDecider;
-import org.apache.lens.server.api.query.cost.QueryCostTypeRangeConf;
 import org.apache.lens.server.api.query.cost.QueryCost;
-import org.apache.lens.server.api.query.cost.QueryCostTypeDecider;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -50,7 +47,8 @@ import com.google.common.collect.Sets;
 
 public class TestFactPartitionBasedQueryCostCalculator {
   AbstractQueryContext queryContext;
-  FactPartitionBasedQueryCostCalculator calculator = new FactPartitionBasedQueryCostCalculator("VERY_LOW,0.0,LOW,0.1,HIGH");
+  FactPartitionBasedQueryCostCalculator calculator =
+    new FactPartitionBasedQueryCostCalculator("VERY_LOW,0.0,LOW,0.1,HIGH");
   LensDriver driver;
   private static String latest = "latest";
 
