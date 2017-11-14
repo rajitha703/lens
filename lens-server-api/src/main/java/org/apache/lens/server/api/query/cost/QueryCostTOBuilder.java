@@ -22,7 +22,6 @@
 package org.apache.lens.server.api.query.cost;
 
 import org.apache.lens.api.result.QueryCostTO;
-import org.apache.lens.server.api.error.LensException;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
