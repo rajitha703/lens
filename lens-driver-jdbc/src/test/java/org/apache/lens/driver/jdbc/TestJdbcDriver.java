@@ -21,7 +21,6 @@ package org.apache.lens.driver.jdbc;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.*;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.ConnectionPoolProperties.*;
 
-import static org.apache.lens.server.api.LensConfConstants.DRIVER_QUERY_COST;
 import static org.testng.Assert.*;
 
 import java.sql.*;
@@ -30,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.lens.api.LensConf;
+import org.apache.lens.api.query.QueryCostType;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.ResultRow;
 import org.apache.lens.server.api.LensConfConstants;
@@ -74,7 +74,7 @@ public class TestJdbcDriver {
 
   Collection<LensDriver> drivers;
 
-  static final StaticQueryCost JDBC_COST = new StaticQueryCost(0.0);
+  static final StaticQueryCost JDBC_COST = new StaticQueryCost(0.0, QueryCostType.LOW);
 
   /**
    * Test create jdbc driver.
