@@ -37,8 +37,6 @@ import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.ExplainQueryContext;
 import org.apache.lens.server.api.query.PreparedQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
-import org.apache.lens.server.api.query.cost.RangeBasedQueryCostTypeDecider;
-import org.apache.lens.server.api.query.cost.QueryCostTypeRangeConf;
 import org.apache.lens.server.api.query.cost.QueryCost;
 import org.apache.lens.server.api.query.priority.CostRangePriorityDecider;
 import org.apache.lens.server.api.query.priority.CostToPriorityRangeConf;
