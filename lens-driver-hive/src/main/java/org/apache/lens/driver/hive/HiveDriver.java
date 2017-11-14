@@ -346,9 +346,9 @@ public class HiveDriver extends AbstractLensDriver {
     Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(HS2_COST_CALCULATOR,
       FactPartitionBasedQueryCostCalculator.class, QueryCostCalculator.class);
     try {
-      Constructor<? extends QueryCostCalculator> constructor = queryCostCalculatorClass.getConstructor(String.class);
+      Constructor<? extends QueryCostCalculator> calculatorConstructor = queryCostCalculatorClass.getConstructor(String.class);
       queryCostCalculator =
-        constructor.newInstance(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES));
+        calculatorConstructor.newInstance(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES));
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
