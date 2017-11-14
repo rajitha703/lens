@@ -38,7 +38,7 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
   private QueryCost queryCost;
   private QueryCostTypeDecider queryCostTypeDecider;
 
-  FactPartitionBasedQueryCostCalculator(String queryCostTypeRange) {
+  public FactPartitionBasedQueryCostCalculator(String queryCostTypeRange) {
     queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf(queryCostTypeRange));
   }
   /**

@@ -34,7 +34,7 @@ public class StaticCostCalculator implements QueryCostCalculator {
   private QueryCost queryCost;
   private QueryCostTypeDecider queryCostTypeDecider;
 
-  StaticCostCalculator(String queryCostTypeRange) {
+  public StaticCostCalculator(String queryCostTypeRange) {
     queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf(queryCostTypeRange));
   }
 

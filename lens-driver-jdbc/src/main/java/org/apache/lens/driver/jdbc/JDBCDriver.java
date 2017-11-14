@@ -393,15 +393,14 @@ public class JDBCDriver extends AbstractLensDriver {
     super.configure(conf, driverType, driverName);
     init();
     configured = true;
-    Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(JDBC_COST_CALCULATOR,
-      StaticCostCalculator.class, QueryCostCalculator.class);
     try {
-      Constructor<? extends QueryCostCalculator> calculatorConstructor = queryCostCalculatorClass.getConstructor(String.class);
-      queryCostCalculator =
-        calculatorConstructor.newInstance(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES));
-    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e ) {
-      throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
+      queryCostCalculator= getConf().getClass(JDBC_COST_CALCULATOR, StaticCostCalculator.class,
+        QueryCostCalculator.class).getConstructor(String.class)
+        .newInstance(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES));
+    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+      throw new LensException("Can't instantiate query cost calculator of class: " , e);
     }
+
     log.info("JDBC Driver {} configured", getFullyQualifiedName());
   }
 

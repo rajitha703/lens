@@ -24,7 +24,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.*;
@@ -344,11 +343,12 @@ public class HiveDriver extends AbstractLensDriver {
     connectionExpiryTimeout = getConf().getLong(HS2_CONNECTION_EXPIRY_DELAY, DEFAULT_EXPIRY_DELAY);
     whetherCalculatePriority = getConf().getBoolean(HS2_CALCULATE_PRIORITY, true);
     Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(HS2_COST_CALCULATOR,
-      FactPartitionBasedQueryCostCalculator.class, QueryCostCalculator.class);
+      FactPartitionBasedQueryCostCalculator.class, FactPartitionBasedQueryCostCalculator.class);
     try {
-      Constructor<? extends QueryCostCalculator> calculatorConstructor = queryCostCalculatorClass.getConstructor(String.class);
-      queryCostCalculator =
-        calculatorConstructor.newInstance(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES));
+      queryCostCalculator= getConf().getClass(HS2_COST_CALCULATOR, FactPartitionBasedQueryCostCalculator.class,
+        FactPartitionBasedQueryCostCalculator.class).getConstructor(String.class)
+        .newInstance(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES));
+
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
