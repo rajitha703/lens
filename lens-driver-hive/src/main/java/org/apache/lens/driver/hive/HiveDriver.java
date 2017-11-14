@@ -24,6 +24,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -344,8 +346,10 @@ public class HiveDriver extends AbstractLensDriver {
     Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(HS2_COST_CALCULATOR,
       FactPartitionBasedQueryCostCalculator.class, QueryCostCalculator.class);
     try {
-      queryCostCalculator = queryCostCalculatorClass.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
+      Constructor<? extends QueryCostCalculator> constructor = queryCostCalculatorClass.getConstructor(String.class);
+      queryCostCalculator =
+        constructor.newInstance(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES));
+    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
     queryPriorityDecider = new CostRangePriorityDecider(
