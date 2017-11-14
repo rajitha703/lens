@@ -22,7 +22,7 @@ package org.apache.lens.server.api.query.cost;
 import org.apache.lens.api.query.QueryCostType;
 import org.apache.lens.server.api.error.LensException;
 
-public interface QueryTypeDecider {
+public interface QueryCostTypeDecider {
 
   /**
    * @param cost

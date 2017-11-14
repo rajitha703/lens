@@ -97,7 +97,7 @@ public class QueryCostBasedQueryHookTest {
   @Test(dataProvider = "provideData")
   public void testHook(Double cost, boolean success)
     throws Exception {
-    when(ctx.getDriverQueryCost(driver)).thenReturn(new FactPartitionBasedQueryCost(cost, null));
+    when(ctx.getDriverQueryCost(driver)).thenReturn(new FactPartitionBasedQueryCost(cost));
     try {
       hook.postEstimate(ctx);
       assertTrue(success);

@@ -25,7 +25,6 @@ import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.*;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.ConnectionPoolProperties.*;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.lens.server.api.LensConfConstants.DRIVER_COST_QUERY_DECIDER;
 
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -102,14 +101,14 @@ public class JDBCDriver extends AbstractLensDriver {
 
   QueryCostCalculator queryCostCalculator;
 
-  QueryTypeDecider queryTypeDecider;
+  QueryCostTypeDecider queryCostTypeDecider;
 
   /**
    * Config param for defining query type ranges.
    */
   public static final String JDBC_COST_TYPE_RANGES = "lens.driver.jdbc.cost.type.ranges";
 
-  public static final String JDBC_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,0.0,LOW,0.1,HIGH";
+  public static final String JDBC_QUERYTYPE_DEFAULT_RANGES = "VERY_LOW,0.0,LOW,10.0,HIGH";
 
   /**
    * Data related to a query submitted to JDBCDriver.
@@ -402,7 +401,7 @@ public class JDBCDriver extends AbstractLensDriver {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
 
-    queryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES)));
+    queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES)));
 
     log.info("JDBC Driver {} configured", getFullyQualifiedName());
   }
@@ -444,7 +443,7 @@ public class JDBCDriver extends AbstractLensDriver {
   }
 
   public QueryCost calculateQueryCost(AbstractQueryContext qctx) throws LensException {
-      return queryCostCalculator.calculateCost(qctx, this, queryTypeDecider);
+      return queryCostCalculator.calculateCost(qctx, this, queryCostTypeDecider);
 
   }
   /**

@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class QueryCostTOBuilder {
   @NonNull private final QueryCost cost;
 
-  public QueryCostTO build() throws LensException {
+  public QueryCostTO build() {
     Long estimatedExecTimeMillis = null;
     Double estimatedResourceUsage = null;
     try {

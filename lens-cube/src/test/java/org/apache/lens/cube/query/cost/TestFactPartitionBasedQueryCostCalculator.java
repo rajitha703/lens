@@ -38,7 +38,7 @@ import org.apache.lens.server.api.query.AbstractQueryContext;
 import org.apache.lens.server.api.query.cost.CostRangeQueryTypeDecider;
 import org.apache.lens.server.api.query.cost.CostToQueryTypeRangeConf;
 import org.apache.lens.server.api.query.cost.QueryCost;
-import org.apache.lens.server.api.query.cost.QueryTypeDecider;
+import org.apache.lens.server.api.query.cost.QueryCostTypeDecider;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -51,7 +51,7 @@ import com.google.common.collect.Sets;
 public class TestFactPartitionBasedQueryCostCalculator {
   AbstractQueryContext queryContext;
   FactPartitionBasedQueryCostCalculator calculator = new FactPartitionBasedQueryCostCalculator();
-  QueryTypeDecider queryTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(
+  QueryCostTypeDecider queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(
     "VERY_LOW,0.0,LOW,0.1,HIGH"));
   LensDriver driver;
   private static String latest = "latest";
@@ -91,7 +91,7 @@ public class TestFactPartitionBasedQueryCostCalculator {
 
   @Test
   public void testCalculateCost() throws Exception {
-    QueryCost cost = calculator.calculateCost(queryContext, driver, queryTypeDecider);
+    QueryCost cost = calculator.calculateCost(queryContext, driver, queryCostTypeDecider);
     assertTrue(cost.getEstimatedResourceUsage() > 19.0, "Estimated resource usage:" + cost.getEstimatedResourceUsage());
     assertTrue(cost.getEstimatedResourceUsage() < 20.0, "Estimated resource usage:" + cost.getEstimatedResourceUsage());
   }
@@ -106,7 +106,7 @@ public class TestFactPartitionBasedQueryCostCalculator {
     when(queryContext2.getDriverRewriterPlan(driver)).thenReturn(plan);
     when(plan.getPartitions()).thenReturn(partitions);
     when(calculator.getAllPartitions(queryContext2, driver)).thenReturn(partitions);
-    QueryCost cost = calculator.calculateCost(queryContext2, driver, queryTypeDecider);
+    QueryCost cost = calculator.calculateCost(queryContext2, driver, queryCostTypeDecider);
     assertTrue(cost.getEstimatedResourceUsage() == 2.0, "Estimated resource usage:" + cost.getEstimatedResourceUsage());
   }
 }

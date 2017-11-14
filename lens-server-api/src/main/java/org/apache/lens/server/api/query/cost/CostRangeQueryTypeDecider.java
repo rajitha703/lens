@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
-public class CostRangeQueryTypeDecider implements QueryTypeDecider {
+public class CostRangeQueryTypeDecider implements QueryCostTypeDecider {
 
   @NonNull
   private final CostToQueryTypeRangeConf costToQueryTypeRangeMap;

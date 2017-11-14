@@ -290,7 +290,7 @@
 
   <property>
     <name>lens.driver.jdbc.cost.type.ranges</name>
-    <value>VERY_LOW,0.0,LOW,0.1,HIGH</value>
+    <value>VERY_LOW,0.0,LOW,10.0,HIGH</value>
     <description>Cost based Query type mapping</description>
   </property>
 
