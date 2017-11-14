@@ -35,6 +35,7 @@ import lombok.ToString;
 @EqualsAndHashCode
 public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBasedQueryCost>, Serializable {
 
+  @Getter
   private final double partitionCost;
   @Getter
   @Setter
@@ -50,6 +51,11 @@ public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBased
     Preconditions.checkArgument(partitionCost >= 0, "Cost can't be negative");
     this.partitionCost = partitionCost;
     this.queryCostType = queryCostType;
+  }
+
+  @Override
+  public double getCost(){
+    return this.partitionCost;
   }
 
   @Override

@@ -29,6 +29,8 @@ import org.apache.lens.api.query.QueryCostType;
  */
 public interface QueryCost<T extends QueryCost> extends Comparable<T> {
 
+  double getCost();
+
   T add(final T queryCost);
 
   QueryCostType getQueryCostType();

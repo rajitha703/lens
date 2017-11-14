@@ -49,6 +49,11 @@ public class StaticQueryCost implements QueryCost<StaticQueryCost>, Serializable
   }
 
   @Override
+  public double getCost(){
+    return this.staticCost;
+  }
+
+  @Override
   public StaticQueryCost add(final StaticQueryCost other) {
     return new StaticQueryCost(staticCost + other.staticCost);
   }
