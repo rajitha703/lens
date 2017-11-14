@@ -401,7 +401,8 @@ public class JDBCDriver extends AbstractLensDriver {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
 
-    queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES)));
+    queryCostTypeDecider = new CostRangeQueryTypeDecider(new CostToQueryTypeRangeConf(getConf()
+      .get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES)));
 
     log.info("JDBC Driver {} configured", getFullyQualifiedName());
   }
@@ -443,8 +444,7 @@ public class JDBCDriver extends AbstractLensDriver {
   }
 
   public QueryCost calculateQueryCost(AbstractQueryContext qctx) throws LensException {
-      return queryCostCalculator.calculateCost(qctx, this, queryCostTypeDecider);
-
+    return queryCostCalculator.calculateCost(qctx, this, queryCostTypeDecider);
   }
   /**
    * Check configured.
