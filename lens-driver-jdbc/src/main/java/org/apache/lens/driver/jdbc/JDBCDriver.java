@@ -29,7 +29,6 @@ import static com.google.common.base.Preconditions.checkState;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.ArrayList;
@@ -393,12 +392,13 @@ public class JDBCDriver extends AbstractLensDriver {
     super.configure(conf, driverType, driverName);
     init();
     configured = true;
+    Class<? extends QueryCostCalculator> queryCostCalculatorClass
+      = getConf().getClass(JDBC_COST_CALCULATOR, StaticCostCalculator.class, QueryCostCalculator.class);
     try {
-      queryCostCalculator= getConf().getClass(JDBC_COST_CALCULATOR, StaticCostCalculator.class,
-        QueryCostCalculator.class).getConstructor(String.class)
+      queryCostCalculator= queryCostCalculatorClass.getConstructor(String.class)
         .newInstance(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES));
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-      throw new LensException("Can't instantiate query cost calculator of class: " , e);
+      throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
 
     log.info("JDBC Driver {} configured", getFullyQualifiedName());
