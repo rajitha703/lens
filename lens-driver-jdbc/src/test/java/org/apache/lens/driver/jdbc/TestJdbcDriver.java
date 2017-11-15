@@ -21,6 +21,7 @@ package org.apache.lens.driver.jdbc;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.*;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.ConnectionPoolProperties.*;
 
+import static org.apache.lens.server.api.LensConfConstants.DRIVER_COST_TYPE_RANGES;
 import static org.testng.Assert.*;
 
 import java.sql.*;
@@ -89,6 +90,7 @@ public class TestJdbcDriver {
     baseConf.set(JDBC_USER, "SA");
     baseConf.set(JDBC_PASSWORD, "");
     baseConf.set(JDBC_EXPLAIN_KEYWORD_PARAM, "explain plan for ");
+    baseConf.set(DRIVER_COST_TYPE_RANGES, "VERY_LOW,0.0,LOW,0.001,HIGH");
     hConf = new HiveConf(baseConf, this.getClass());
 
     driver = new JDBCDriver();
