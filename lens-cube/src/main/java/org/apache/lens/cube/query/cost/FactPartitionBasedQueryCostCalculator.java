@@ -35,8 +35,8 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
 
   public static final String UPDATE_PERIOD_WEIGHT_PREFIX = "update.period.weight.";
 
-  private QueryCost queryCost;
-  private QueryCostTypeDecider queryCostTypeDecider;
+  protected QueryCost queryCost;
+  protected QueryCostTypeDecider queryCostTypeDecider;
 
   public FactPartitionBasedQueryCostCalculator(String queryCostTypeRange) {
     queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(queryCostTypeRange);
