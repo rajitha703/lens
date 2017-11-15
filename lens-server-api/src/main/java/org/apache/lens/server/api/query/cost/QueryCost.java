@@ -21,8 +21,6 @@
  */
 package org.apache.lens.server.api.query.cost;
 
-import java.util.Comparator;
-
 import org.apache.lens.api.query.QueryCostType;
 
 /**
