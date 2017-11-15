@@ -39,7 +39,7 @@ public class FactPartitionBasedQueryCostCalculator implements QueryCostCalculato
   private QueryCostTypeDecider queryCostTypeDecider;
 
   public FactPartitionBasedQueryCostCalculator(String queryCostTypeRange) {
-    queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(new QueryCostTypeRangeConf(queryCostTypeRange));
+    queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(queryCostTypeRange);
   }
   /**
    * Calculates total cost based on weights of selected tables and their selected partitions

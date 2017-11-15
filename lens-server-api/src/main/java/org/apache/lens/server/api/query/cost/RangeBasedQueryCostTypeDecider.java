@@ -32,6 +32,10 @@ public class RangeBasedQueryCostTypeDecider implements QueryCostTypeDecider {
   @NonNull
   private final QueryCostTypeRangeConf queryCostTypeRangeMap;
 
+  public RangeBasedQueryCostTypeDecider(String queryCostTypeRange) {
+    this.queryCostTypeRangeMap = new QueryCostTypeRangeConf(queryCostTypeRange);
+  }
+
   @Override
   public QueryCostType decideCostType(@NonNull final QueryCost cost) throws LensException {
     QueryCostType q = queryCostTypeRangeMap.get(cost.getEstimatedResourceUsage());
