@@ -43,14 +43,10 @@ public class StaticQueryCost implements QueryCost<StaticQueryCost>, Serializable
     this.staticCost = cost;
   }
 
+  //Added for testcase
   public StaticQueryCost(final double cost, final QueryCostType queryCostType) {
     this.staticCost = cost;
     this.queryCostType = queryCostType;
-  }
-
-  @Override
-  public double getCost(){
-    return this.staticCost;
   }
 
   @Override

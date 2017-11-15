@@ -1260,6 +1260,16 @@ public final class LensConfConstants {
   public static final String DRIVER_QUERY_COST = DRIVER_PFX + "query.cost";
 
   /**
+   * Config param for defining query type ranges.
+   */
+  public static final String DRIVER_COST_TYPE_RANGES = "lens.driver.cost.type.ranges";
+
+  /*
+  * Default query cost range
+  * */
+  public static final String DRIVER_QUERY_COST_TYPE_DEFAULT_RANGES = "LOW,0.0,HIGH";
+
+  /**
    * Default Value of the config "lens.driver.query.cost"
    */
   public static final double DEFAULT_DRIVER_QUERY_COST = 0.0;

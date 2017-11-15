@@ -21,8 +21,7 @@
  */
 package org.apache.lens.cube.query.cost;
 
-import static org.apache.lens.server.api.LensConfConstants.DEFAULT_DRIVER_QUERY_COST;
-import static org.apache.lens.server.api.LensConfConstants.DRIVER_QUERY_COST;
+import static org.apache.lens.server.api.LensConfConstants.*;
 
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.error.LensException;
@@ -32,23 +31,18 @@ import org.apache.lens.server.api.query.cost.*;
 public class StaticCostCalculator implements QueryCostCalculator {
 
   private QueryCost queryCost;
-  private QueryCostTypeDecider queryCostTypeDecider;
 
-  public StaticCostCalculator(String queryCostTypeRange) {
-    queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(queryCostTypeRange);
+  @Override
+  public void init(LensDriver lensDriver) throws LensException {
+    QueryCostTypeDecider queryCostTypeDecider = new RangeBasedQueryCostTypeDecider(
+      lensDriver.getConf().get(DRIVER_COST_TYPE_RANGES, DRIVER_QUERY_COST_TYPE_DEFAULT_RANGES));
+    this.queryCost = new StaticQueryCost(lensDriver.getConf().getDouble(DRIVER_QUERY_COST, DEFAULT_DRIVER_QUERY_COST));
+    this.queryCost.setQueryCostType(queryCostTypeDecider.decideCostType(this.queryCost));
   }
 
   @Override
   public QueryCost calculateCost(AbstractQueryContext queryContext, LensDriver driver) throws LensException {
-    if (null == this.queryCost) {
-      Double cost = getStaticCostFromConf(driver);
-      this.queryCost = new StaticQueryCost(cost);
-      this.queryCost.setQueryCostType(queryCostTypeDecider.decideCostType(this.queryCost));
-    }
     return this.queryCost;
   }
 
-  private Double getStaticCostFromConf(LensDriver driver) {
-    return driver.getConf().getDouble(DRIVER_QUERY_COST, DEFAULT_DRIVER_QUERY_COST);
-  }
 }

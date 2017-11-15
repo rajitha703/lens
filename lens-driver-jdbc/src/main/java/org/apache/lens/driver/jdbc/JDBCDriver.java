@@ -29,7 +29,6 @@ import static com.google.common.base.Preconditions.checkState;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +40,7 @@ import org.apache.lens.api.LensConf;
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.api.query.QueryPrepareHandle;
 import org.apache.lens.cube.parse.HQLParser;
+import org.apache.lens.cube.query.cost.FactPartitionBasedQueryCostCalculator;
 import org.apache.lens.cube.query.cost.StaticCostCalculator;
 import org.apache.lens.server.api.driver.*;
 import org.apache.lens.server.api.driver.DriverQueryStatus.DriverQueryState;
@@ -101,13 +101,6 @@ public class JDBCDriver extends AbstractLensDriver {
   private boolean isStatementCancelSupported;
 
   QueryCostCalculator queryCostCalculator;
-
-  /**
-   * Config param for defining query type ranges.
-   */
-  public static final String JDBC_COST_TYPE_RANGES = "lens.driver.jdbc.cost.type.ranges";
-
-  public static final String JDBC_QUERYTYPE_DEFAULT_RANGES = "LOW,0.0,HIGH";
 
   /**
    * Data related to a query submitted to JDBCDriver.
@@ -392,14 +385,16 @@ public class JDBCDriver extends AbstractLensDriver {
     super.configure(conf, driverType, driverName);
     init();
     configured = true;
-    Class<? extends QueryCostCalculator> queryCostCalculatorClass
-      = getConf().getClass(JDBC_COST_CALCULATOR, StaticCostCalculator.class, QueryCostCalculator.class);
+    Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(JDBC_COST_CALCULATOR,
+      StaticCostCalculator.class, QueryCostCalculator.class);
     try {
-      queryCostCalculator= queryCostCalculatorClass.getConstructor(String.class)
-        .newInstance(getConf().get(JDBC_COST_TYPE_RANGES, JDBC_QUERYTYPE_DEFAULT_RANGES));
-    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+      queryCostCalculator = queryCostCalculatorClass.newInstance();
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
+
+    //For initializing the decider class instance
+    queryCostCalculator.init(this);
 
     log.info("JDBC Driver {} configured", getFullyQualifiedName());
   }

@@ -279,18 +279,18 @@
   <property>
     <name>lens.driver.query.cost</name>
     <value>0.0</value>
-    <description>Cost calculator class. By default calculating cost through static values </description>
+    <description>Jdbc driver static cost value</description>
   </property>
 
   <property>
     <name>lens.driver.cost.query.decider.class</name>
     <value>org.apache.lens.server.api.query.cost.RangeBasedQueryCostTypeDecider</value>
-    <description>Cost calculator class. By default calculating cost through static values </description>
+    <description>Decider class which looks at ranges passed in config and decides the querycosttype </description>
   </property>
 
   <property>
-    <name>lens.driver.jdbc.cost.type.ranges</name>
-    <value>VERY_LOW,0.0,LOW,10.0,HIGH</value>
+    <name>lens.driver.cost.type.ranges</name>
+    <value>LOW,0.0,HIGH</value>
     <description>Cost based Query type mapping</description>
   </property>
 

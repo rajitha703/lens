@@ -24,7 +24,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,15 +88,9 @@ public class HiveDriver extends AbstractLensDriver {
    */
   public static final String HS2_PRIORITY_RANGES = "lens.driver.hive.priority.ranges";
 
-  /**
-   * Config param for defining query type ranges.
-   */
-  public static final String HS2_COST_TYPE_RANGES = "lens.driver.hive.cost.type.ranges";
-
   // Default values of conf params
   public static final long DEFAULT_EXPIRY_DELAY = 600 * 1000;
   public static final String HS2_PRIORITY_DEFAULT_RANGES = "VERY_HIGH,7.0,HIGH,30.0,NORMAL,90,LOW";
-  public static final String HS2_QUERYTYPE_DEFAULT_RANGES = "LOW,0.0,HIGH";
   public static final String SESSION_KEY_DELIMITER = ".";
 
   /** The HiveConf - used for connecting to hive server and metastore */
@@ -344,13 +337,14 @@ public class HiveDriver extends AbstractLensDriver {
     whetherCalculatePriority = getConf().getBoolean(HS2_CALCULATE_PRIORITY, true);
 
     Class<? extends QueryCostCalculator> queryCostCalculatorClass = getConf().getClass(HS2_COST_CALCULATOR,
-      FactPartitionBasedQueryCostCalculator.class, FactPartitionBasedQueryCostCalculator.class);
+      FactPartitionBasedQueryCostCalculator.class, QueryCostCalculator.class);
     try {
-      queryCostCalculator= queryCostCalculatorClass.getConstructor(String.class)
-        .newInstance(getConf().get(HS2_COST_TYPE_RANGES, HS2_QUERYTYPE_DEFAULT_RANGES));
-    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+      queryCostCalculator = queryCostCalculatorClass.newInstance();
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new LensException("Can't instantiate query cost calculator of class: " + queryCostCalculatorClass, e);
     }
+    //For initializing the decider class instance
+    queryCostCalculator.init(this);
     queryPriorityDecider = new CostRangePriorityDecider(
       new CostToPriorityRangeConf(getConf().get(HS2_PRIORITY_RANGES, HS2_PRIORITY_DEFAULT_RANGES))
     );

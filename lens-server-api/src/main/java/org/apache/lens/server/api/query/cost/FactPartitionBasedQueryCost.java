@@ -47,17 +47,6 @@ public class FactPartitionBasedQueryCost implements QueryCost<FactPartitionBased
     this.queryCostType = QueryCostType.HIGH;
   }
 
-  public FactPartitionBasedQueryCost(final double partitionCost, final QueryCostType queryCostType) {
-    Preconditions.checkArgument(partitionCost >= 0, "Cost can't be negative");
-    this.partitionCost = partitionCost;
-    this.queryCostType = queryCostType;
-  }
-
-  @Override
-  public double getCost(){
-    return this.partitionCost;
-  }
-
   @Override
   public FactPartitionBasedQueryCost add(final FactPartitionBasedQueryCost other) {
     return new FactPartitionBasedQueryCost(partitionCost + other.partitionCost);
