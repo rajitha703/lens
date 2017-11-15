@@ -22,6 +22,7 @@ import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.*;
 import static org.apache.lens.driver.jdbc.JDBCDriverConfConstants.ConnectionPoolProperties.*;
 
 import static org.apache.lens.server.api.LensConfConstants.DRIVER_COST_TYPE_RANGES;
+
 import static org.testng.Assert.*;
 
 import java.sql.*;
