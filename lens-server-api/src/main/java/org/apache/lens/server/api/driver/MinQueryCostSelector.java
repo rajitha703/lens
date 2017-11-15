@@ -50,8 +50,8 @@ public class MinQueryCostSelector implements DriverSelector {
     return Collections.min(drivers, new Comparator<LensDriver>() {
       @Override
       public int compare(LensDriver d1, LensDriver d2) {
-        final Double c1 = ctx.getDriverQueryCost(d1).getCost();
-        final Double c2 = ctx.getDriverQueryCost(d2).getCost();
+        final QueryCost c1 = ctx.getDriverQueryCost(d1);
+        final QueryCost c2 = ctx.getDriverQueryCost(d2);
         return c1.compareTo(c2);
       }
     });

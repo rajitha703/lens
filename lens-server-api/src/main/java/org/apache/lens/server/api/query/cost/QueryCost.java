@@ -21,6 +21,8 @@
  */
 package org.apache.lens.server.api.query.cost;
 
+import java.util.Comparator;
+
 import org.apache.lens.api.query.QueryCostType;
 
 /**
@@ -40,5 +42,11 @@ public interface QueryCost<T extends QueryCost> extends Comparable<T> {
   long getEstimatedExecTimeMillis() throws UnsupportedOperationException;
 
   double getEstimatedResourceUsage() throws UnsupportedOperationException;
+
+  @Override
+  default int compareTo(QueryCost queryCost) {
+    return (new Double(this.getEstimatedResourceUsage()))
+      .compareTo(queryCost.getEstimatedResourceUsage());
+  }
 
 }
