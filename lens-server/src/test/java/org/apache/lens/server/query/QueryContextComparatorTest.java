@@ -112,12 +112,16 @@ public class QueryContextComparatorTest {
     QueryContext query1 = mock(QueryContext.class);
     when(query1.getPriority()).thenReturn(Priority.HIGH);
     QueryCost qcO1 = mock(QueryCost.class);
+
     when(query1.getSelectedDriverQueryCost()).thenReturn(qcO1);
+    when(qcO1.getEstimatedResourceUsage()).thenReturn(0.0d);
 
     QueryContext query2 = mock(QueryContext.class);
     when(query2.getPriority()).thenReturn(Priority.HIGH);
     QueryCost qcO2 = mock(QueryCost.class);
+
     when(query2.getSelectedDriverQueryCost()).thenReturn(qcO2);
+    when(qcO2.getEstimatedResourceUsage()).thenReturn(0.0d);
 
     when(query1.getSubmissionTime()).thenReturn(submitTimeQuery1);
     when(query2.getSubmissionTime()).thenReturn(submitTimeQuery2);
