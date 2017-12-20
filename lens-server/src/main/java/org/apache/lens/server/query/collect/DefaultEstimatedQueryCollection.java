@@ -164,8 +164,7 @@ public class DefaultEstimatedQueryCollection implements EstimatedQueryCollection
       return new StaticQueryCost(0);
     }
 
-    QueryContext query0 = Iterables.get(queries, 0);
-    Double totalQueryCost = query0.getSelectedDriverQueryCost().getEstimatedResourceUsage();
+    Double totalQueryCost = 0d;
 
     for (QueryContext query : queries) {
       Double queryCost = query.getSelectedDriverQueryCost().getEstimatedResourceUsage();

@@ -63,9 +63,9 @@ public class DefaultEstimatedQueryCollectionTest {
     final QueryContext query0 = Iterables.get(mockQueriesSet, 0);
     final QueryContext query1 = Iterables.get(mockQueriesSet, 1);
 
-    final QueryCost sCost0 = new StaticQueryCost(0.0);
+    final QueryCost sCost0 = new StaticQueryCost(1.0);
     final QueryCost sCost1 = new StaticQueryCost(1.0);
-    final QueryCost expectedCost = new StaticQueryCost(1.0);
+    final QueryCost expectedCost = new StaticQueryCost(2.0);
 
     when(query0.getSelectedDriverQueryCost()).thenReturn(sCost0);
     when(query1.getSelectedDriverQueryCost()).thenReturn(sCost1);
