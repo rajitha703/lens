@@ -495,14 +495,14 @@ public class StorageCandidate implements Candidate, CandidateTable {
           while (processTimeIter.hasNext()) {
             Date pdt = processTimeIter.next();
             Date nextPdt = processTimeIter.peekNext();
-            FactPartition currFactPartition ;
+            FactPartition currFactPartition;
             boolean allProcessTimePartitionsFound = true;
             while (timeIter.hasNext()){
               Date date = timeIter.next();
               currFactPartition = new FactPartition(processTimePartCol, date, maxInterval, null,
                 partWhereClauseFormat);
               updatePartitionStorage(currFactPartition);
-              if(!currFactPartition.isFound()) {
+              if (!currFactPartition.isFound()) {
                 log.debug("Looked ahead process time partition {} is not found : " + currFactPartition);
                 allProcessTimePartitionsFound = false;
                 break;
