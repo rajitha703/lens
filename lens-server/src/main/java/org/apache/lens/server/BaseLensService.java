@@ -347,7 +347,7 @@ public abstract class BaseLensService extends CompositeService implements Extern
     }
     synchronized (sessionUser) {
       Integer sessionCount = SESSIONS_PER_USER.get(userName);
-      if(null != sessionCount) {
+      if (null != sessionCount) {
         if (sessionCount == 1) {
           SESSIONS_PER_USER.remove(userName);
         } else {
