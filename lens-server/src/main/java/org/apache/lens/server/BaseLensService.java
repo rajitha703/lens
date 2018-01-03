@@ -230,8 +230,8 @@ public abstract class BaseLensService extends CompositeService implements Extern
   private void updateSessionsPerUser(String userName) {
     SessionUser sessionUser = SESSION_USER_INSTANCE_MAP.get(userName);
     if (sessionUser == null) {
-      log.info("Trying to update invalid session {} for user {}", userName);
-      return;
+        sessionUser = new SessionUser(userName);
+        SESSION_USER_INSTANCE_MAP.put(userName, sessionUser);
     }
     synchronized (sessionUser) {
       Integer numOfSessions = SESSIONS_PER_USER.get(userName);
