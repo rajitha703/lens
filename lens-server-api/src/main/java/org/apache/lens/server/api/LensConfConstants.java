@@ -1275,4 +1275,9 @@ public final class LensConfConstants {
   public static final double DEFAULT_DRIVER_QUERY_COST = 0.0;
 
   public static final String DRIVER_COST_QUERY_DECIDER = DRIVER_PFX + "cost.query.decider.class";
+
+  /**
+   * Message map for configured policy
+   */
+  public static final String RETRY_MESSAGE_MAP = "retry.messages.contains.map";
 }

@@ -268,10 +268,6 @@
       <groupId>org.datanucleus</groupId>
       <artifactId>javax.jdo</artifactId>
     </dependency>
-    <dependency>
-      <groupId>javax.annotation</groupId>
-      <artifactId>javax.annotation-api</artifactId>
-    </dependency>
   </dependencies>
 
   <build>
