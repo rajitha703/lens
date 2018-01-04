@@ -78,7 +78,7 @@ public class SubstringMessagePolicyDecider<FC extends FailureContext> implements
         String val = entry.getValue();
         String className = val.substring(0, val.indexOf("("));
         String paramString = val.substring(val.indexOf("(") + 1, val.length() - 1);
-        String args[] = paramString.split(" ");
+        String[] args = paramString.split(" ");
         Class[] constructorTypes = new Class[args.length];
         Arrays.fill(constructorTypes, String.class);
         try {
