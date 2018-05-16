@@ -19,10 +19,7 @@
 package org.apache.lens.server.api.query;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -106,6 +103,12 @@ public abstract class AbstractQueryContext implements Serializable {
   private final String submittedUser; // Logged in user.
 
   /**
+   * The submitted user groups.
+   */
+  @Getter
+  private final Set<String> submittedUserGroups; // Logged in user.
+
+  /**
    * The lens session identifier.
    */
   @Getter
@@ -137,8 +140,13 @@ public abstract class AbstractQueryContext implements Serializable {
   @Setter
   private Priority priority;
 
+
   protected AbstractQueryContext(final String query, final String user, final LensConf qconf, final Configuration conf,
     final Collection<LensDriver> drivers, boolean mergeDriverConf) {
+    this(query, user, qconf, conf, drivers, mergeDriverConf, null);
+  }
+  protected AbstractQueryContext(final String query, final String user, final LensConf qconf, final Configuration conf,
+    final Collection<LensDriver> drivers, boolean mergeDriverConf, Set<String> userGroups) {
     if (conf.getBoolean(LensConfConstants.ENABLE_QUERY_METRICS, LensConfConstants.DEFAULT_ENABLE_QUERY_METRICS)) {
       UUID metricId = UUID.randomUUID();
       conf.set(LensConfConstants.QUERY_METRIC_UNIQUE_ID_CONF_KEY, metricId.toString());
@@ -150,6 +158,7 @@ public abstract class AbstractQueryContext implements Serializable {
     this.lensConf = qconf;
     this.conf = conf;
     this.submittedUser = user;
+    this.submittedUserGroups = userGroups;
     // we are setting selectedDriverQuery as user query only when the drivers size is 1
     // if drivers size is more than the driver query will be set after selection over drivers
     if (drivers != null && drivers.size() == 1) {

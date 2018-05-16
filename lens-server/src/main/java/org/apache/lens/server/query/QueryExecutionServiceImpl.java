@@ -45,6 +45,7 @@ import org.apache.lens.api.Priority;
 import org.apache.lens.api.error.ErrorCollection;
 import org.apache.lens.api.query.*;
 import org.apache.lens.api.query.QueryStatus.Status;
+import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.DateUtil;
 import org.apache.lens.driver.hive.HiveDriver;
 import org.apache.lens.server.BaseLensService;
@@ -2424,9 +2425,11 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
       Configuration qconf = getLensConf(sessionHandle, conf);
       accept(query, qconf, SubmitOp.EXECUTE);
       QueryContext ctx = createContext(query, getSession(sessionHandle).getLoggedInUser(), conf, qconf, timeoutMillis);
+
       ctx.setQueryName(queryName);
       ctx.setLensSessionIdentifier(sessionHandle.getPublicId().toString());
       rewriteAndSelect(ctx);
+
       return executeTimeoutInternal(sessionHandle, ctx, timeoutMillis, qconf);
     } finally {
       release(sessionHandle);
@@ -3295,10 +3298,15 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
 
   @Override
   public Response getHttpResultSet(LensSessionHandle sessionHandle, QueryHandle queryHandle) throws LensException {
+
+
     LensResultSet resultSet = getResultset(queryHandle);
     if (!resultSet.isHttpResultAvailable()) {
       throw new NotFoundException("http result not available");
     }
+
+
+
     final Path resultPath = new Path(resultSet.getOutputPath());
     try {
       FileSystem fs = resultPath.getFileSystem(conf);
@@ -3309,6 +3317,15 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
       throw new LensException(e);
     }
     final QueryContext ctx = getUpdatedQueryContext(sessionHandle, queryHandle);
+
+
+    String loggedInUser = getSession(sessionHandle).getLoggedInUser();
+    if(true) {
+      if (!loggedInUser.equals(ctx.getSubmittedUser())) {
+        throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
+      }
+    }
+
     String resultFSReadUrl = conf.get(RESULT_FS_READ_URL);
     if (resultFSReadUrl != null) {
       try {

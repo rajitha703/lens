@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.BadRequestException;
@@ -36,6 +37,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensSessionHandle;
+import org.apache.lens.api.auth.AuthScheme;
 import org.apache.lens.api.session.UserSessionInfo;
 import org.apache.lens.api.util.PathValidator;
 import org.apache.lens.server.api.LensConfConstants;
@@ -49,6 +51,7 @@ import org.apache.lens.server.error.LensServerErrorCode;
 import org.apache.lens.server.query.QueryExecutionServiceImpl;
 import org.apache.lens.server.session.LensSessionImpl;
 import org.apache.lens.server.user.UserConfigLoaderFactory;
+import org.apache.lens.server.user.usergroup.UserGroupLoaderFactory;
 import org.apache.lens.server.util.UtilityMethods;
 
 import org.apache.commons.lang3.StringUtils;
@@ -73,6 +76,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class BaseLensService extends CompositeService implements Externalizable, LensService,
   SessionValidator {
+  public static final Configuration CONF = LensServerConf.getHiveConf();
+  public static final Optional<AuthScheme> AUTH_SCHEME =
+          AuthScheme.getFromString(CONF.get(LensConfConstants.AUTH_SCHEME));
 
   /** The cli service. */
   private final CLIService cliService;
@@ -161,7 +167,7 @@ public abstract class BaseLensService extends CompositeService implements Extern
    */
   public LensSessionHandle openSession(String username, String password, Map<String, String> configuration)
     throws LensException {
-    return openSession(username, password, configuration, true);
+    return openSession(username, password, configuration, !AUTH_SCHEME.isPresent());
   }
 
   public LensSessionHandle openSession(String username, String password, Map<String, String> configuration,
@@ -201,6 +207,10 @@ public abstract class BaseLensService extends CompositeService implements Extern
         log.info("Got user config: {}", userConfig);
         UtilityMethods.mergeMaps(sessionConf, userConfig, false);
         sessionConf.put(LensConfConstants.SESSION_LOGGEDIN_USER, username);
+
+        Map<String, String> userGroupConfig = UserGroupLoaderFactory.getUserGroupConfig(username);
+        //@TODO If proxy user is present, need to read that
+        UtilityMethods.mergeMaps(sessionConf, userGroupConfig, false);
         if (sessionConf.get(LensConfConstants.SESSION_CLUSTER_USER) == null) {
           log.info("Didn't get cluster user from user config loader. Setting same as logged in user: {}", username);
           sessionConf.put(LensConfConstants.SESSION_CLUSTER_USER, username);
@@ -220,11 +230,18 @@ public abstract class BaseLensService extends CompositeService implements Extern
   }
 
   private void updateSessionsPerUser(String userName) {
-    Integer numOfSessions = SESSIONS_PER_USER.get(userName);
-    if (null == numOfSessions) {
-      SESSIONS_PER_USER.put(userName, 1);
-    } else {
-      SESSIONS_PER_USER.put(userName, ++numOfSessions);
+    SessionUser sessionUser = SESSION_USER_INSTANCE_MAP.get(userName);
+    if (sessionUser == null) {
+      log.info("Trying to update invalid session {} for user {}", userName);
+      return;
+    }
+    synchronized (sessionUser) {
+      Integer numOfSessions = SESSIONS_PER_USER.get(userName);
+      if (null == numOfSessions) {
+        SESSIONS_PER_USER.put(userName, 1);
+      } else {
+        SESSIONS_PER_USER.put(userName, ++numOfSessions);
+      }
     }
   }
 
@@ -343,9 +360,9 @@ public abstract class BaseLensService extends CompositeService implements Extern
         } else {
           SESSIONS_PER_USER.put(userName, --sessionCount);
         }
-      }else {
+      } else {
         log.info("Trying to decrement session count for non existing session {} for user {}: ",
-          sessionHandle, userName);
+                sessionHandle, userName);
       }
     }
   }
@@ -586,6 +603,10 @@ public abstract class BaseLensService extends CompositeService implements Extern
       userSessionInfoList.add(sessionInfo);
     }
     return userSessionInfoList;
+  }
+
+  public String getSessionUserName(LensSessionHandle lensSessionHandle) {
+    return getSession(lensSessionHandle).getLoggedInUser();
   }
 }
 

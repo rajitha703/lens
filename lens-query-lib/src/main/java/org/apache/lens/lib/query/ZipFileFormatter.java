@@ -140,7 +140,11 @@ public class ZipFileFormatter extends AbstractFileFormatter {
     fs.rename(tmpPath, finalPath);
     finalPath = finalPath.makeQualified(fs);
     fileSize = fs.getFileStatus(finalPath).getLen();
+//    System.out.println("Changing output path perms");
+//    fs.setPermission(finalPath, new FsPermission(FsAction.READ, FsAction.ALL, FsAction.ALL));
+//    fs.setOwner(finalPath, "tmp", null);
     ctx.setResultSetPath(getFinalOutputPath());
+
   }
 
   /*

@@ -125,6 +125,8 @@ public class HadoopFileFormatter extends AbstractFileFormatter {
       fs.rename(rowWriter.getTmpPath(), finalPath);
       ctx.setResultSetPath(finalPath.toString());
       fileSize = fs.getFileStatus(finalPath).getLen();
+//      System.out.println("Changing output path perms");
+//      fs.setPermission(finalPath, new FsPermission(FsAction.READ, FsAction.ALL, FsAction.ALL));
     }
   }
 

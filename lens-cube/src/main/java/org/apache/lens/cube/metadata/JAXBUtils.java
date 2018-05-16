@@ -659,6 +659,8 @@ public final class JAXBUtils {
     return xstorage;
   }
 
+
+
   public static XDimensionTable dimTableFromCubeDimTable(CubeDimensionTable cubeDimTable) {
     if (cubeDimTable == null) {
       return null;

@@ -374,6 +374,10 @@ public class MetastoreUtil {
     return getFactKeyPrefix(name) + VALID_COLUMNS_SFX;
   }
 
+  public static String getSensitiveColumnsKey(String name) {
+    return getCubePrefix(name) + SENSITIVE_COLUMNS_SFX;
+  }
+
   public static String getCubeTableWeightKey(String name) {
     return getCubeTableKeyPrefix(name) + WEIGHT_KEY_SFX;
   }
