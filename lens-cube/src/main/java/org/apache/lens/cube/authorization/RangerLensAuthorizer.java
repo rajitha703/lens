@@ -31,7 +31,9 @@ import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class RangerLensAuthorizer implements IAuthorizer {
 
   @Getter
@@ -50,14 +52,21 @@ public class RangerLensAuthorizer implements IAuthorizer {
   @Override
   public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, Set<String> userGroups) {
 
+    log.info("==> Lens Ranger Authorize : "+ userGroups + " Accesstype : "+ accessType + "Object : "+
+      lensPrivilegeObject.getCubeOrFactOrDim());
+
     RangerLensResource rangerLensResource = getLensResource(lensPrivilegeObject);
 
     RangerAccessRequest rangerAccessRequest = new RangerAccessRequestImpl(rangerLensResource,
       accessType.toString().toLowerCase(), null, userGroups);
 
     RangerAccessResult rangerAccessResult = getRangerBasePlugin().isAccessAllowed(rangerAccessRequest);
+    boolean res =  rangerAccessResult != null && rangerAccessResult.getIsAllowed();
 
-    return rangerAccessResult != null && rangerAccessResult.getIsAllowed();
+    log.info("<== Lens Ranger Authorize : "+ userGroups + " Accesstype : "+ accessType + "Object : "+
+      lensPrivilegeObject.getCubeOrFactOrDim() + " Access : "+ res);
+
+    return res;
   }
 
   private RangerLensResource getLensResource(LensPrivilegeObject lensPrivilegeObject) {
