@@ -92,8 +92,6 @@ public class LensClientConfig extends Configuration {
 
   public static final String KERBEROS_PRINCIPAL = CLIENT_PFX + "authentication.kerberos.principal";
 
-  public static final String KERBEROS_PASSWORD = CLIENT_PFX + "authentication.kerberos.password";
-
   public static final String KERBEROS_REALM = CLIENT_PFX + "authentication.kerberos.realm";
 
   public static final String KERBEROS_KEYTAB = CLIENT_PFX + "authentication.kerberos.keytab";

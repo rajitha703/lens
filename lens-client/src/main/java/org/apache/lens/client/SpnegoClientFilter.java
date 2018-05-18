@@ -34,11 +34,6 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.security.auth.Subject;
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
@@ -90,7 +85,10 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
   private static final LensClientConfig CONF = new LensClientConfig();
   private final String keyTabLocation = CONF.get(LensClientConfig.KERBEROS_KEYTAB);
   private final String userPrincipal = CONF.get(LensClientConfig.KERBEROS_PRINCIPAL);
+<<<<<<< HEAD
   private final String password = CONF.get(LensClientConfig.KERBEROS_PASSWORD);
+=======
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
   private final String realm = CONF.get(LensClientConfig.KERBEROS_REALM);
 
   private String servicePrincipalName;
@@ -129,7 +127,11 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
 
 
 
+<<<<<<< HEAD
   public String getAuthorization(URI currentURI) {
+=======
+  private String getAuthorization(URI currentURI) {
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     try {
       String spn = getCompleteServicePrincipalName(currentURI);
 
@@ -171,7 +173,11 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
   }
 
 
+<<<<<<< HEAD
   protected String getCompleteServicePrincipalName(URI currentURI) {
+=======
+  private String getCompleteServicePrincipalName(URI currentURI) {
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     String name;
 
     if (servicePrincipalName == null) {
@@ -218,6 +224,7 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
     }
   }
 
+<<<<<<< HEAD
   private static class NamePasswordCallbackHandler implements CallbackHandler {
     private final String userPrincipal;
     private final String password;
@@ -245,11 +252,16 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
     }
   }
 
+=======
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
   @RequiredArgsConstructor
   static class ClientLoginConfig extends Configuration {
     private final String keyTabLocation;
     private final String userPrincipal;
+<<<<<<< HEAD
     private final String password;
+=======
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
 
     @Override
     public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
@@ -268,7 +280,11 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
         options.put("storeKey", "true");
       }
 
+<<<<<<< HEAD
       options.put("doNotPrompt", Boolean.toString(password == null));
+=======
+      options.put("doNotPrompt", "true");
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
       options.put("isInitiator", "true");
 
       return new AppConfigurationEntry[] { new AppConfigurationEntry(
@@ -279,17 +295,28 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
   }
 
   private LoginContext buildLoginContext() throws LoginException {
+<<<<<<< HEAD
     ClientLoginConfig loginConfig = new ClientLoginConfig(keyTabLocation, userPrincipal, password);
 
     Subject subject =  null;
     CallbackHandler callbackHandler = null;
+=======
+    ClientLoginConfig loginConfig = new ClientLoginConfig(keyTabLocation, userPrincipal);
+
+    Subject subject =  null;
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     if (StringUtils.isNotBlank(keyTabLocation) && StringUtils.isNotBlank(userPrincipal)) {
       Set<Principal> princ = new HashSet<>(1);
       princ.add(new KerberosPrincipal(userPrincipal));
       subject = new Subject(false, princ, new HashSet<>(), new HashSet<>());
+<<<<<<< HEAD
       callbackHandler = new NamePasswordCallbackHandler(userPrincipal, password);
     }
     LoginContext lc = new LoginContext("", subject, callbackHandler, loginConfig);
+=======
+    }
+    LoginContext lc = new LoginContext("", subject, null, loginConfig);
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     return lc;
   }
 
@@ -304,7 +331,11 @@ public class SpnegoClientFilter implements ClientRequestFilter, ClientResponseFi
    * @return {@code true} is the authentication was successful ({@code true} if 401 response code was not returned;
    * {@code false} otherwise).
    */
+<<<<<<< HEAD
   static boolean repeatRequest(ClientRequestContext request,
+=======
+  private boolean repeatRequest(ClientRequestContext request,
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
                                ClientResponseContext response,
                                String newAuthorizationHeader) {
     Client client = ClientBuilder.newClient(request.getConfiguration());

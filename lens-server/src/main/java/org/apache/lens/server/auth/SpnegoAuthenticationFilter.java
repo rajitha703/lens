@@ -67,7 +67,8 @@ import lombok.extern.slf4j.Slf4j;
  * the impl class.</p>
  *
  * <pre>The following configuration is needed for the filter to function
- * {@code lens.server.authentication.scheme} : NEGOTIATE (other values which are not supported are listed in {@link AuthScheme})
+ * {@code lens.server.authentication.scheme} : NEGOTIATE (other values which are not supported are listed
+ * in {@link AuthScheme})
  * {@code lens.server.authentication.kerberos.principal} : The SPN (in format HTTP/fqdn)
  * {@code lens.server.authentication.kerberos.keytab} : Keytab of lens SPN
  * </pre>
@@ -80,8 +81,8 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
   private static final String KERBEROS_LOGIN_MODULE_NAME =
           "com.sun.security.auth.module.Krb5LoginModule";
 
-  public static final org.apache.hadoop.conf.Configuration CONF = LensServerConf.getHiveConf();
-  public static final AuthScheme AUTH_SCHEME = AuthScheme.valueOf(CONF.get(LensConfConstants.AUTH_SCHEME));
+  private static final org.apache.hadoop.conf.Configuration CONF = LensServerConf.getHiveConf();
+  private static final AuthScheme AUTH_SCHEME = AuthScheme.valueOf(CONF.get(LensConfConstants.AUTH_SCHEME));
 
   static {
     if (AUTH_SCHEME != AuthScheme.NEGOTIATE) {
@@ -147,7 +148,11 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
 
       Subject.doAs(serviceSubject, new ValidateServiceTicketAction(gssContext, serviceTicket));
 
+<<<<<<< HEAD
       GSSName srcName = gssContext.getSrcName();
+=======
+      final GSSName srcName = gssContext.getSrcName();
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
       if (srcName == null) {
         throw toNotAuthorizedException(null, getFaultResponse());
       }
@@ -177,11 +182,19 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
     }
   }
 
+<<<<<<< HEAD
   protected SecurityContext createSecurityContext(String simpleUserName, String authScheme) {
     return new LensSecurityContext(simpleUserName, authScheme);
   }
 
   protected GSSContext createGSSContext() throws GSSException {
+=======
+  private SecurityContext createSecurityContext(String simpleUserName, String authScheme) {
+    return new LensSecurityContext(simpleUserName, authScheme);
+  }
+
+  private GSSContext createGSSContext() throws GSSException {
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     Oid oid = new Oid(SPNEGO_OID);
     GSSManager gssManager = GSSManager.getInstance();
 
@@ -192,7 +205,11 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
             oid, null, GSSContext.DEFAULT_LIFETIME);
   }
 
+<<<<<<< HEAD
   protected Subject loginAndGetSubject() throws LoginException {
+=======
+  private Subject loginAndGetSubject() throws LoginException {
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
 
     // The login without a callback can work if
     // - Kerberos keytabs are used with a principal name set in the JAAS config
@@ -223,7 +240,11 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
     return Response.status(401).header(HttpHeaders.WWW_AUTHENTICATE, AuthScheme.NEGOTIATE.getName()).build();
   }
 
+<<<<<<< HEAD
   protected String getCompleteServicePrincipalName() {
+=======
+  private String getCompleteServicePrincipalName() {
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     String name = servicePrincipalName == null
             ? "HTTP/" + uriInfo.getBaseUri().getHost() : servicePrincipalName;
     if (realm != null) {
@@ -268,7 +289,11 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
     };
   }
 
+<<<<<<< HEAD
   static WebApplicationException toNotAuthorizedException(Throwable cause, Response resp) {
+=======
+  private WebApplicationException toNotAuthorizedException(Throwable cause, Response resp) {
+>>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     return new NotAuthorizedException(resp, cause);
   }
 
