@@ -1966,6 +1966,7 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
           LensResultSet resultSet = resultSets.get(queryHandle);
           if (resultSet == null) {
             if (ctx.isPersistent() && ctx.getQueryOutputFormatter() != null) {
+              conf.addResource(ctx.getConf());
               resultSets.put(queryHandle, new LensPersistentResult(ctx, conf));
             } else if (ctx.isResultAvailableInDriver() && !ctx.isQueryClosedOnDriver()) {
               //InMemory result can not be returned for a closed query

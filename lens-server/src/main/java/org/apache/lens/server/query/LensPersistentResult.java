@@ -27,10 +27,12 @@ import org.apache.lens.server.api.driver.PersistentResultSet;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.FinishedLensQuery;
 import org.apache.lens.server.api.query.QueryContext;
+import org.apache.lens.server.api.query.ResultUrlSetter;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +56,8 @@ public class LensPersistentResult extends PersistentResultSet {
   @Getter
   private String httpResultUrl = null;
 
+  private ResultUrlSetter resultUrlSetter = null;
+
   /**
    * Instantiates a new lens persistent result.
    *  @param queryHandle the query handle
@@ -71,8 +75,11 @@ public class LensPersistentResult extends PersistentResultSet {
     this.fileSize = fileSize;
     this.conf = conf;
     if (isHttpResultAvailable()) {
-      this.httpResultUrl = conf.get(LensConfConstants.SERVER_BASE_URL, LensConfConstants.DEFAULT_SERVER_BASE_URL)
-        + "queryapi/queries/" + queryHandle + "/httpresultset";
+      resultUrlSetter = ReflectionUtils.newInstance(this.conf.getClass(LensConfConstants.RESULT_URL_SETTER_CLASS,
+        LensConfConstants.DEFAULT_RESULT_URL_SETTER, ResultUrlSetter.class));
+      this.httpResultUrl = resultUrlSetter.getResultUrl(this.conf, queryHandle.toString());
+      log.info("Config : " + this.conf.get(LensConfConstants.RESULT_URL_SETTER_CLASS) + " Result url set as : " +
+        this.httpResultUrl);
     }
   }
 
