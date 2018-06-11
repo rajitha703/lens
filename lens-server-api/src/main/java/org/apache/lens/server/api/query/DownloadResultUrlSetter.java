@@ -20,7 +20,10 @@ package org.apache.lens.server.api.query;
 
 import org.apache.hadoop.conf.Configuration;
 
-public interface ResultUrlSetter {
+/*
+* The Interface to implement for returning download url
+* */
+public interface DownloadResultUrlSetter {
 
   String getResultUrl(Configuration conf, String queryHandle);
 }
