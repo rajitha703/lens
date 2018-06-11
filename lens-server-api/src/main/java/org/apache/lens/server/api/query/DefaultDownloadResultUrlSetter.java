@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class DefaultResultUrlSetter implements DownloadResultUrlSetter {
+public class DefaultDownloadResultUrlSetter implements DownloadResultUrlSetter {
 
   @Override
   public String getResultUrl(Configuration conf, String queryHandle) {

@@ -23,7 +23,7 @@ import javax.ws.rs.core.MediaType;
 import org.apache.lens.api.parse.Parser;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
-import org.apache.lens.server.api.query.DefaultResultUrlSetter;
+import org.apache.lens.server.api.query.DefaultDownloadResultUrlSetter;
 import org.apache.lens.server.api.query.DownloadResultUrlSetter;
 import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
 import org.apache.lens.server.api.query.cost.QueryCost;
@@ -1270,7 +1270,7 @@ public final class LensConfConstants {
   public static final String RESULT_URL_SETTER_CLASS = SERVER_PFX + "result.url.setter.class";
 
   public static final Class<? extends DownloadResultUrlSetter> DEFAULT_RESULT_URL_SETTER =
-    DefaultResultUrlSetter.class.asSubclass(DownloadResultUrlSetter.class);
+    DefaultDownloadResultUrlSetter.class.asSubclass(DownloadResultUrlSetter.class);
 
   /**
    * The download url content.

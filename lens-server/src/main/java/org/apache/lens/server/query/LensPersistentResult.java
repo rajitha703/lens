@@ -25,9 +25,9 @@ import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.driver.PersistentResultSet;
 import org.apache.lens.server.api.error.LensException;
+import org.apache.lens.server.api.query.DownloadResultUrlSetter;
 import org.apache.lens.server.api.query.FinishedLensQuery;
 import org.apache.lens.server.api.query.QueryContext;
-import org.apache.lens.server.api.query.DownloadResultUrlSetter;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
