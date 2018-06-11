@@ -18,8 +18,9 @@
  */
 package org.apache.lens.server.api.query;
 
-import org.apache.lens.server.api.LensConfConstants;
 import org.apache.hadoop.conf.Configuration;
+
+import org.apache.lens.server.api.LensConfConstants;
 
 import lombok.extern.slf4j.Slf4j;
 

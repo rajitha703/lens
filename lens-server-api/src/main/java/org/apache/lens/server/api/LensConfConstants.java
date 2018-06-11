@@ -1267,13 +1267,13 @@ public final class LensConfConstants {
   public static final String COMPLETENESS_CHECKER_CLASS = "lens.cube.metastore.completeness.checker.class";
 
   /*The class that implements the resulturlsetter interface */
-  public static final String RESULT_URL_SETTER_CLASS = SERVER_PFX + "result.url.setter.class" ;
+  public static final String RESULT_URL_SETTER_CLASS = SERVER_PFX + "result.url.setter.class";
 
   public static final Class<? extends ResultUrlSetter> DEFAULT_RESULT_URL_SETTER =
     DefaultResultUrlSetter.class.asSubclass(ResultUrlSetter.class);
 
   /**
-   * The result mail.
+   * The download url contents.
    */
   public static final String QUERY_EMAIL_DOWNLOAD_URL = QUERY_PFX + "email.download.url";
 
