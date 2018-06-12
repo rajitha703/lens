@@ -16,24 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.quota;
+package org.apache.lens.server.api.query;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.apache.lens.server.api.LensConfConstants;
 
-import org.apache.lens.server.auth.Authenticate;
-/**
- * The Class QuotaResource.
- */
-@Authenticate
-@Path("/quota")
-public class QuotaResource {
+import org.apache.hadoop.conf.Configuration;
 
-  @GET
-  @Produces(MediaType.TEXT_PLAIN)
-  public String getMessage() {
-    return "Hello World! from quota";
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class DefaultDownloadResultUrlProvider implements DownloadResultUrlProvider {
+
+  @Override
+  public String getResultUrl(Configuration conf, String queryHandle) {
+    log.debug("Returning Default result set url ");
+    return conf.get(LensConfConstants.SERVER_BASE_URL, LensConfConstants.DEFAULT_SERVER_BASE_URL)
+      + "queryapi/queries/" + queryHandle + "/httpresultset";
   }
 }

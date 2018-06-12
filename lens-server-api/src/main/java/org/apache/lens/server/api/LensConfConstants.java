@@ -25,6 +25,8 @@ import org.apache.lens.server.api.authorization.DefaultAuthorizer;
 import org.apache.lens.server.api.authorization.IAuthorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
+import org.apache.lens.server.api.query.DefaultDownloadResultUrlProvider;
+import org.apache.lens.server.api.query.DownloadResultUrlProvider;
 import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
 import org.apache.lens.server.api.query.cost.QueryCost;
 
@@ -816,7 +818,6 @@ public final class LensConfConstants {
 
   public static final int DEFAULT_KDC_LOGIN_SERVICE_INTERVAL_IN_MINUTES = 360;
 
-
   /**
    * Lens principal for kerberos authentication
    */
@@ -1348,6 +1349,18 @@ public final class LensConfConstants {
    */
   public static final String COMPLETENESS_CHECKER_CLASS = "lens.cube.metastore.completeness.checker.class";
 
+  /*The class that implements the result download url provider interface */
+  public static final String RESULT_DOWNLOAD_URL_PROVIDER_CLASS = SERVER_PFX + "result.download.url.provider.class";
+
+  /*The  default result download url provider class */
+  public static final Class<? extends DownloadResultUrlProvider> DEFAULT_RESULT_DOWNLOAD_URL_PROVIDER =
+    DefaultDownloadResultUrlProvider.class.asSubclass(DownloadResultUrlProvider.class);
+
+  /**
+   * The download url content config
+   */
+  public static final String QUERY_EMAIL_DOWNLOAD_URL = QUERY_PFX + "email.download.url";
+
   /**
    * The default implementation of DataCompletenessChecker
    */
@@ -1410,5 +1423,19 @@ public final class LensConfConstants {
 
   public static final String ALLOWED_PROXY_USERS = SERVER_PFX + "authentication.allowed.proxy.users";
 
+  public static final String DELEGATION_TOKEN_AUTH_HDFS_PATH_TO_CHECK = SERVER_PFX
+    + "delegation.token.auth.hdfs.path.to.check";
+
+  /**
+   *  SSL config to enable https communication between lens server
+   *  and clients.
+   */
+  public static final String SSL_ENABLED = SERVER_PFX + "ssl.enabled";
+
+  public static final boolean DEFAULT_SSL_ENABLED_VALUE = false;
+
+  public static final String SSL_KEYSTORE_FILE_PATH = SERVER_PFX + "ssl.file.path";
+
+  public static final String SSL_KEYSTORE_PASSWORD = SERVER_PFX + "ssl.password";
 
 }

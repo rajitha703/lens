@@ -16,24 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.quota;
+package org.apache.lens.server.api.query;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.apache.hadoop.conf.Configuration;
 
-import org.apache.lens.server.auth.Authenticate;
-/**
- * The Class QuotaResource.
- */
-@Authenticate
-@Path("/quota")
-public class QuotaResource {
+/*
+* The interface to implement for returning download url. This is embedded in the query competion email sent to the user
+* */
+public interface DownloadResultUrlProvider {
 
-  @GET
-  @Produces(MediaType.TEXT_PLAIN)
-  public String getMessage() {
-    return "Hello World! from quota";
-  }
+  String getResultUrl(Configuration conf, String queryHandle);
 }
