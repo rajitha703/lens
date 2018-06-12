@@ -23,13 +23,8 @@ import javax.ws.rs.core.MediaType;
 import org.apache.lens.api.parse.Parser;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
-<<<<<<< HEAD
-import org.apache.lens.server.api.query.DefaultDownloadResultUrlSetter;
-import org.apache.lens.server.api.query.DownloadResultUrlSetter;
-=======
 import org.apache.lens.server.api.query.DefaultDownloadResultUrlProvider;
 import org.apache.lens.server.api.query.DownloadResultUrlProvider;
->>>>>>> 138d11353ba93cab5798ff7e498d382ea5f9cb98
 import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
 import org.apache.lens.server.api.query.cost.QueryCost;
 
