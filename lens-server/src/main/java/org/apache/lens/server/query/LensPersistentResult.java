@@ -25,7 +25,7 @@ import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.driver.PersistentResultSet;
 import org.apache.lens.server.api.error.LensException;
-import org.apache.lens.server.api.query.DownloadResultUrlSetter;
+import org.apache.lens.server.api.query.DownloadResultUrlProvider;
 import org.apache.lens.server.api.query.FinishedLensQuery;
 import org.apache.lens.server.api.query.QueryContext;
 
@@ -56,7 +56,7 @@ public class LensPersistentResult extends PersistentResultSet {
   @Getter
   private String httpResultUrl = null;
 
-  private DownloadResultUrlSetter resultUrlSetter = null;
+  private DownloadResultUrlProvider resultUrlSetter = null;
 
   /**
    * Instantiates a new lens persistent result.
@@ -75,10 +75,10 @@ public class LensPersistentResult extends PersistentResultSet {
     this.fileSize = fileSize;
     this.conf = conf;
     if (isHttpResultAvailable()) {
-      resultUrlSetter = ReflectionUtils.newInstance(this.conf.getClass(LensConfConstants.RESULT_URL_SETTER_CLASS,
-        LensConfConstants.DEFAULT_RESULT_URL_SETTER, DownloadResultUrlSetter.class));
+      resultUrlSetter = ReflectionUtils.newInstance(this.conf.getClass(LensConfConstants.RESULT_DOWNLOAD_URL_PROVIDER_CLASS,
+        LensConfConstants.DEFAULT_RESULT_DOWNLOAD_URL_PROVIDER, DownloadResultUrlProvider.class));
       this.httpResultUrl = resultUrlSetter.getResultUrl(this.conf, queryHandle.toString());
-      log.info("Config : " + this.conf.get(LensConfConstants.RESULT_URL_SETTER_CLASS) + " Result url set as : "
+      log.info("Config : " + this.conf.get(LensConfConstants.RESULT_DOWNLOAD_URL_PROVIDER_CLASS) + " Result url set as : "
         + this.httpResultUrl);
     }
   }

@@ -23,8 +23,13 @@ import javax.ws.rs.core.MediaType;
 import org.apache.lens.api.parse.Parser;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
+<<<<<<< HEAD
 import org.apache.lens.server.api.query.DefaultDownloadResultUrlSetter;
 import org.apache.lens.server.api.query.DownloadResultUrlSetter;
+=======
+import org.apache.lens.server.api.query.DefaultDownloadResultUrlProvider;
+import org.apache.lens.server.api.query.DownloadResultUrlProvider;
+>>>>>>> 138d11353ba93cab5798ff7e498d382ea5f9cb98
 import org.apache.lens.server.api.query.cost.FactPartitionBasedQueryCost;
 import org.apache.lens.server.api.query.cost.QueryCost;
 
@@ -1266,14 +1271,15 @@ public final class LensConfConstants {
    */
   public static final String COMPLETENESS_CHECKER_CLASS = "lens.cube.metastore.completeness.checker.class";
 
-  /*The class that implements the resulturlsetter interface */
-  public static final String RESULT_URL_SETTER_CLASS = SERVER_PFX + "result.url.setter.class";
+  /*The class that implements the result download url provider interface */
+  public static final String RESULT_DOWNLOAD_URL_PROVIDER_CLASS = SERVER_PFX + "result.download.url.provider.class";
 
-  public static final Class<? extends DownloadResultUrlSetter> DEFAULT_RESULT_URL_SETTER =
-    DefaultDownloadResultUrlSetter.class.asSubclass(DownloadResultUrlSetter.class);
+  /*The  default result download url provider class */
+  public static final Class<? extends DownloadResultUrlProvider> DEFAULT_RESULT_DOWNLOAD_URL_PROVIDER =
+    DefaultDownloadResultUrlProvider.class.asSubclass(DownloadResultUrlProvider.class);
 
   /**
-   * The download url content.
+   * The download url content config
    */
   public static final String QUERY_EMAIL_DOWNLOAD_URL = QUERY_PFX + "email.download.url";
 
