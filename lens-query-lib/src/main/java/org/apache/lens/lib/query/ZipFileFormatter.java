@@ -23,9 +23,13 @@ import java.io.OutputStreamWriter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.lens.server.api.LensConfConstants;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsAction;
+import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.google.common.base.Strings;
 
@@ -107,8 +111,11 @@ public class ZipFileFormatter extends AbstractFileFormatter {
     finalPath = new Path(pathStr, finalPathStr + ctx.getQueryHandle().toString() + ".zip");
     tmpPath = new Path(pathStr, ctx.getQueryHandle().toString() + ".tmp.zip");
 
-    fs = finalPath.getFileSystem(ctx.getConf());
-
+    if(ctx.getConf().getBoolean(LensConfConstants.READ_RESULT_FROM_HDFS, LensConfConstants.DEFAULT_READ_RESULT_FROM_HDFS)) {
+      fs = FileSystemUtil.createFileSystem(ctx.getSubmittedUser(), new Path(pathStr));
+    } else {
+      fs = finalPath.getFileSystem(ctx.getConf());
+    }
     zipOut = new ZipOutputStream((fs.create(tmpPath)));
     ZipEntry zipEntry = new ZipEntry(getQueryResultFileName());
     zipOut.putNextEntry(zipEntry);
@@ -140,11 +147,8 @@ public class ZipFileFormatter extends AbstractFileFormatter {
     fs.rename(tmpPath, finalPath);
     finalPath = finalPath.makeQualified(fs);
     fileSize = fs.getFileStatus(finalPath).getLen();
-//    System.out.println("Changing output path perms");
-//    fs.setPermission(finalPath, new FsPermission(FsAction.READ, FsAction.ALL, FsAction.ALL));
-//    fs.setOwner(finalPath, "tmp", null);
+    fs.rename(tmpPath, finalPath);
     ctx.setResultSetPath(getFinalOutputPath());
-
   }
 
   /*

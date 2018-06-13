@@ -20,22 +20,24 @@ package org.apache.lens.cube.authorization;
 
 import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
 
-public class RangerLensResource extends RangerAccessResourceImpl {
+// Ranger equivalent for a lens resource
 
-  public static final String KEY_TABLE = "table";
-  public static final String KEY_COLUMN = "column";
+class RangerLensResource extends RangerAccessResourceImpl {
 
-  RangerLensResource(RangerLensAuthorizer.LensObjectType objectType, String cubeOrDimOrFact, String column) {
+  private static final String KEY_TABLE = "table";
+  private static final String KEY_COLUMN = "column";
+
+  RangerLensResource(RangerLensAuthorizer.LensObjectType objectType, String table, String column) {
 
     switch(objectType) {
 
     case COLUMN:
-      setValue(KEY_TABLE, cubeOrDimOrFact);
+      setValue(KEY_TABLE, table);
       setValue(KEY_COLUMN, column);
       break;
 
     case TABLE:
-      setValue(KEY_TABLE, cubeOrDimOrFact);
+      setValue(KEY_TABLE, table);
       break;
 
     case NONE:

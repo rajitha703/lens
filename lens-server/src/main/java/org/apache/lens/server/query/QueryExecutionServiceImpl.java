@@ -66,6 +66,7 @@ import org.apache.lens.server.api.query.comparators.*;
 import org.apache.lens.server.api.query.constraint.QueryLaunchingConstraint;
 import org.apache.lens.server.api.query.cost.QueryCost;
 import org.apache.lens.server.api.query.events.*;
+import org.apache.lens.server.api.query.save.exception.PrivilegeException;
 import org.apache.lens.server.api.retry.BackOffRetryHandler;
 import org.apache.lens.server.api.retry.ChainedRetryPolicyDecider;
 import org.apache.lens.server.api.retry.OperationRetryHandlerFactory;
@@ -2428,11 +2429,9 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
       Configuration qconf = getLensConf(sessionHandle, conf);
       accept(query, qconf, SubmitOp.EXECUTE);
       QueryContext ctx = createContext(query, getSession(sessionHandle).getLoggedInUser(), conf, qconf, timeoutMillis);
-
       ctx.setQueryName(queryName);
       ctx.setLensSessionIdentifier(sessionHandle.getPublicId().toString());
       rewriteAndSelect(ctx);
-
       return executeTimeoutInternal(sessionHandle, ctx, timeoutMillis, qconf);
     } finally {
       release(sessionHandle);
@@ -3292,6 +3291,30 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
       ? new HealthStatus(isHealthy, "QueryExecution service is healthy.")
       : new HealthStatus(isHealthy, details.toString());
   }
+    /*
+   * (non-Javadoc)
+   *
+   * @see org.apache.lens.server.api.query.QueryExecutionService#getHttpResultSet(org.apache.lens.api.LensSessionHandle,
+   * org.apache.lens.api.query.QueryHandle)
+   */
+
+  @Override
+  public Response getAuthorizedHttpResultSet(LensSessionHandle sessionHandle, QueryHandle queryHandle,
+    String userPrincipalName) throws LensException {
+
+    String loggedInUser;
+    if(sessionHandle != null) {
+      validateAndAuthorizeSession(sessionHandle, userPrincipalName);
+      loggedInUser = getSession(sessionHandle).getLoggedInUser();
+    } else {
+      loggedInUser = userPrincipalName;
+    }
+    final QueryContext ctx = getUpdatedQueryContext(sessionHandle, queryHandle);
+    if (!loggedInUser.equals(ctx.getSubmittedUser())) {
+      throw new PrivilegeException("Query", queryHandle.toString(), "download");
+    }
+    return getResponse(sessionHandle, queryHandle, ctx);
+  }
   /*
    * (non-Javadoc)
    *
@@ -3301,14 +3324,16 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
 
   @Override
   public Response getHttpResultSet(LensSessionHandle sessionHandle, QueryHandle queryHandle) throws LensException {
+    final QueryContext ctx = getUpdatedQueryContext(sessionHandle, queryHandle);
+    return getResponse(sessionHandle, queryHandle, ctx);
+  }
 
+  private Response getResponse(LensSessionHandle sessionHandle, final QueryHandle queryHandle, final QueryContext ctx) throws LensException {
 
     LensResultSet resultSet = getResultset(queryHandle);
     if (!resultSet.isHttpResultAvailable()) {
       throw new NotFoundException("http result not available");
     }
-
-
 
     final Path resultPath = new Path(resultSet.getOutputPath());
     try {
@@ -3319,16 +3344,6 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
     } catch (IOException e) {
       throw new LensException(e);
     }
-    final QueryContext ctx = getUpdatedQueryContext(sessionHandle, queryHandle);
-
-
-    String loggedInUser = getSession(sessionHandle).getLoggedInUser();
-    if(true) {
-      if (!loggedInUser.equals(ctx.getSubmittedUser())) {
-        throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-      }
-    }
-
     String resultFSReadUrl = conf.get(RESULT_FS_READ_URL);
     if (resultFSReadUrl != null) {
       try {

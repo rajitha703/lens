@@ -19,11 +19,11 @@
 package org.apache.lens.server.query;
 
 import static org.apache.lens.api.query.SubmitOp.*;
+import static org.apache.lens.server.api.LensConfConstants.ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK;
 import static org.apache.lens.server.error.LensServerErrorCode.INVALID_HANDLE;
 import static org.apache.lens.server.error.LensServerErrorCode.NULL_OR_EMPTY_OR_BLANK_QUERY;
 
 import java.security.Principal;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -651,24 +651,15 @@ public class QueryServiceResource {
   @Produces({MediaType.APPLICATION_OCTET_STREAM})
   public Response getHttpResultSet(@QueryParam("sessionid") LensSessionHandle sessionid,
     @PathParam("queryHandle") String queryHandle) throws LensException {
-//    if (AUTH_SCHEME.isPresent()) {
-//      Principal userPrincipal = securityContext.getUserPrincipal();
-//      String userPrincipalName = userPrincipal.getName();
-//      Collection<String> allowedProxyUsers = CONF.getTrimmedStringCollection(LensConfConstants.ALLOWED_PROXY_USERS);
-//      if (allowedProxyUsers.contains(userPrincipalName)) {
-//        queryServer
-//        String loggedInUser = queryServer.conf.get(LensConfConstants.SESSION_LOGGEDIN_USER);
-//        if (StringUtils.isBlank(loggedInUser)) {
-//          throw new BadRequestException(LensConfConstants.SESSION_LOGGEDIN_USER + " is required in sessionconf");
-//        }
-//        username = loggedInUser;
-//        conf.put(LensConfConstants.SESSION_PROXY_USER, userPrincipalName);
-//      } else {
-//        username = userPrincipalName;
-//      }
-//      password = "";
-//    }
-    return queryServer.getHttpResultSet(sessionid, getQueryHandle(queryHandle));
+
+    Principal userPrincipal = securityContext.getUserPrincipal();
+    String userPrincipalName = userPrincipal.getName();
+    if (CONF.getBoolean(ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK,
+      LensConfConstants.DEFAULT_ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK)) {
+      return queryServer.getAuthorizedHttpResultSet(sessionid, getQueryHandle(queryHandle), userPrincipalName);
+    } else {
+      return queryServer.getHttpResultSet(sessionid, getQueryHandle(queryHandle));
+    }
   }
 
   /**

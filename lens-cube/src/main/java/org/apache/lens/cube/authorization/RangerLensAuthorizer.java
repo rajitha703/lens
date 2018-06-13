@@ -33,6 +33,8 @@ import org.apache.ranger.plugin.service.RangerBasePlugin;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+// Apache Ranger implementation for Authorization in Lens
+
 @Slf4j
 public class RangerLensAuthorizer implements IAuthorizer {
 
@@ -50,21 +52,25 @@ public class RangerLensAuthorizer implements IAuthorizer {
   }
 
   @Override
-  public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, Set<String> userGroups) {
+  public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
+    Set<String> userGroups) {
 
-    log.info("==> Lens Ranger Authorize : "+ userGroups + " Accesstype : "+ accessType + "Object : "+
-      lensPrivilegeObject.getCubeOrFactOrDim());
+    log.info("==> Lens Ranger Authorize Authorize User : "+ user + "User groups : " + userGroups + " Accesstype : "+ accessType + "Object : "+
+      lensPrivilegeObject.getTable());
 
     RangerLensResource rangerLensResource = getLensResource(lensPrivilegeObject);
 
-    RangerAccessRequest rangerAccessRequest = new RangerAccessRequestImpl(rangerLensResource,
-      accessType.toString().toLowerCase(), null, userGroups);
+    boolean res = false;
 
-    RangerAccessResult rangerAccessResult = getRangerBasePlugin().isAccessAllowed(rangerAccessRequest);
-    boolean res =  rangerAccessResult != null && rangerAccessResult.getIsAllowed();
+    if(rangerLensResource != null) {
+      RangerAccessRequest rangerAccessRequest = new RangerAccessRequestImpl(rangerLensResource,
+        accessType.toString().toLowerCase(), user, userGroups);
+      RangerAccessResult rangerAccessResult = getRangerBasePlugin().isAccessAllowed(rangerAccessRequest);
+      res = rangerAccessResult != null && rangerAccessResult.getIsAllowed();
+    }
 
-    log.info("<== Lens Ranger Authorize : "+ userGroups + " Accesstype : "+ accessType + "Object : "+
-      lensPrivilegeObject.getCubeOrFactOrDim() + " Access : "+ res);
+    log.info("<== Lens Ranger Authorize User : "+ user + " User groups : " + userGroups + " Accesstype : "+ accessType + " Object : "+
+      lensPrivilegeObject.getTable() + " Access : "+ res);
 
     return res;
   }
@@ -74,17 +80,17 @@ public class RangerLensAuthorizer implements IAuthorizer {
     RangerLensResource lensResource = null;
     switch (lensPrivilegeObject.getObjectType()) {
     case COLUMN:
-      lensResource = new RangerLensResource(LensObjectType.COLUMN, lensPrivilegeObject.getCubeOrFactOrDim(),
+      lensResource = new RangerLensResource(LensObjectType.COLUMN, lensPrivilegeObject.getTable(),
         lensPrivilegeObject.getColumn());
       break;
-
-    case DIMENSION:
+    case DATABASE:
     case CUBE:
-    case DIMENSIONTABLE:
-    case STORAGE:
-    case SEGMENTATION:
-    case FACT:
-      lensResource = new RangerLensResource(LensObjectType.TABLE, lensPrivilegeObject.getCubeOrFactOrDim(), null);
+//    case DIMENSION:
+//    case DIMENSIONTABLE:
+//    case STORAGE:
+//    case SEGMENTATION:
+//    case FACT:
+      lensResource = new RangerLensResource(LensObjectType.TABLE, lensPrivilegeObject.getTable(), null);
       break;
 
     case NONE:

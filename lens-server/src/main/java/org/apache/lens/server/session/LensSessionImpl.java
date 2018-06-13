@@ -464,8 +464,7 @@ public class LensSessionImpl extends HiveSessionImpl implements AutoCloseable {
   }
 
   public Set<String> getLoggedInUserGroups() {
-    return new HashSet<>(Arrays.asList(getHiveConf().get(LensConfConstants.SESSION_USER_GROUPS).replaceAll("\\s", "")
-      .split(",")));
+      return (Set<String>) getHiveConf().getTrimmedStringCollection(LensConfConstants.SESSION_USER_GROUPS);
   }
 
   public String getClusterUser() {

@@ -24,16 +24,16 @@ import lombok.Data;
 public class LensPrivilegeObject {
 
   private final LensPrivilegeObjectType objectType;
-  private final String cubeOrFactOrDim;
+  private final String table;
   private final String column;
 
-  public LensPrivilegeObject(LensPrivilegeObjectType objectType, String cubeOrFactOrDim) {
-    this(objectType, cubeOrFactOrDim, null);
+  public LensPrivilegeObject(LensPrivilegeObjectType objectType, String table) {
+    this(objectType, table, null);
   }
 
-  public LensPrivilegeObject(LensPrivilegeObjectType objectType, String cubeOrFactOrDim, String column) {
+  public LensPrivilegeObject(LensPrivilegeObjectType objectType, String table, String column) {
     this.objectType = objectType;
-    this.cubeOrFactOrDim = cubeOrFactOrDim;
+    this.table = table;
     this.column = column;
   }
 

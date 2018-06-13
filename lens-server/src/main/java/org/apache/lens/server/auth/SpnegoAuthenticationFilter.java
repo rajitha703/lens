@@ -152,11 +152,7 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
 
       Subject.doAs(serviceSubject, new ValidateServiceTicketAction(gssContext, serviceTicket));
 
-<<<<<<< HEAD
-      GSSName srcName = gssContext.getSrcName();
-=======
       final GSSName srcName = gssContext.getSrcName();
->>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
       if (srcName == null) {
         throw toNotAuthorizedException(null, getFaultResponse());
       }
@@ -186,19 +182,11 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
     }
   }
 
-<<<<<<< HEAD
-  protected SecurityContext createSecurityContext(String simpleUserName, String authScheme) {
-    return new LensSecurityContext(simpleUserName, authScheme);
-  }
-
-  protected GSSContext createGSSContext() throws GSSException {
-=======
   private SecurityContext createSecurityContext(String simpleUserName, String authScheme) {
     return new LensSecurityContext(simpleUserName, authScheme);
   }
 
   private GSSContext createGSSContext() throws GSSException {
->>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     Oid oid = new Oid(SPNEGO_OID);
     GSSManager gssManager = GSSManager.getInstance();
 
@@ -209,11 +197,7 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
             oid, null, GSSContext.DEFAULT_LIFETIME);
   }
 
-<<<<<<< HEAD
-  protected Subject loginAndGetSubject() throws LoginException {
-=======
   private Subject loginAndGetSubject() throws LoginException {
->>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
 
     // The login without a callback can work if
     // - Kerberos keytabs are used with a principal name set in the JAAS config
@@ -244,11 +228,7 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
     return Response.status(401).header(HttpHeaders.WWW_AUTHENTICATE, AuthScheme.NEGOTIATE.getName()).build();
   }
 
-<<<<<<< HEAD
-  protected String getCompleteServicePrincipalName() {
-=======
   private String getCompleteServicePrincipalName() {
->>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     String name = servicePrincipalName == null
             ? "HTTP/" + uriInfo.getBaseUri().getHost() : servicePrincipalName;
     if (realm != null) {
@@ -293,11 +273,7 @@ public class SpnegoAuthenticationFilter implements ContainerRequestFilter {
     };
   }
 
-<<<<<<< HEAD
-  static WebApplicationException toNotAuthorizedException(Throwable cause, Response resp) {
-=======
   private WebApplicationException toNotAuthorizedException(Throwable cause, Response resp) {
->>>>>>> 3b10f16cd83e02c6ec67b9d83f2ac513091dddbf
     return new NotAuthorizedException(resp, cause);
   }
 

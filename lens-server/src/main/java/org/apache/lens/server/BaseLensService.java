@@ -20,6 +20,7 @@ package org.apache.lens.server;
 
 import static org.apache.lens.server.error.LensServerErrorCode.SESSION_CLOSED;
 import static org.apache.lens.server.error.LensServerErrorCode.SESSION_ID_NOT_PROVIDED;
+import static org.apache.lens.server.error.LensServerErrorCode.SESSION_UNAUTHORIZED;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -209,7 +210,6 @@ public abstract class BaseLensService extends CompositeService implements Extern
         sessionConf.put(LensConfConstants.SESSION_LOGGEDIN_USER, username);
 
         Map<String, String> userGroupConfig = UserGroupLoaderFactory.getUserGroupConfig(username);
-        //@TODO If proxy user is present, need to read that
         UtilityMethods.mergeMaps(sessionConf, userGroupConfig, false);
         if (sessionConf.get(LensConfConstants.SESSION_CLUSTER_USER) == null) {
           log.info("Didn't get cluster user from user config loader. Setting same as logged in user: {}", username);
@@ -577,6 +577,27 @@ public abstract class BaseLensService extends CompositeService implements Extern
     }
   }
 
+
+  @Override
+  public void validateAndAuthorizeSession(LensSessionHandle handle, String userPrincipalName) throws LensException {
+    if (handle == null) {
+      throw new LensException(SESSION_ID_NOT_PROVIDED.getLensErrorInfo());
+    }
+    LensSessionImpl session;
+    try {
+      session = getSession(handle);
+    } catch (ClientErrorException e) {
+      throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle, e);
+    }
+    if (!session.isActive() || session.isMarkedForClose()) {
+      throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle);
+    }
+
+    if(!session.getLoggedInUser().equals(userPrincipalName)) {
+      throw new LensException(SESSION_UNAUTHORIZED.getLensErrorInfo(), handle);
+    }
+  }
+
   public class SessionContext implements AutoCloseable {
     private LensSessionHandle sessionHandle;
 
@@ -603,10 +624,6 @@ public abstract class BaseLensService extends CompositeService implements Extern
       userSessionInfoList.add(sessionInfo);
     }
     return userSessionInfoList;
-  }
-
-  public String getSessionUserName(LensSessionHandle lensSessionHandle) {
-    return getSession(lensSessionHandle).getLoggedInUser();
   }
 }
 

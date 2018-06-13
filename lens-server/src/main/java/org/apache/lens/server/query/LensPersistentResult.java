@@ -22,12 +22,14 @@ import java.io.IOException;
 
 import org.apache.lens.api.query.QueryHandle;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.api.authorization.IAuthorizer;
 import org.apache.lens.server.api.driver.LensResultSetMetadata;
 import org.apache.lens.server.api.driver.PersistentResultSet;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.DownloadResultUrlProvider;
 import org.apache.lens.server.api.query.FinishedLensQuery;
 import org.apache.lens.server.api.query.QueryContext;
+import org.apache.lens.server.api.query.ResultUrlSetter;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -67,8 +69,7 @@ public class LensPersistentResult extends PersistentResultSet {
    * @param conf        the lens server conf
    */
   public LensPersistentResult(QueryHandle queryHandle, LensResultSetMetadata metadata, String outputPath, Integer
-    numRows, Long fileSize,
-    Configuration conf) {
+    numRows, Long fileSize, Configuration conf) {
     this.metadata = metadata;
     this.outputPath = outputPath;
     this.numRows = numRows;

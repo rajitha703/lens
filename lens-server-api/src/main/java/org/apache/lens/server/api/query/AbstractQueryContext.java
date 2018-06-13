@@ -103,12 +103,6 @@ public abstract class AbstractQueryContext implements Serializable {
   private final String submittedUser; // Logged in user.
 
   /**
-   * The submitted user groups.
-   */
-  @Getter
-  private final Set<String> submittedUserGroups; // Logged in user.
-
-  /**
    * The lens session identifier.
    */
   @Getter
@@ -158,7 +152,6 @@ public abstract class AbstractQueryContext implements Serializable {
     this.lensConf = qconf;
     this.conf = conf;
     this.submittedUser = user;
-    this.submittedUserGroups = userGroups;
     // we are setting selectedDriverQuery as user query only when the drivers size is 1
     // if drivers size is more than the driver query will be set after selection over drivers
     if (drivers != null && drivers.size() == 1) {

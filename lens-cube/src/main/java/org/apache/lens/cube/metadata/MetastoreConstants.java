@@ -52,7 +52,7 @@ public final class MetastoreConstants {
   public static final String CUBE_NAME_SFX = ".cubename";
   public static final String SOURCE_NAME_SFX = ".source";
   public static final String VALID_COLUMNS_SFX = ".valid.columns";
-  public static final String SENSITIVE_COLUMNS_SFX = ".sensitive.columns";
+  public static final String RESTRICTED_COLUMNS_SFX = ".restricted.columns";
   public static final String FACT_AGGREGATED_PROPERTY = "cube.fact.is.aggregated";
   public static final String FACT_ABSOLUTE_START_TIME = "cube.fact.absolute.start.time";
   public static final String FACT_RELATIVE_START_TIME = "cube.fact.relative.start.time";
@@ -123,7 +123,6 @@ public final class MetastoreConstants {
   // storage constants
   public static final String STORAGE_ENTITY_PFX = "storage.";
   public static final String STORAGE_PFX = "cube.storagetable.";
-
   public static final String PARTITION_TIMELINE_CACHE = "partition.timeline.cache.";
   public static final String STORAGE_CLASS = "storage.class";
   public static final String TIME_PART_COLUMNS = "cube.storagetable.time.partcols";

@@ -23,7 +23,8 @@ import java.util.Set;
 public class DefaultAuthorizer implements IAuthorizer {
 
   @Override
-  public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType,  Set<String> userGroups) {
-    return false;
+  public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
+    Set<String> userGroups) {
+    return true;
   }
 }

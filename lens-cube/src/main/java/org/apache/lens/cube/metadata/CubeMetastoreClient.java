@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.lens.api.metastore.*;
 
+import org.apache.lens.cube.authorization.AuthorizationUtil;
 import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.Storage.LatestInfo;
 import org.apache.lens.cube.metadata.Storage.LatestPartColumnInfo;
@@ -144,10 +145,10 @@ public class CubeMetastoreClient {
     return isDataCompletenessCheckEnabled;
   }
 
-  public boolean isAuthorizationEnabled() {
+  private boolean isAuthorizationEnabled() {
     if (isAuthorizationCheckEnabled == null) {
-      isAuthorizationCheckEnabled = config.getBoolean(LensConfConstants.ENABLE_AUTHORIZATION_CHECK,
-        LensConfConstants.DEFAULT_ENABLE_AUTHORIZATION_CHECK);
+      isAuthorizationCheckEnabled = config.getBoolean(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK,
+        LensConfConstants.DEFAULT_ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK);
     }
     return isAuthorizationCheckEnabled;
   }
@@ -176,7 +177,7 @@ public class CubeMetastoreClient {
    *
    * @param cube             Cube to get latest date of
    * @param timeDimension    time dimension
-   * @return latest date among all facts of cube in timeDimension
+   * @return                 latest date among all facts of cube in timeDimension
    * @throws HiveException
    * @throws LensException
    */
@@ -247,13 +248,11 @@ public class CubeMetastoreClient {
 
   public void updatePartition(String fact, String storageName, Partition partition, UpdatePeriod updatePeriod)
     throws HiveException, InvalidOperationException, LensException {
-
     Map<UpdatePeriod, List<Partition>> updatePeriodListMap = new HashMap<>();
     updatePeriodListMap.put(updatePeriod, Collections.singletonList(partition));
     updatePartitions(fact, storageName, updatePeriodListMap);
   }
 
-  //TODO
   public void updatePartitions(String factOrDimtableName, String storageName,
     Map<UpdatePeriod, List<Partition>> partitions) throws HiveException, InvalidOperationException, LensException {
     for (Map.Entry entry : partitions.entrySet()) {
@@ -334,61 +333,48 @@ public class CubeMetastoreClient {
     Map<String, Set<UpdatePeriod>> storageAggregatePeriods, double weight, Map<String, String> properties,
     Map<String, StorageTableDesc> storageTableDescs, Map<String, Map<UpdatePeriod, String>> storageUpdatePeriodMap)
     throws LensException {
-    createCubeFactTable(cubeName, factName, columns, storageAggregatePeriods, weight, properties, storageTableDescs,
-      storageUpdatePeriodMap, null);
-  }
-
-  public void createCubeFactTable(String cubeName, String factName, List<FieldSchema> columns,
-    Map<String, Set<UpdatePeriod>> storageAggregatePeriods, double weight, Map<String, String> properties,
-    Map<String, StorageTableDesc> storageTableDescs, Map<String, Map<UpdatePeriod, String>> storageUpdatePeriodMap,
-    Set<String> sessionUserGroups)
-    throws LensException {
+    isAuthorized();
     CubeFactTable factTable = new CubeFactTable(cubeName, factName, columns, storageAggregatePeriods, weight,
       properties, storageUpdatePeriodMap);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(
-      LensPrivilegeObject.LensPrivilegeObjectType.FACT, factName), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
     createCubeTable(factTable, storageTableDescs);
     // do a get to update cache
     getFactTable(factName);
 
   }
 
-  public <T extends Equals & HashCode & ToString> void createEntity(T entity, Set<String> sessionUserGroups)
+  public <T extends Equals & HashCode & ToString> void createEntity(T entity)
     throws LensException {
     if (entity instanceof XStorage) {
-      createStorage((XStorage) entity, sessionUserGroups);
+      createStorage((XStorage) entity);
     } else if (entity instanceof XCube) {
-      createCube((XCube) entity, sessionUserGroups);
+      createCube((XCube) entity);
     } else if (entity instanceof XDimension) {
-      createDimension((XDimension) entity, sessionUserGroups);
+      createDimension((XDimension) entity);
     } else if (entity instanceof XFact) {
-      createFactTable((XFact) entity, sessionUserGroups);
+      createFactTable((XFact) entity);
     } else if (entity instanceof XDimensionTable) {
-      createCubeDimensionTable((XDimensionTable) entity, sessionUserGroups);
+      createCubeDimensionTable((XDimensionTable) entity);
     } else if (entity instanceof XSegmentation) {
-      createSegmentation((XSegmentation) entity, sessionUserGroups);
+      createSegmentation((XSegmentation) entity);
     } else {
-      throw new LensException("Unable to create entity " + entity + " as it's unrecognizable: " + entity.getClass());
+      throw new LensException("Unable to create entity " + entity + " as it's unrecognizable: " +entity.getClass());
     }
   }
 
-  public <T extends Equals & HashCode & ToString> void updateEntity(String name, T entity,
-    Set<String> sessionUserGroups)
+  public <T extends Equals & HashCode & ToString> void updateEntity(String name, T entity)
     throws LensException, HiveException {
     if (entity instanceof XStorage) {
-      alterStorage((XStorage) entity, sessionUserGroups);
+      alterStorage((XStorage) entity);
     } else if (entity instanceof XCube) {
-      alterCube((XCube) entity, sessionUserGroups);
+      alterCube((XCube)entity);
     } else if (entity instanceof XDimension) {
-      alterDimension((XDimension) entity, sessionUserGroups);
+      alterDimension((XDimension) entity);
     } else if (entity instanceof XFact) {
-      alterCubeFactTable((XFact) entity, sessionUserGroups);
+      alterCubeFactTable((XFact) entity);
     } else if (entity instanceof XDimensionTable) {
-      alterCubeDimensionTable((XDimensionTable) entity, sessionUserGroups);
+      alterCubeDimensionTable((XDimensionTable) entity);
     } else if (entity instanceof XSegmentation) {
-      alterSegmentation((XSegmentation) entity, sessionUserGroups);
+      alterSegmentation((XSegmentation) entity);
     } else {
       throw new LensException("Unable to alter entity " + entity + " as it's unrecognizable: " + entity.getClass());
     }
@@ -401,12 +387,12 @@ public class CubeMetastoreClient {
     return props;
   }
 
-  public void createFactTable(XFact fact, Set<String> sessionUserGroups) throws LensException {
+  public void createFactTable(XFact fact) throws LensException {
 
     if (fact instanceof XVirtualFactTable) {
       XVirtualFactTable xvf = (XVirtualFactTable) fact;
       createVirtualFactTable(xvf.getCubeName(), xvf.getName(), xvf.getSourceFactName(),
-        xvf.getWeight(), JAXBUtils.mapFromXProperties(xvf.getProperties()), sessionUserGroups);
+        xvf.getWeight(), JAXBUtils.mapFromXProperties(xvf.getProperties()));
     } else {
       XFactTable xf = (XFactTable) fact;
       createCubeFactTable(fact.getCubeName(),
@@ -416,22 +402,14 @@ public class CubeMetastoreClient {
         xf.getWeight(),
         addFactColStartTimePropertyToFactProperties(xf),
         JAXBUtils.tableDescPrefixMapFromXStorageTables(xf.getStorageTables()),
-        JAXBUtils.storageTablePrefixMapOfStorage(xf.getStorageTables()), sessionUserGroups);
+        JAXBUtils.storageTablePrefixMapOfStorage(xf.getStorageTables()));
     }
   }
 
   public void createVirtualFactTable(String cubeName, String virtualFactName, String sourceFactName, Double weight,
     Map<String, String> properties) throws LensException {
-    createVirtualFactTable(cubeName, virtualFactName, sourceFactName, weight, properties, null);
-  }
-
-  public void createVirtualFactTable(String cubeName, String virtualFactName, String sourceFactName, Double weight,
-    Map<String, String> properties, Set<String> sessionUserGroups) throws LensException {
     FactTable sourceFact = getFactTable(sourceFactName);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.FACT, sourceFact.getName()), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     Optional<Double> optionalWeight = Optional.fromNullable(weight);
 
     CubeVirtualFactTable factTable = new CubeVirtualFactTable(cubeName, virtualFactName,
@@ -456,7 +434,7 @@ public class CubeMetastoreClient {
      * @param fact      fact
      * @param storage   storage
      * @param partCol   part column
-     * @return true if all the timelines for fact-storage table are empty for all valid update periods.
+     * @return          true if all the timelines for fact-storage table are empty for all valid update periods.
      * @throws HiveException
      * @throws LensException
      */
@@ -482,7 +460,7 @@ public class CubeMetastoreClient {
      *
      * @param fact          fact
      * @param storage       storage
-     * @return all timelines for fact-storage pair. Load from properties/all partitions if needed.
+     * @return              all timelines for fact-storage pair. Load from properties/all partitions if needed.
      * @throws HiveException
      * @throws LensException
      */
@@ -490,7 +468,7 @@ public class CubeMetastoreClient {
       throws HiveException, LensException {
       // SUSPEND CHECKSTYLE CHECK DoubleCheckedLockingCheck
       // Unique key for the timeline cache, based on storage and fact.
-      String timeLineKey = (Storage.getPrefix(storage) + fact).toLowerCase();
+      String timeLineKey = (Storage.getPrefix(storage)+ fact).toLowerCase();
       synchronized (this) {
         if (get(timeLineKey) == null) {
           loadTimeLines(fact, storage, timeLineKey);
@@ -759,34 +737,21 @@ public class CubeMetastoreClient {
     }
   }
 
-  public void createStorage(XStorage storage, Set<String> sessionUserGroups) throws LensException {
-    createStorage(JAXBUtils.storageFromXStorage(storage), sessionUserGroups);
+  public void createStorage(XStorage storage) throws LensException {
+    createStorage(JAXBUtils.storageFromXStorage(storage));
   }
 
   public void createStorage(Storage storage) throws LensException {
-    this.createStorage(storage, null);
-  }
-
-  public void createStorage(Storage storage, Set<String> sessionUserGroups) throws LensException {
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.STORAGE, storage.getName()), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     createCubeHiveTable(storage);
     // do a get to update cache
     getStorage(storage.getName());
   }
 
-
-  public void createCube(XCube cube, Set<String> sessionUserGroups) throws LensException {
+  public void createCube(XCube cube) throws LensException {
     Cube parent = cube instanceof XDerivedCube ? (Cube) getCube(
       ((XDerivedCube) cube).getParent()) : null;
-    CubeInterface cube1 = JAXBUtils.hiveCubeFromXCube(cube, parent);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.CUBE, cube1.getName()), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
-    createCube(cube1);
+    createCube(JAXBUtils.hiveCubeFromXCube(cube, parent));
   }
 
   /**
@@ -796,6 +761,7 @@ public class CubeMetastoreClient {
    * @throws LensException
    */
   public void createCube(CubeInterface cube) throws LensException {
+    isAuthorized();
     createCubeHiveTable((AbstractCubeTable) cube);
     // do a get to update cache
     getCube(cube.getName());
@@ -873,17 +839,13 @@ public class CubeMetastoreClient {
    * @throws LensException
    */
   public void createDimension(String name, Set<CubeDimAttribute> attributes, Map<String, String> properties,
-    double weight, Set<String> sessionUserGroups) throws LensException {
+    double weight) throws LensException {
     Dimension dim = new Dimension(name, attributes, properties, weight);
-    createDimension(dim, sessionUserGroups);
+    createDimension(dim);
   }
 
-  public void createDimension(XDimension dim, Set<String> sessionUserGroups) throws LensException {
-    createDimension(JAXBUtils.dimensionFromXDimension(dim), sessionUserGroups);
-  }
-
-  public void createDimension(Dimension dim) throws LensException {
-    createDimension(dim, null);
+  public void createDimension(XDimension dim) throws LensException {
+    createDimension(JAXBUtils.dimensionFromXDimension(dim));
   }
 
   /**
@@ -892,11 +854,8 @@ public class CubeMetastoreClient {
    * @param dim the {@link Dimension} object.
    * @throws LensException
    */
-  public void createDimension(Dimension dim, Set<String> sessionUserGroups) throws LensException {
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSION, dim.getName()), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+  public void createDimension(Dimension dim) throws LensException {
+    isAuthorized();
     createCubeHiveTable(dim);
     // do a get to update cache
     getDimension(dim.getName());
@@ -933,28 +892,13 @@ public class CubeMetastoreClient {
    */
   public void createCubeFactTable(String cubeName, String factName, List<FieldSchema> columns,
     Map<String, Set<UpdatePeriod>> storageAggregatePeriods, double weight, Map<String, String> properties,
-    Map<String, StorageTableDesc> storageTableDescs, Set<String> sessionUserGroups) throws LensException {
+    Map<String, StorageTableDesc> storageTableDescs) throws LensException {
     CubeFactTable factTable =
       new CubeFactTable(cubeName, factName, columns, storageAggregatePeriods, weight, properties);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(
-      LensPrivilegeObject.LensPrivilegeObjectType.FACT, factName), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     createCubeTable(factTable, storageTableDescs);
     // do a get to update cache
     getFactTable(factName);
-  }
-
-  public void createCubeFactTable(String cubeName, String factName, List<FieldSchema> columns,
-    Map<String, Set<UpdatePeriod>> storageAggregatePeriods, double weight, Map<String, String> properties,
-    Map<String, StorageTableDesc> storageTableDescs) throws LensException {
-    createCubeFactTable(cubeName, factName, columns, storageAggregatePeriods, weight, properties, storageTableDescs,
-      new HashSet<String>());
-  }
-
-  public void createSegmentation(String baseCubeName, String segmentationName, Set<Segment> segments,
-    double weight, Map<String, String> properties) throws LensException {
-    this.createSegmentation(baseCubeName, segmentationName, segments, weight, properties, null);
   }
 
   /**
@@ -967,15 +911,15 @@ public class CubeMetastoreClient {
    * @throws LensException
    */
   public void createSegmentation(String baseCubeName, String segmentationName, Set<Segment> segments,
-    double weight, Map<String, String> properties, Set<String> sessionUserGroups) throws LensException {
+    double weight, Map<String, String> properties) throws LensException {
     Segmentation cubeSeg =
       new Segmentation(baseCubeName, segmentationName, segments, weight, properties);
-    createSegmentation(cubeSeg, sessionUserGroups);
+    createSegmentation(cubeSeg);
     // do a get to update cache
     getSegmentation(segmentationName);
   }
 
-  public void createCubeDimensionTable(XDimensionTable xDimTable, Set<String> sessionUserGroups) throws LensException {
+  public void createCubeDimensionTable(XDimensionTable xDimTable) throws LensException {
     List<FieldSchema> columns = JAXBUtils.fieldSchemaListFromColumns(xDimTable.getColumns());
     Map<String, UpdatePeriod> updatePeriodMap =
       JAXBUtils.dumpPeriodsFromStorageTables(xDimTable.getStorageTables());
@@ -985,7 +929,7 @@ public class CubeMetastoreClient {
       xDimTable.getStorageTables());
     log.info("# Columns: " + columns);
     createCubeDimensionTable(xDimTable.getDimensionName(), xDimTable.getTableName(), columns, xDimTable.getWeight(),
-      updatePeriodMap, properties, storageDesc, sessionUserGroups);
+      updatePeriodMap, properties, storageDesc);
   }
 
   /**
@@ -1010,13 +954,6 @@ public class CubeMetastoreClient {
     getDimensionTable(dimTblName);
   }
 
-
-  public void createCubeDimensionTable(String dimName, String dimTblName, List<FieldSchema> columns, double weight,
-    Map<String, UpdatePeriod> dumpPeriods, Map<String, String> properties,
-    Map<String, StorageTableDesc> storageTableDescs) throws LensException {
-    createCubeDimensionTable(dimName, dimTblName, columns, weight, dumpPeriods, properties, storageTableDescs, null);
-  }
-
   /**
    * Create a cube dimension table
    *
@@ -1031,12 +968,9 @@ public class CubeMetastoreClient {
    */
   public void createCubeDimensionTable(String dimName, String dimTblName, List<FieldSchema> columns, double weight,
     Map<String, UpdatePeriod> dumpPeriods, Map<String, String> properties,
-    Map<String, StorageTableDesc> storageTableDescs, Set<String> sessionUserGroups) throws LensException {
+    Map<String, StorageTableDesc> storageTableDescs) throws LensException {
+    isAuthorized();
     CubeDimensionTable dimTable = new CubeDimensionTable(dimName, dimTblName, columns, weight, dumpPeriods, properties);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSIONTABLE, dimTable.getName()), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
     createCubeTable(dimTable, storageTableDescs);
     // do a get to update cache
     getDimensionTable(dimTblName);
@@ -1062,30 +996,28 @@ public class CubeMetastoreClient {
     }
   }
 
-  public void createSegmentation(XSegmentation cubeSeg, Set<String> sessionUserGroups) throws LensException {
+  public void createSegmentation(XSegmentation cubeSeg) throws LensException {
     createSegmentation(
       cubeSeg.getCubeName(),
       cubeSeg.getName(),
       JAXBUtils.segmentsFromXSegments(cubeSeg.getSegements()),
       cubeSeg.getWeight(),
-      JAXBUtils.mapFromXProperties(cubeSeg.getProperties()),
-      sessionUserGroups);
+      JAXBUtils.mapFromXProperties(cubeSeg.getProperties()));
   }
 
-  public void createSegmentation(Segmentation cubeSeg, Set<String> sessionUserGroups)
+  public void createSegmentation(Segmentation cubeSeg)
     throws LensException {
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.SEGMENTATION, cubeSeg.getName()), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     // create virtual cube table in metastore
     createCubeHiveTable(cubeSeg);
   }
 
-  public void addStorage(CubeFactTable fact, String storage, Set<UpdatePeriod> updatePeriods,
-    Map<String, StorageTableDesc> storageTableDescs, Map<UpdatePeriod, String> updatePeriodStoragePrefix)
-    throws LensException {
-    this.addStorage(fact, storage, updatePeriods, storageTableDescs, updatePeriodStoragePrefix, null);
+  private void isAuthorized() throws LensException {
+    if(isAuthorizationCheckEnabled) {
+      String currentdb = SessionState.get().getCurrentDatabase();
+      AuthorizationUtil.isAuthorized(getAuthorizer(), currentdb,
+        LensPrivilegeObject.LensPrivilegeObjectType.DATABASE, ActionType.UPDATE, getConf());
+    }
   }
 
   /**
@@ -1098,13 +1030,9 @@ public class CubeMetastoreClient {
    * @throws LensException
    */
   public void addStorage(CubeFactTable fact, String storage, Set<UpdatePeriod> updatePeriods,
-    Map<String, StorageTableDesc> storageTableDescs, Map<UpdatePeriod, String> updatePeriodStoragePrefix,
-    Set<String> sessionUserGroups)
+    Map<String, StorageTableDesc> storageTableDescs, Map<UpdatePeriod, String> updatePeriodStoragePrefix)
     throws LensException {
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.FACT, fact.getName()), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     fact.addStorage(storage, updatePeriods, updatePeriodStoragePrefix);
     for (Map.Entry entry : storageTableDescs.entrySet()) {
       createOrAlterStorageHiveTable(getTableWithTypeFailFast(fact.getName(), CubeTableType.FACT),
@@ -1112,11 +1040,6 @@ public class CubeMetastoreClient {
     }
     alterCubeTable(fact.getName(), getTableWithTypeFailFast(fact.getName(), CubeTableType.FACT), fact);
     updateFactCache(fact.getName());
-  }
-
-  public void addStorage(CubeDimensionTable dim, String storage, UpdatePeriod dumpPeriod,
-    StorageTableDesc storageTableDesc) throws LensException {
-    this.addStorage(dim, storage, dumpPeriod, storageTableDesc, null);
   }
 
   /**
@@ -1129,11 +1052,8 @@ public class CubeMetastoreClient {
    * @throws LensException
    */
   public void addStorage(CubeDimensionTable dim, String storage, UpdatePeriod dumpPeriod,
-    StorageTableDesc storageTableDesc, Set<String> sessionUserGroups) throws LensException {
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSIONTABLE, dim.getName()), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    StorageTableDesc storageTableDesc) throws LensException {
+    isAuthorized();
     dim.alterSnapshotDumpPeriod(storage, dumpPeriod);
     createOrAlterStorageHiveTable(getTableWithTypeFailFast(dim.getName(), CubeTableType.DIM_TABLE), storage,
       storageTableDesc);
@@ -2591,17 +2511,9 @@ public class CubeMetastoreClient {
   }
 
   public void alterCube(XCube cube) throws HiveException, LensException {
-    this.alterCube(cube, null);
-  }
-
-  public void alterCube(XCube cube, Set<String> sessionUserGroups) throws HiveException, LensException {
     Cube parent = cube instanceof XDerivedCube ? (Cube) getCube(
       ((XDerivedCube) cube).getParent()) : null;
-    alterCube(cube.getName(), JAXBUtils.hiveCubeFromXCube(cube, parent), sessionUserGroups);
-  }
-
-  public void alterCube(String cubeName, CubeInterface cube) throws HiveException, LensException {
-    this.alterCube(cubeName, cube, null);
+    alterCube(cube.getName(), JAXBUtils.hiveCubeFromXCube(cube, parent));
   }
 
   /**
@@ -2611,21 +2523,14 @@ public class CubeMetastoreClient {
    * @param cube     The new cube definition {@link Cube} or {@link DerivedCube}
    * @throws HiveException
    */
-  public void alterCube(String cubeName, CubeInterface cube, Set<String> sessionUserGroups)
+  public void alterCube(String cubeName, CubeInterface cube)
     throws HiveException, LensException {
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.CUBE, cube.getName()), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     Table cubeTbl = getTableWithTypeFailFast(cubeName, CubeTableType.CUBE);
     alterCubeTable(cubeName, cubeTbl, (AbstractCubeTable) cube);
     if (enableCaching) {
       allCubes.put(cubeName.trim().toLowerCase(), getCube(refreshTable(cubeName)));
     }
-  }
-
-  public void alterDimension(XDimension newDim) throws HiveException, LensException {
-    this.alterDimension(newDim, null);
   }
 
   /**
@@ -2634,21 +2539,14 @@ public class CubeMetastoreClient {
    * @param newDim  The new dimension definition
    * @throws HiveException
    */
-  public void alterDimension(XDimension newDim, Set<String> sessionUserGroups) throws HiveException, LensException {
-    alterDimension(newDim.getName(), JAXBUtils.dimensionFromXDimension(newDim), sessionUserGroups);
+  public void alterDimension(XDimension newDim) throws HiveException, LensException {
+    alterDimension(newDim.getName(), JAXBUtils.dimensionFromXDimension(newDim));
   }
 
-  public void alterDimension(String dimName, Dimension newDim) throws HiveException, LensException {
-    this.alterDimension(dimName, newDim, null);
-  }
-
-  public void alterDimension(String dimName, Dimension newDim, Set<String> sessionUserGroups)
+  public void alterDimension(String dimName, Dimension newDim)
     throws HiveException, LensException {
+    isAuthorized();
     Table tbl = getTableWithTypeFailFast(dimName, CubeTableType.DIMENSION);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSION, dimName), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
     alterCubeTable(dimName, tbl, newDim);
     if (enableCaching) {
       allDims.put(dimName.trim().toLowerCase(), getDimension(refreshTable(dimName)));
@@ -2661,17 +2559,14 @@ public class CubeMetastoreClient {
    * @param storage     The new storage definition
    * @throws LensException
    */
-  public void alterStorage(XStorage storage, Set<String> sessionUserGroups) throws LensException, HiveException {
-    alterStorage(storage.getName(), JAXBUtils.storageFromXStorage(storage), sessionUserGroups);
+  public void alterStorage(XStorage storage) throws LensException, HiveException {
+    alterStorage(storage.getName(), JAXBUtils.storageFromXStorage(storage));
   }
 
-  public void alterStorage(String storageName, Storage storage, Set<String> sessionUserGroups)
+  public void alterStorage(String storageName, Storage storage)
     throws LensException, HiveException {
+    isAuthorized();
     Table storageTbl = getTableWithTypeFailFast(storageName, CubeTableType.STORAGE);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.STORAGE, storage.getName()), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
     alterCubeTable(storageName, storageTbl, storage);
     if (enableCaching) {
       allStorages.put(storageName.trim().toLowerCase(), getStorage(refreshTable(storageName)));
@@ -2690,21 +2585,15 @@ public class CubeMetastoreClient {
     dropHiveTable(storageName);
   }
 
-  public void dropCube(String cubeName) throws LensException {
-    dropCube(cubeName, null);
-  }
-
   /**
    * Drop a cube
    *
+   * @param cubeName cube name
    * @throws LensException
    */
-  public void dropCube(String cubeName, Set<String> sessionUserGroups) throws LensException {
-    CubeInterface cube = getCube(getTableWithTypeFailFast(cubeName, CubeTableType.CUBE));
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.CUBE, cubeName), ActionType.DELETE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+  public void dropCube(String cubeName) throws LensException {
+    isAuthorized();
+    getCube(getTableWithTypeFailFast(cubeName, CubeTableType.CUBE));
     allCubes.remove(cubeName.trim().toLowerCase());
     dropHiveTable(cubeName);
   }
@@ -2715,18 +2604,11 @@ public class CubeMetastoreClient {
    * @param dimName dimension name to be dropped
    * @throws LensException
    */
-  public void dropDimension(String dimName, Set<String> sessionUserGroups) throws LensException {
+  public void dropDimension(String dimName) throws LensException {
     getTableWithTypeFailFast(dimName, CubeTableType.DIMENSION);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSION, dimName), ActionType.DELETE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     allDims.remove(dimName.trim().toLowerCase());
     dropHiveTable(dimName);
-  }
-
-  public void dropFact(String factName, boolean cascade) throws LensException {
-    this.dropFact(factName, cascade, null);
   }
 
   /**
@@ -2736,13 +2618,10 @@ public class CubeMetastoreClient {
    * @param cascade  If true, will drop all the storages of the fact
    * @throws LensException
    */
-  public void dropFact(String factName, boolean cascade, Set<String> sessionUserGroups) throws LensException {
+  public void dropFact(String factName, boolean cascade) throws LensException {
     getTableWithTypeFailFast(factName, CubeTableType.FACT);
     FactTable fact = getFactTable(factName);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.FACT, factName), ActionType.CREATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     if (cascade) {
       for (String storage : fact.getStorages()) {
         dropStorageFromFact(factName, storage, false);
@@ -2794,21 +2673,10 @@ public class CubeMetastoreClient {
   }
 
   public void dropSegmentation(String segName) throws LensException {
-    dropSegmentation(segName, null);
-  }
-
-  public void dropSegmentation(String segName, Set<String> sessionUserGroups) throws LensException {
     getTableWithTypeFailFast(segName, CubeTableType.SEGMENTATION);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.SEGMENTATION, segName), ActionType.DELETE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     dropHiveTable(segName);
     allSegmentations.remove(segName.trim().toLowerCase());
-  }
-
-  public void dropStorageFromFact(String factName, String storage) throws LensException {
-    this.dropStorageFromFact(factName, storage, null);
   }
 
   /**
@@ -2818,12 +2686,9 @@ public class CubeMetastoreClient {
    * @param storage  storage name
    * @throws LensException
    */
-  public void dropStorageFromFact(String factName, String storage, Set<String> sessionUserGroups) throws LensException {
+  public void dropStorageFromFact(String factName, String storage) throws LensException {
     CubeFactTable cft = getCubeFactTable(factName);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.STORAGE, storage), ActionType.DELETE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     dropHiveTablesForStorage(factName, storage);
     cft.dropStorage(storage);
     alterCubeTable(factName, getTableWithTypeFailFast(factName, CubeTableType.FACT), cft);
@@ -2855,9 +2720,6 @@ public class CubeMetastoreClient {
     }
   }
 
-  public void dropStorageFromDim(String dimTblName, String storage) throws HiveException, LensException {
-    this.dropStorageFromDim(dimTblName, storage, null);
-  }
 
   /**
    * Drop a storage from dimension
@@ -2866,20 +2728,16 @@ public class CubeMetastoreClient {
    * @param storage    storage
    * @throws HiveException
    */
-  public void dropStorageFromDim(String dimTblName, String storage, Set<String> sessionUserGroups)
+  public void dropStorageFromDim(String dimTblName, String storage)
     throws HiveException, LensException {
-    dropStorageFromDim(dimTblName, storage, true, sessionUserGroups);
+    dropStorageFromDim(dimTblName, storage, true);
   }
 
   // updateDimTbl will be false when dropping dimTbl
-  private void dropStorageFromDim(String dimTblName, String storage, boolean updateDimTbl,
-    Set<String> sessionUserGroups)
+  private void dropStorageFromDim(String dimTblName, String storage, boolean updateDimTbl)
     throws LensException {
+    isAuthorized();
     CubeDimensionTable cdt = getDimensionTable(dimTblName);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSION, storage), ActionType.DELETE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
     String storageTableName = getFactOrDimtableStorageTableName(dimTblName, storage);
     dropHiveTable(storageTableName);
     latestLookupCache.remove(storageTableName.trim().toLowerCase());
@@ -2890,10 +2748,6 @@ public class CubeMetastoreClient {
     }
   }
 
-  public void dropDimensionTable(String dimTblName, boolean cascade) throws LensException {
-    this.dropDimensionTable(dimTblName, cascade, null);
-  }
-
   /**
    * Drop the dimension table
    *
@@ -2901,42 +2755,31 @@ public class CubeMetastoreClient {
    * @param cascade    If true, will drop all the dimension storages
    * @throws HiveException
    */
-  public void dropDimensionTable(String dimTblName, boolean cascade, Set<String> sessionUserGroups)
+  public void dropDimensionTable(String dimTblName, boolean cascade)
     throws LensException {
-    CubeDimensionTable cubeDimensionTable = getDimensionTable(getTableWithTypeFailFast(dimTblName,
-      CubeTableType.DIM_TABLE));
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSIONTABLE, dimTblName), ActionType.DELETE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
+    getTableWithTypeFailFast(dimTblName, CubeTableType.DIM_TABLE);
     CubeDimensionTable dim = getDimensionTable(dimTblName);
     if (cascade) {
       for (String storage : dim.getStorages()) {
-        dropStorageFromDim(dimTblName, storage, false, sessionUserGroups);
+        dropStorageFromDim(dimTblName, storage, false);
       }
     }
     dropHiveTable(dimTblName);
     allDimTables.remove(dimTblName.trim().toLowerCase());
   }
 
-  public void alterCubeFactTable(XFact fact, Set<String> sessionUserGroups) throws LensException, HiveException {
+  public void alterCubeFactTable(XFact fact) throws LensException, HiveException {
     if (fact instanceof XVirtualFactTable) {
       XVirtualFactTable xvf = (XVirtualFactTable) fact;
       alterCubeFactTable(xvf.getName(), JAXBUtils.cubeVirtualFactFromFactTable(xvf,
-        getFactTable(xvf.getSourceFactName())), null, new HashMap<>(), sessionUserGroups);
+        getFactTable(xvf.getSourceFactName())), null, new HashMap<>());
     } else {
       XFactTable xf = (XFactTable) fact;
       alterCubeFactTable(fact.getName(), JAXBUtils.cubeFactFromFactTable(xf),
         JAXBUtils.tableDescPrefixMapFromXStorageTables(xf.getStorageTables()),
-        JAXBUtils.columnStartAndEndTimeFromXColumns(xf.getColumns()), sessionUserGroups);
+        JAXBUtils.columnStartAndEndTimeFromXColumns(xf.getColumns()));
     }
-  }
-
-  public void alterCubeFactTable(String factTableName, FactTable cubeFactTable,
-    Map<String, StorageTableDesc> storageTableDescs,
-    Map<String, String> props)
-    throws HiveException, LensException {
-    this.alterCubeFactTable(factTableName, cubeFactTable, storageTableDescs, props, null);
   }
 
   /**
@@ -2950,13 +2793,10 @@ public class CubeMetastoreClient {
    */
   public void alterCubeFactTable(String factTableName, FactTable cubeFactTable,
     Map<String, StorageTableDesc> storageTableDescs,
-    Map<String, String> props, Set<String> sessionUserGroups)
+    Map<String, String> props)
     throws HiveException, LensException {
     Table factTbl = getTableWithTypeFailFast(factTableName, CubeTableType.FACT);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.FACT, factTableName), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     if (!props.isEmpty()) {
       cubeFactTable.getProperties().putAll(props);
     }
@@ -2972,18 +2812,9 @@ public class CubeMetastoreClient {
     updateAllVirtualFacts(getFactTable(factTableName));
   }
 
-  public void alterSegmentation(XSegmentation cubeSeg) throws LensException, HiveException {
-    alterSegmentation(cubeSeg, null);
-  }
-
-  public void alterSegmentation(XSegmentation cubeSeg, Set<String> sessionUserGroups) throws LensException,
+  public void alterSegmentation(XSegmentation cubeSeg) throws LensException,
     HiveException {
-    alterSegmentation(cubeSeg.getName(), segmentationFromXSegmentation(cubeSeg), sessionUserGroups);
-  }
-
-  public void alterVirtualCubeFactTable(CubeVirtualFactTable cubeVirtualFactTable)
-    throws HiveException, LensException {
-    this.alterVirtualCubeFactTable(cubeVirtualFactTable, null);
+    alterSegmentation(cubeSeg.getName(), segmentationFromXSegmentation(cubeSeg));
   }
 
   /**
@@ -2991,26 +2822,18 @@ public class CubeMetastoreClient {
    * @param cubeVirtualFactTable  cube virtual fact table
    * @throws HiveException
    */
-  public void alterVirtualCubeFactTable(CubeVirtualFactTable cubeVirtualFactTable, Set<String> sessionUserGroups)
+  public void alterVirtualCubeFactTable(CubeVirtualFactTable cubeVirtualFactTable)
     throws HiveException, LensException {
-    alterCubeFactTable(cubeVirtualFactTable.getName(), cubeVirtualFactTable, null, new HashMap<>(),
-      sessionUserGroups);
+    alterCubeFactTable(cubeVirtualFactTable.getName(), cubeVirtualFactTable, null, new HashMap<>());
   }
 
-  public void alterSegmentation(String segName, Segmentation seg) throws HiveException, LensException {
-    this.alterSegmentation(segName, seg, null);
-  }
-
-  public void alterSegmentation(String segName, Segmentation seg, Set<String> sessionUserGroups)
+  public void alterSegmentation(String segName, Segmentation seg)
     throws HiveException, LensException {
     getTableWithTypeFailFast(segName, CubeTableType.SEGMENTATION);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.SEGMENTATION, segName), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
+    isAuthorized();
     if (!(getSegmentation(segName) == seg)) {
-      dropSegmentation(segName, sessionUserGroups);
-      createSegmentation(seg, sessionUserGroups);
+      dropSegmentation(segName);
+      createSegmentation(seg);
       updateSegmentationCache(segName);
     }
   }
@@ -3078,16 +2901,11 @@ public class CubeMetastoreClient {
     }
   }
 
-  public void alterCubeDimensionTable(XDimensionTable dimensionTable, Set<String> sessionUserGroups)
+  public void alterCubeDimensionTable(XDimensionTable dimensionTable)
     throws LensException, HiveException {
     alterCubeDimensionTable(dimensionTable.getTableName(),
       JAXBUtils.cubeDimTableFromDimTable(dimensionTable),
-      JAXBUtils.tableDescPrefixMapFromXStorageTables(dimensionTable.getStorageTables()), sessionUserGroups);
-  }
-
-  public void alterCubeDimensionTable(String dimTableName, CubeDimensionTable cubeDimensionTable,
-    Map<String, StorageTableDesc> storageTableDescs) throws HiveException, LensException {
-    this.alterCubeDimensionTable(dimTableName, cubeDimensionTable, storageTableDescs, null);
+      JAXBUtils.tableDescPrefixMapFromXStorageTables(dimensionTable.getStorageTables()));
   }
 
   /**
@@ -3098,13 +2916,10 @@ public class CubeMetastoreClient {
    * @throws HiveException
    */
   public void alterCubeDimensionTable(String dimTableName, CubeDimensionTable cubeDimensionTable,
-    Map<String, StorageTableDesc> storageTableDescs, Set<String> sessionUserGroups)
+    Map<String, StorageTableDesc> storageTableDescs)
     throws HiveException, LensException {
+    isAuthorized();
     Table dimTbl = getTableWithTypeFailFast(dimTableName, CubeTableType.DIM_TABLE);
-    if (isAuthorizationEnabled() && !getAuthorizer().authorize(new LensPrivilegeObject(LensPrivilegeObject
-      .LensPrivilegeObjectType.DIMENSIONTABLE, dimTableName), ActionType.UPDATE, sessionUserGroups)) {
-      throw new LensException(LensCubeErrorCode.NOT_AUTHORIZED_EXCEPTION.getLensErrorInfo());
-    }
     alterCubeTable(dimTableName, dimTbl, cubeDimensionTable);
     if (storageTableDescs != null) {
       // create/alter tables for each storage

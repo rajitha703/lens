@@ -18,6 +18,8 @@
  */
 package org.apache.lens.server.api;
 
+import java.util.Set;
+
 import javax.ws.rs.core.MediaType;
 
 import org.apache.lens.api.parse.Parser;
@@ -456,6 +458,32 @@ public final class LensConfConstants {
   public static final String  AD_SERVER_ENDPOINT_USER_NAME_VALUE = SERVER_PFX + "ad.server.username.value";
 
   public static final String  AD_SERVER_ENDPOINT_PWD_VALUE = SERVER_PFX + "ad.server.pwd.value";
+
+  /**
+   * The Constant USER_AUTHORIZATION.
+   */
+  public static final String USER_NAME_BASED_AUTHORIZATION = SERVER_PFX + "user.name.authorization.enable";
+
+  /**
+   * The Constant USER_GROUPS_BASED_AUTHORIZATION.
+   */
+  public static final String USER_GROUPS_BASED_AUTHORIZATION = SERVER_PFX + "user.groups.authorization.enable";
+
+  /**
+   * The default USER_AUTHORIZATION.
+   */
+  public static final Boolean DEFAULT_USER_NAME_AUTHORIZATION = false;
+
+  /**
+   * The default USER_GROUPS_BASED_AUTHORIZATION.
+   */
+  public static final Boolean DEFAULT_USER_GROUPS_AUTHORIZATION = false;
+
+  /**
+   * The result mail.
+   */
+  public static final String QUERY_EMAIL_DOWNLOAD_URL = QUERY_PFX + "email.download.url";
+
   /**
    * The Constant STORAGE_COST.
    */
@@ -522,7 +550,7 @@ public final class LensConfConstants {
     return SERVER_PFX + featureName + WS_FEATURE_IMPL_SFX;
   }
 
-  /**
+    /**
    * Gets the WS listener impl conf key.
    *
    * @param listenerName the listener name
@@ -796,6 +824,16 @@ public final class LensConfConstants {
    * The Constant RESULT_FS_READ_URL.
    */
   public static final String RESULT_FS_READ_URL = QUERY_PFX + "result.fs.read.url";
+
+  /**
+   * The Constant READ_RESULT_FROM_HDFS.
+   */
+  public static final String READ_RESULT_FROM_HDFS = QUERY_PFX + "read.result.hdfs";
+
+  /**
+   * The Constant DEFAULT_READ_RESULT_FROM_HDFS.
+   */
+  public static final Boolean DEFAULT_READ_RESULT_FROM_HDFS = false;
 
   /**
    * The Constant AUX_JARS.
@@ -1382,14 +1420,35 @@ public final class LensConfConstants {
   public static final boolean DEFAULT_ENABLE_DATACOMPLETENESS_CHECK = false;
 
   /**
-   * This property is to enable Data Completeness Checks while resolving partitions.
+   * This property is to enable authorization checks while query planning.
    */
-  public static final String ENABLE_AUTHORIZATION_CHECK = "lens.cube.metastore.enable.authorization.check";
+  public static final String ENABLE_QUERY_AUTHORIZATION_CHECK = "lens.cube.metastore.enable.query.authorization.check";
 
   /**
-   * Default Value of the config "lens.cube.metastore.enable.authorization.check"
+   * Default Value of the config "lens.cube.metastore.enable.query.authorization.check"
    */
-  public static final boolean DEFAULT_ENABLE_AUTHORIZATION_CHECK = false;
+  public static final boolean DEFAULT_ENABLE_QUERY_AUTHORIZATION_CHECK = false;
+
+  /**
+   * This property is to enable authorization checks while downloading result.
+   */
+  public static final String ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK = "lens.enable.result.download.authorization.check";
+
+  /**
+   * Default Value of the config "lens.enable.result.download.authorization.check"
+   */
+  public static final boolean DEFAULT_ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK = false;
+
+  /**
+   * This property is to enable authorization checks for schema changes.
+   */
+  public static final String ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK =
+    "lens.cube.metastore.enable.metastore.authorization.check";
+
+  /**
+   * Default Value of the config "lens.cube.metastore.enable.schema.authorization.check"
+   */
+  public static final boolean DEFAULT_ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK = false;
 
   /**
    * This property is for setting static cost to driver

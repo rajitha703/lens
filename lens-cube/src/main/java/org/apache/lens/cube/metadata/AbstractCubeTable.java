@@ -43,7 +43,6 @@ public abstract class AbstractCubeTable implements Named {
   }
 
   protected AbstractCubeTable(Table hiveTable) {
-
     this.name = hiveTable.getTableName().toLowerCase();
     this.columns = hiveTable.getCols();
     this.properties.putAll(hiveTable.getParameters());

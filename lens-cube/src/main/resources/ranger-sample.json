@@ -1,9 +1,9 @@
 {
-  "id":10,
-  "name": "D1",
-  "implClass": "org.apache.ranger.services.hdfs.RangerServiceTest",
-  "label": "Sample Repository",
-  "description": "Sample Repository",
+  "id":1,
+  "name": "lens",
+  "implClass": "org.apache.lens.cube.authorization.DefaultLensRangerService",
+  "label": "Lens Repository",
+  "description": "Lens Repository",
   "guid": "test",
   "resources":
   [
@@ -22,15 +22,14 @@
       "validationRegEx":"",
       "validationMessage": "",
       "uiHint":"",
-      "label": "Lens cube/fact/dim/storage/segmentation",
-      "description": "Lens cube/fact/dim/storage/segmentation"
+      "label": "Lens database/segmentation/cube/fact/dimension/dimtable/storage",
+      "description": "Lens database/segmentation/cube/fact/dimension/dimtable/storage"
     },
-
     {
       "itemId": 2,
       "name": "column",
       "type": "string",
-      "level": 30,
+      "level": 20,
       "parent": "table",
       "mandatory": false,
       "lookupSupported": true,

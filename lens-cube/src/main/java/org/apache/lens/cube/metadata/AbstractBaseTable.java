@@ -161,27 +161,32 @@ public abstract class AbstractBaseTable extends AbstractCubeTable {
 
 
   /**
-   * Return sensitive columns of the fact, which can be specified by property
-   * MetastoreUtil.getSensitiveColumnsKey(getName())
+   * Return restricted columns of the table, which can be specified by property
+   * MetastoreUtil.getRestrictedColumnsKey(getName())
    *
-   * @return
+   * @return set of restricted columns
    */
-  public Set<String> getSensitiveColumns() {
-    String sensitiveColsStr =
-      MetastoreUtil.getNamedStringValue(getProperties(), MetastoreUtil.getSensitiveColumnsKey(getName()));
-    return sensitiveColsStr == null ? null : new HashSet<>(Arrays.asList(StringUtils.split(sensitiveColsStr
+  private Set<String> getRestrictedColumns() {
+    String restrictedColsStr =
+      MetastoreUtil.getNamedStringValue(getProperties(), MetastoreUtil.getRestrictedColumnsKey(getName()));
+    return restrictedColsStr == null ? null : new HashSet<>(Arrays.asList(StringUtils.split(restrictedColsStr
         .toLowerCase(), ',')));
   }
 
-  public Set<String> getSensitiveColumnsFromQuery(Set<String> columns){
-    Set<String> sensitiveCols = getSensitiveColumns();
-    Set<String> sensitiveColsQueried = new HashSet<>();
-    for(String col : columns) {
-      if (sensitiveCols.contains(col)){
-        sensitiveColsQueried.add(col);
+  /*
+  * Returns the intersection of columns queried and restricted columns of table
+  * */
+  public Set<String> getRestrictedColumnsFromQuery(Set<String> columns){
+    Set<String> restrictedCols = getRestrictedColumns();
+    Set<String> restrictedColsQueried = new HashSet<>();
+    if(restrictedCols != null && !restrictedCols.isEmpty()) {
+      for (String col : columns) {
+        if (restrictedCols.contains(col)) {
+          restrictedColsQueried.add(col);
+        }
       }
     }
-    return sensitiveColsQueried;
+    return restrictedColsQueried;
   }
   /**
    * Alters the expression if already existing or just adds if it is new expression.

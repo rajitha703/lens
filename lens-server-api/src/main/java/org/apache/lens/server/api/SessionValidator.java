@@ -23,4 +23,6 @@ import org.apache.lens.server.api.error.LensException;
 
 public interface SessionValidator {
   void validateSession(LensSessionHandle handle) throws LensException;
+
+  void validateAndAuthorizeSession(LensSessionHandle handle, String userPrincipalName) throws  LensException;
 }

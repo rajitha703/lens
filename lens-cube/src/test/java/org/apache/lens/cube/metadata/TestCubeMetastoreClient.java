@@ -65,7 +65,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 public class TestCubeMetastoreClient {
 
-
   private static CubeMetastoreClient client;
 
   // cube members
