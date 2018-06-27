@@ -35,7 +35,6 @@ import org.apache.lens.api.LensSessionHandle;
 import org.apache.lens.api.query.*;
 import org.apache.lens.api.result.LensAPIResult;
 import org.apache.lens.server.LensServices;
-import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.annotations.MultiPurposeResource;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.QueryExecutionService;
@@ -203,8 +202,6 @@ public class QueryServiceResource {
     SubmitOp sop = UtilityMethods.checkAndGetOperation(operation, SubmitOp.class, supportedOperations);
     validateQuery(query);
     QuerySubmitResult result;
-    log.info("RAJI LANDED HERE WITH CONF : "+ conf);
-    log.info("RAJI LANDED HERE WITH CONF URL : "+ conf.getProperty(LensConfConstants.SERVER_BASE_URL));
     switch (sop) {
     case ESTIMATE:
       result = new QueryCostTOBuilder(queryServer.estimate(requestId, sessionid, query, conf)).build();
