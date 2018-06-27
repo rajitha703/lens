@@ -23,10 +23,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ImmediateRetryHandler<FC extends FailureContext> implements BackOffRetryHandler<FC> {
   private final int retries;
-  private int retriesDone = 0;
   // default 1 retry
   public ImmediateRetryHandler() {
     this(1);
+  }
+
+  public ImmediateRetryHandler(String retries) {
+    this(Integer.parseInt(retries));
   }
 
   @Override
@@ -41,6 +44,6 @@ public class ImmediateRetryHandler<FC extends FailureContext> implements BackOff
 
   @Override
   public boolean hasExhaustedRetries(FC failContext) {
-    return ++retriesDone > retries;
+    return failContext.getFailCount() > retries;
   }
 }
