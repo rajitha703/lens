@@ -29,9 +29,20 @@ import static com.google.common.base.Preconditions.checkArgument;
  *
  */
 public class FibonacciExponentialBackOffRetryHandler<FC extends FailureContext> implements BackOffRetryHandler<FC> {
+
+  /**
+   * The Constant serialVersionUID.
+   */
+  private static final long serialVersionUID = 1L;
+
+
   final int[] fibonacci;
   final long maxDelay;
   final long waitMillis;
+
+  public FibonacciExponentialBackOffRetryHandler(String numRetries, String maxDelay, String waitMillis) {
+    this(Integer.parseInt(numRetries), Long.parseLong(maxDelay), Long.parseLong(waitMillis));
+  }
 
   public FibonacciExponentialBackOffRetryHandler(int numRetries, long maxDelay, long waitMillis) {
     checkArgument(numRetries > 2);
