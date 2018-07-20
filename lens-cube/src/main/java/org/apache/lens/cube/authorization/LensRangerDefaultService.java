@@ -22,9 +22,9 @@ import org.apache.ranger.plugin.model.RangerService;
 import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.service.RangerDefaultService;
 
-// Main class which needs to be registered with Ranger under lens plugin
+// Main class which needs to be registered with Ranger under plugins
 
-public class DefaultLensRangerService extends RangerDefaultService {
+public class LensRangerDefaultService extends RangerDefaultService {
 
   @Override
   public void init(RangerServiceDef serviceDef, RangerService service){

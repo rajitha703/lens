@@ -480,11 +480,6 @@ public final class LensConfConstants {
   public static final Boolean DEFAULT_USER_GROUPS_AUTHORIZATION = false;
 
   /**
-   * The result mail.
-   */
-  public static final String QUERY_EMAIL_DOWNLOAD_URL = QUERY_PFX + "email.download.url";
-
-  /**
    * The Constant STORAGE_COST.
    */
   public static final String STORAGE_COST = METASTORE_PFX + "table.storage.cost";
