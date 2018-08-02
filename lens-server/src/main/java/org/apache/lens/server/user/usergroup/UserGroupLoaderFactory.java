@@ -62,9 +62,6 @@ public final class UserGroupLoaderFactory {
 
   public enum GroupType {
 
-    /** The adgroup. */
-    AD_GROUP,
-
     /** The custom. */
     CUSTOM,
 
@@ -105,8 +102,6 @@ public final class UserGroupLoaderFactory {
    */
   public static UserGroupConfigLoader createUserGroupConfigLoader(GroupType groupType) {
     switch (groupType) {
-    case AD_GROUP:
-      return new ADGroupConfigLoader(conf);
     case CUSTOM:
       try {
         return (conf.getClass(USER_GROUP_CUSTOM_CLASS, UserGroupConfigLoader.class, UserGroupConfigLoader.class))

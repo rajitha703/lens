@@ -21,11 +21,10 @@ package org.apache.lens.cube.parse;
 import java.util.*;
 
 import org.apache.lens.cube.authorization.AuthorizationUtil;
-import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.*;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.IAuthorizer;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 import org.apache.lens.server.api.error.LensException;
 
@@ -39,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class QueryAuthorizationResolver implements ContextRewriter {
 
   @Getter
-  private IAuthorizer authorizer;
+  private Authorizer authorizer;
   @Getter
   private Boolean isAuthorizationCheckEnabled;
 
@@ -47,7 +46,7 @@ public class QueryAuthorizationResolver implements ContextRewriter {
     isAuthorizationCheckEnabled = conf.getBoolean(LensConfConstants.ENABLE_QUERY_AUTHORIZATION_CHECK,
       LensConfConstants.DEFAULT_ENABLE_QUERY_AUTHORIZATION_CHECK);
     authorizer = ReflectionUtils.newInstance(
-      conf.getClass(MetastoreConstants.AUTHORIZER_CLASS, LensConfConstants.DEFAULT_AUTHORIZER, IAuthorizer.class),
+      conf.getClass(MetastoreConstants.AUTHORIZER_CLASS, LensConfConstants.DEFAULT_AUTHORIZER, Authorizer.class),
       conf);
   }
   @Override

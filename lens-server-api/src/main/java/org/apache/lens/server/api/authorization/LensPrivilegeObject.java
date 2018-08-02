@@ -38,7 +38,7 @@ public class LensPrivilegeObject {
   }
 
   public enum LensPrivilegeObjectType {
-    DATABASE, CUBE, FACT, DIMENSION, DIMENSIONTABLE, STORAGE, COLUMN, NONE, SEGMENTATION
+    DATABASE, COLUMN, NONE
   };
 
 }

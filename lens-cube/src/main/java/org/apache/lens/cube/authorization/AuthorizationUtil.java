@@ -21,10 +21,9 @@ package org.apache.lens.cube.authorization;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.IAuthorizer;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.save.exception.PrivilegeException;
@@ -39,13 +38,13 @@ Helper class for all Authorization needs
 @Slf4j
 public class AuthorizationUtil {
 
-  public static boolean isAuthorized(IAuthorizer authorizer, String tableName,
+  public static boolean isAuthorized(Authorizer authorizer, String tableName,
     LensPrivilegeObject.LensPrivilegeObjectType privilegeObjectType, ActionType actionType, Configuration configuration)
     throws LensException {
     return isAuthorized(authorizer, tableName, null, privilegeObjectType, actionType, configuration);
   }
 
-  public static boolean isAuthorized(IAuthorizer authorizer, String tableName, String colName,
+  public static boolean isAuthorized(Authorizer authorizer, String tableName, String colName,
     LensPrivilegeObject.LensPrivilegeObjectType privilegeObjectType, ActionType actionType, Configuration configuration)
     throws LensException {
     String user = null;

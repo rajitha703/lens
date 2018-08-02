@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.lens.server.api.LensConfConstants;
-import org.apache.lens.server.api.authorization.ADGroupService;
+import org.apache.lens.server.api.authorization.ADGroupUtil;
 import org.apache.lens.server.api.user.UserGroupConfigLoader;
 import org.apache.lens.server.api.user.UserGroupLoaderException;
 import org.apache.lens.server.util.UtilityMethods;
@@ -117,7 +117,7 @@ public class ADGroupConfigLoader implements UserGroupConfigLoader {
    */
   public String[] getAttributes(String user) throws IOException, JSONException {
 
-    Map<String, String> res = ADGroupService.getAttributes(formServerUrl(user), lookupFields,
+    Map<String, String> res = ADGroupUtil.getAttributes(formServerUrl(user), lookupFields,
       (String) env.get(LensConfConstants.AD_SERVER_ENDPOINT_USER_NAME),
       (String) env.get(LensConfConstants.AD_SERVER_ENDPOINT_PWD));
     String[] attributes = new String[lookupFields.length];

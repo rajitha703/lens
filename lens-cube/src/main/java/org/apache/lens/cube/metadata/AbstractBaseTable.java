@@ -27,6 +27,7 @@ import org.apache.hadoop.hive.ql.metadata.Table;
 
 import com.google.common.base.Preconditions;
 
+import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -169,7 +170,7 @@ public abstract class AbstractBaseTable extends AbstractCubeTable {
   private Set<String> getRestrictedColumns() {
     String restrictedColsStr =
       MetastoreUtil.getNamedStringValue(getProperties(), MetastoreUtil.getRestrictedColumnsKey(getName()));
-    return restrictedColsStr == null ? null : new HashSet<>(Arrays.asList(StringUtils.split(restrictedColsStr
+    return restrictedColsStr == null ? new HashSet<>() : new HashSet<>(Arrays.asList(StringUtils.split(restrictedColsStr
         .toLowerCase(), ',')));
   }
 
@@ -178,15 +179,7 @@ public abstract class AbstractBaseTable extends AbstractCubeTable {
   * */
   public Set<String> getRestrictedColumnsFromQuery(Set<String> columns){
     Set<String> restrictedCols = getRestrictedColumns();
-    Set<String> restrictedColsQueried = new HashSet<>();
-    if(restrictedCols != null && !restrictedCols.isEmpty()) {
-      for (String col : columns) {
-        if (restrictedCols.contains(col)) {
-          restrictedColsQueried.add(col);
-        }
-      }
-    }
-    return restrictedColsQueried;
+    return Sets.intersection(columns, restrictedCols);
   }
   /**
    * Alters the expression if already existing or just adds if it is new expression.

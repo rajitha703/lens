@@ -21,7 +21,7 @@ package org.apache.lens.cube.authorization;
 import java.util.Set;
 
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.IAuthorizer;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 
 import org.apache.ranger.plugin.audit.RangerDefaultAuditHandler;
@@ -36,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 // Apache Ranger implementation for Authorization in Lens
 
 @Slf4j
-public class RangerLensAuthorizer implements IAuthorizer {
+public class RangerLensAuthorizer implements Authorizer {
 
   @Getter
   private RangerBasePlugin rangerBasePlugin;
@@ -55,7 +55,7 @@ public class RangerLensAuthorizer implements IAuthorizer {
   public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
     Set<String> userGroups) {
 
-    log.info("==> Lens Ranger Authorize Authorize User : "+ user + "User groups : " + userGroups + " Accesstype : "+ accessType + "Object : "+
+    log.info("==> Lens Ranger Authorize User : "+ user + "User groups : " + userGroups + " Accesstype : "+ accessType + "Object : "+
       lensPrivilegeObject.getTable());
 
     RangerLensResource rangerLensResource = getLensResource(lensPrivilegeObject);
@@ -84,12 +84,6 @@ public class RangerLensAuthorizer implements IAuthorizer {
         lensPrivilegeObject.getColumn());
       break;
     case DATABASE:
-    case CUBE:
-//    case DIMENSION:
-//    case DIMENSIONTABLE:
-//    case STORAGE:
-//    case SEGMENTATION:
-//    case FACT:
       lensResource = new RangerLensResource(LensObjectType.TABLE, lensPrivilegeObject.getTable(), null);
       break;
 

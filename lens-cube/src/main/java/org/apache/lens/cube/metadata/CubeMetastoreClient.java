@@ -39,7 +39,7 @@ import org.apache.lens.cube.metadata.timeline.PartitionTimelineFactory;
 
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.IAuthorizer;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 
 import org.apache.lens.server.api.error.LensException;
@@ -119,7 +119,7 @@ public class CubeMetastoreClient {
 
   private Boolean isAuthorizationCheckEnabled;
 
-  private IAuthorizer authorizer;
+  private Authorizer authorizer;
 
   public DataCompletenessChecker getCompletenessChecker() {
     if (completenessChecker == null) {
@@ -129,10 +129,10 @@ public class CubeMetastoreClient {
     return completenessChecker;
   }
 
-  public IAuthorizer getAuthorizer() {
+  public Authorizer getAuthorizer() {
     if (authorizer == null) {
       authorizer = ReflectionUtils.newInstance(config.getClass(MetastoreConstants.AUTHORIZER_CLASS,
-        LensConfConstants.DEFAULT_AUTHORIZER, IAuthorizer.class), this.config);
+        LensConfConstants.DEFAULT_AUTHORIZER, Authorizer.class), this.config);
     }
     return authorizer;
   }
@@ -150,6 +150,7 @@ public class CubeMetastoreClient {
       isAuthorizationCheckEnabled = config.getBoolean(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK,
         LensConfConstants.DEFAULT_ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK);
     }
+    log.info("Authorized flag : "+ isAuthorizationCheckEnabled+ "conf : "+ config.get(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK));
     return isAuthorizationCheckEnabled;
   }
 
@@ -1013,7 +1014,7 @@ public class CubeMetastoreClient {
   }
 
   private void isAuthorized() throws LensException {
-    if(isAuthorizationCheckEnabled) {
+    if(isAuthorizationEnabled()) {
       String currentdb = SessionState.get().getCurrentDatabase();
       AuthorizationUtil.isAuthorized(getAuthorizer(), currentdb,
         LensPrivilegeObject.LensPrivilegeObjectType.DATABASE, ActionType.UPDATE, getConf());

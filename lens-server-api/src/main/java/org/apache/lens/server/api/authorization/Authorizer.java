@@ -21,7 +21,7 @@ package org.apache.lens.server.api.authorization;
 
 import java.util.Set;
 
-public interface IAuthorizer {
+public interface Authorizer {
  /**
  * @param lensPrivilegeObject the privilege object
  * @param accessType the access type

@@ -20,7 +20,7 @@ package org.apache.lens.server.api.authorization;
 
 import java.util.Set;
 
-public class DefaultAuthorizer implements IAuthorizer {
+public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,

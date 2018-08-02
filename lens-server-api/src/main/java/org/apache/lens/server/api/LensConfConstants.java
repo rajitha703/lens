@@ -18,13 +18,11 @@
  */
 package org.apache.lens.server.api;
 
-import java.util.Set;
-
 import javax.ws.rs.core.MediaType;
 
 import org.apache.lens.api.parse.Parser;
 import org.apache.lens.server.api.authorization.DefaultAuthorizer;
-import org.apache.lens.server.api.authorization.IAuthorizer;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
 import org.apache.lens.server.api.query.DefaultDownloadResultUrlProvider;
@@ -1401,8 +1399,8 @@ public final class LensConfConstants {
           DefaultChecker.class.asSubclass(DataCompletenessChecker.class);
 
 
-  public static final Class<? extends IAuthorizer> DEFAULT_AUTHORIZER =
-    DefaultAuthorizer.class.asSubclass(IAuthorizer.class);
+  public static final Class<? extends Authorizer> DEFAULT_AUTHORIZER =
+    DefaultAuthorizer.class.asSubclass(Authorizer.class);
 
   /**
    * This property is to enable Data Completeness Checks while resolving partitions.

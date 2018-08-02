@@ -33,9 +33,9 @@
   <packaging>jar</packaging>
   <description>OLAP cube queries</description>
 
-  <!--<properties>-->
-    <!--<mvn.classpath.file>${pom.basedir}/target/classpath</mvn.classpath.file>-->
-  <!--</properties>-->
+  <properties>
+    <mvn.classpath.file>${pom.basedir}/target/classpath</mvn.classpath.file>
+  </properties>
 
 
   <dependencies>
