@@ -439,25 +439,6 @@ public final class LensConfConstants {
   public static final String USER_RESOLVER_LDAP_SEARCH_FILTER = SERVER_PFX + "user.resolver.ldap.search.filter";
 
   /**
-   * The Constant USER_AD_SERVER_ENDPOINT.
-   */
-  public static final String AD_SERVER_ENDPOINT_VALUE = SERVER_PFX + "ad.server.endpoint.value";
-
-  /**
-   * The Constant AD_SERVER_ENDPOINT.
-   */
-  public static final String AD_SERVER_ENDPOINT = SERVER_PFX +  "ad.server.endpoint";
-
-  public static final String  AD_SERVER_ENDPOINT_USER_NAME = SERVER_PFX + "ad.server.username";
-
-  public static final String  AD_SERVER_ENDPOINT_PWD = SERVER_PFX + "ad.server.pwd";
-
-
-  public static final String  AD_SERVER_ENDPOINT_USER_NAME_VALUE = SERVER_PFX + "ad.server.username.value";
-
-  public static final String  AD_SERVER_ENDPOINT_PWD_VALUE = SERVER_PFX + "ad.server.pwd.value";
-
-  /**
    * The Constant USER_AUTHORIZATION.
    */
   public static final String USER_NAME_BASED_AUTHORIZATION = SERVER_PFX + "user.name.authorization.enable";
