@@ -324,11 +324,6 @@ public final class LensConfConstants {
   public static final String USER_RESOLVER_DB_KEYS = SERVER_PFX + "user.resolver.db.keys";
 
   /**
-   * The Constant USER_GROUP_DB_KEYS.
-   */
-  public static final String USER_GROUP_DB_KEYS = SERVER_PFX + "user.group.db.keys";
-
-  /**
    * The Constant USER_RESOLVER_DB_QUERY.
    */
   public static final String USER_RESOLVER_DB_QUERY = SERVER_PFX + "user.resolver.db.query";
@@ -339,29 +334,9 @@ public final class LensConfConstants {
   public static final String USER_RESOLVER_CUSTOM_CLASS = SERVER_PFX + "user.resolver.custom.class";
 
   /**
-   * The Constant USER_GROUP_DB_QUERY.
-   */
-  public static final String USER_GROUP_DB_QUERY = SERVER_PFX + "user.group.db.query";
-
-  /**
    * The Constant USER_GROUP_CUSTOM_CLASS.
    */
   public static final String USER_GROUP_CUSTOM_CLASS = SERVER_PFX + "user.group.custom.class";
-
-  /**
-   * The Constant USER_GROUP_CACHE_EXPIRY.
-   */
-  public static final String USER_GROUP_CACHE_EXPIRY = SERVER_PFX + "user.group.cache.expiry.inhours";
-
-  /**
-   * The Constant USER_GROUP_CACHE_MAX_SIZE.
-   */
-  public static final String USER_GROUP_CACHE_MAX_SIZE = SERVER_PFX + "user.group.cache.max_size";
-
-  /**
-   * The Constant USER_GROUP_ADSERVER_URL.
-   */
-  public static final String USER_GROUP_ADSERVER_URL = SERVER_PFX + "user.group.adserver.url";
 
   /**
    * The Constant USER_RESOLVER_CACHE_EXPIRY.
