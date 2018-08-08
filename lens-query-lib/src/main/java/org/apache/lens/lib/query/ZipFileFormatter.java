@@ -28,8 +28,6 @@ import org.apache.lens.server.api.LensConfConstants;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsAction;
-import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.google.common.base.Strings;
 
@@ -111,7 +109,8 @@ public class ZipFileFormatter extends AbstractFileFormatter {
     finalPath = new Path(pathStr, finalPathStr + ctx.getQueryHandle().toString() + ".zip");
     tmpPath = new Path(pathStr, ctx.getQueryHandle().toString() + ".tmp.zip");
 
-    if(ctx.getConf().getBoolean(LensConfConstants.READ_RESULT_FROM_HDFS, LensConfConstants.DEFAULT_READ_RESULT_FROM_HDFS)) {
+    if (ctx.getConf().getBoolean(LensConfConstants.READ_RESULT_FROM_HDFS,
+      LensConfConstants.DEFAULT_READ_RESULT_FROM_HDFS)) {
       fs = FileSystemUtil.createFileSystem(ctx.getSubmittedUser(), new Path(pathStr));
     } else {
       fs = finalPath.getFileSystem(ctx.getConf());

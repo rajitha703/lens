@@ -399,12 +399,12 @@ public final class LensConfConstants {
   /**
    * The Constant USER_AUTHORIZATION.
    */
-  public static final String USER_NAME_BASED_AUTHORIZATION = QUERY_PFX + "user.name.authorization.enable";
+  public static final String USER_NAME_BASED_AUTHORIZATION =  "lens.cube.query.user.name.authorization.enable";
 
   /**
    * The Constant USER_GROUPS_BASED_AUTHORIZATION.
    */
-  public static final String USER_GROUPS_BASED_AUTHORIZATION = QUERY_PFX + "user.groups.authorization.enable";
+  public static final String USER_GROUPS_BASED_AUTHORIZATION = "lens.cube.query.user.groups.authorization.enable";
 
   /**
    * The default USER_AUTHORIZATION.

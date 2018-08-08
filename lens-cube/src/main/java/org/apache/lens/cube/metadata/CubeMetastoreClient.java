@@ -150,7 +150,6 @@ public class CubeMetastoreClient {
       isAuthorizationCheckEnabled = config.getBoolean(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK,
         LensConfConstants.DEFAULT_ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK);
     }
-    log.info("Authorized flag : "+ isAuthorizationCheckEnabled+ "conf : "+ config.get(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK));
     return isAuthorizationCheckEnabled;
   }
 
@@ -1014,7 +1013,7 @@ public class CubeMetastoreClient {
   }
 
   private void isAuthorized() throws LensException {
-    if(isAuthorizationEnabled()) {
+    if (isAuthorizationEnabled()) {
       String currentdb = SessionState.get().getCurrentDatabase();
       AuthorizationUtil.isAuthorized(getAuthorizer(), currentdb,
         LensPrivilegeObject.LensPrivilegeObjectType.DATABASE, ActionType.UPDATE, getConf());

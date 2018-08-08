@@ -55,22 +55,22 @@ public class RangerLensAuthorizer implements Authorizer {
   public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
     Set<String> userGroups) {
 
-    log.info("==> Lens Ranger Authorize User : "+ user + "User groups : " + userGroups + " Accesstype : "+ accessType + "Object : "+
-      lensPrivilegeObject.getTable());
+    log.info("==> Lens Ranger Authorize User : "+ user + "User groups : " + userGroups + " Accesstype : "
+      + accessType + "Object : "+ lensPrivilegeObject.getTable());
 
     RangerLensResource rangerLensResource = getLensResource(lensPrivilegeObject);
 
     boolean res = false;
 
-    if(rangerLensResource != null) {
+    if (rangerLensResource != null) {
       RangerAccessRequest rangerAccessRequest = new RangerAccessRequestImpl(rangerLensResource,
         accessType.toString().toLowerCase(), user, userGroups);
       RangerAccessResult rangerAccessResult = getRangerBasePlugin().isAccessAllowed(rangerAccessRequest);
       res = rangerAccessResult != null && rangerAccessResult.getIsAllowed();
     }
 
-    log.info("<== Lens Ranger Authorize User : "+ user + " User groups : " + userGroups + " Accesstype : "+ accessType + " Object : "+
-      lensPrivilegeObject.getTable() + " Access : "+ res);
+    log.info("<== Lens Ranger Authorize User : "+ user + " User groups : " + userGroups + " Accesstype : "+ accessType
+      + " Object : "+ lensPrivilegeObject.getTable() + " Access : "+ res);
 
     return res;
   }

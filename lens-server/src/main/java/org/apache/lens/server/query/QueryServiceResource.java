@@ -652,14 +652,16 @@ public class QueryServiceResource {
   public Response getHttpResultSet(@QueryParam("sessionid") LensSessionHandle sessionid,
     @PathParam("queryHandle") String queryHandle) throws LensException {
 
-    Principal userPrincipal = securityContext.getUserPrincipal();
-    String userPrincipalName = userPrincipal.getName();
-    if (CONF.getBoolean(ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK,
-      LensConfConstants.DEFAULT_ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK)) {
-      return queryServer.getAuthorizedHttpResultSet(sessionid, getQueryHandle(queryHandle), userPrincipalName);
-    } else {
-      return queryServer.getHttpResultSet(sessionid, getQueryHandle(queryHandle));
+    if (AUTH_SCHEME.isPresent()) {
+      Principal userPrincipal = securityContext.getUserPrincipal();
+      String userPrincipalName = userPrincipal.getName();
+      if (CONF.getBoolean(ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK,
+        LensConfConstants.DEFAULT_ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK)) {
+        return queryServer.getAuthorizedHttpResultSet(sessionid, getQueryHandle(queryHandle), userPrincipalName);
+      }
     }
+    return queryServer.getHttpResultSet(sessionid, getQueryHandle(queryHandle));
+
   }
 
   /**

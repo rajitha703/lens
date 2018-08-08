@@ -30,13 +30,12 @@ import org.apache.lens.server.api.query.save.exception.PrivilegeException;
 
 import org.apache.hadoop.conf.Configuration;
 
-import lombok.extern.slf4j.Slf4j;
-
 /*
 Helper class for all Authorization needs
 */
-@Slf4j
 public class AuthorizationUtil {
+
+  private AuthorizationUtil(){}
 
   public static boolean isAuthorized(Authorizer authorizer, String tableName,
     LensPrivilegeObject.LensPrivilegeObjectType privilegeObjectType, ActionType actionType, Configuration configuration)
@@ -47,13 +46,11 @@ public class AuthorizationUtil {
   public static boolean isAuthorized(Authorizer authorizer, String tableName, String colName,
     LensPrivilegeObject.LensPrivilegeObjectType privilegeObjectType, ActionType actionType, Configuration configuration)
     throws LensException {
-    log.info(" ==> Authorize call table : " + tableName + " col : "+ colName +" object type : "+ privilegeObjectType
-    +" action : "+ actionType);
     String user = null;
     Set<String> userGroups = new HashSet<>();
     if (configuration.getBoolean(LensConfConstants.USER_NAME_BASED_AUTHORIZATION,
       LensConfConstants.DEFAULT_USER_NAME_AUTHORIZATION)){
-       user = configuration.get(LensConfConstants.SESSION_LOGGEDIN_USER);
+      user = configuration.get(LensConfConstants.SESSION_LOGGEDIN_USER);
     }
     if (configuration.getBoolean(LensConfConstants.USER_GROUPS_BASED_AUTHORIZATION,
       LensConfConstants.DEFAULT_USER_GROUPS_AUTHORIZATION)) {
@@ -64,8 +61,6 @@ public class AuthorizationUtil {
     if (!authorizer.authorize(lp, actionType, user, userGroups)) {
       throw new PrivilegeException(privilegeObjectType.toString(), tableName, actionType.toString());
     }
-    log.info(" <== Authorize call Success ! table : " + tableName + " col : "+ colName +" object type : "+ privilegeObjectType
-      +" action : "+ actionType);
     return true;
   }
 }

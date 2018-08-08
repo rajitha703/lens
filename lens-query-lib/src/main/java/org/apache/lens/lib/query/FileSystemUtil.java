@@ -31,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FileSystemUtil {
 
+  private FileSystemUtil() {}
+
   public static FileSystem createFileSystem(String proxyUser, Path path) {
     try {
       UserGroupInformation ugi = UserGroupInformation.createProxyUser(proxyUser, UserGroupInformation.getLoginUser());

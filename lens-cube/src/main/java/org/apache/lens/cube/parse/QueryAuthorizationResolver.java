@@ -66,10 +66,10 @@ public class QueryAuthorizationResolver implements ContextRewriter {
         Set<String> restrictedFields = ((AbstractBaseTable) tbl).getRestrictedColumnsFromQuery(columns);
         log.info("Restricted columns queried : "+ restrictedFields);
         if (restrictedFields != null && !restrictedFields.isEmpty()) {
-            for (String col : restrictedFields) {
-              AuthorizationUtil.isAuthorized(getAuthorizer(), tbl.getName(), col,
-                LensPrivilegeObject.LensPrivilegeObjectType.COLUMN, ActionType.SELECT, cubeql.getConf());
-            }
+          for (String col : restrictedFields) {
+            AuthorizationUtil.isAuthorized(getAuthorizer(), tbl.getName(), col,
+              LensPrivilegeObject.LensPrivilegeObjectType.COLUMN, ActionType.SELECT, cubeql.getConf());
+          }
         }
       }
     }
