@@ -47,6 +47,8 @@ public class AuthorizationUtil {
   public static boolean isAuthorized(Authorizer authorizer, String tableName, String colName,
     LensPrivilegeObject.LensPrivilegeObjectType privilegeObjectType, ActionType actionType, Configuration configuration)
     throws LensException {
+    log.info(" ==> Authorize call table : " + tableName + " col : "+ colName +" object type : "+ privilegeObjectType
+    +" action : "+ actionType);
     String user = null;
     Set<String> userGroups = new HashSet<>();
     if (configuration.getBoolean(LensConfConstants.USER_NAME_BASED_AUTHORIZATION,
@@ -62,7 +64,8 @@ public class AuthorizationUtil {
     if (!authorizer.authorize(lp, actionType, user, userGroups)) {
       throw new PrivilegeException(privilegeObjectType.toString(), tableName, actionType.toString());
     }
-
+    log.info(" <== Authorize call Success ! table : " + tableName + " col : "+ colName +" object type : "+ privilegeObjectType
+      +" action : "+ actionType);
     return true;
   }
 }

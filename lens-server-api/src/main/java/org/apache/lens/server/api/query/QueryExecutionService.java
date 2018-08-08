@@ -214,7 +214,8 @@ public interface QueryExecutionService extends LensService, SessionValidator {
    * @return returns javax.ws.rs.core.Response object
    * @throws LensException the lens exception
    */
-  Response getAuthorizedHttpResultSet(LensSessionHandle sessionHandle, QueryHandle queryHandle,String userPrincipalName)
+  Response getAuthorizedHttpResultSet(LensSessionHandle sessionHandle, QueryHandle queryHandle,
+    String userPrincipalName)
     throws LensException;
 
 

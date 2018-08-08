@@ -31,4 +31,32 @@ public class LensErrorInfo {
   @Getter
   private String errorName;
 
+  @Override
+  public boolean equals(final Object o) {
+
+    if (this == o) {
+      return true;
+    }
+
+    if (!(o instanceof LensErrorInfo)) {
+      return false;
+    }
+
+    LensErrorInfo e = (LensErrorInfo) o;
+    return errorCode == e.errorCode && errorWeight == e.errorWeight && errorName.equals(e.errorName);
+  }
+
+
+  @Override
+  public int hashCode() {
+
+    final int PRIME = 59;
+    int result = 1;
+
+    result = result * PRIME + errorCode;
+    result = result * PRIME + errorWeight;
+    result = result * PRIME + errorName.hashCode();
+    return result;
+  }
+
 }

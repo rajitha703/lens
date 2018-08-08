@@ -64,7 +64,9 @@ public class QueryAuthorizationResolver implements ContextRewriter {
         Set<String> columns = entry.getValue();
 
         Set<String> restrictedFields = ((AbstractBaseTable) tbl).getRestrictedColumnsFromQuery(columns);
-        if (restrictedFields != null && restrictedFields.isEmpty()) {
+        log.info("Restricted columns queried : "+ restrictedFields);
+        if (restrictedFields != null && !restrictedFields.isEmpty()) {
+          log.info("TEST : "+ cubeql.getConf().get("lens.server.base.url"));
             for (String col : restrictedFields) {
               AuthorizationUtil.isAuthorized(getAuthorizer(), tbl.getName(), col,
                 LensPrivilegeObject.LensPrivilegeObjectType.COLUMN, ActionType.SELECT, cubeql.getConf());

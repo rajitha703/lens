@@ -39,7 +39,6 @@ public class BriefError implements PrettyPrintable {
 
   @Override
   public String toPrettyString() {
-
     StringBuilder sb = new StringBuilder("Error Code: ").append(this.errorCode).append("\n").append("Error Message: ")
         .append(this.errorMsg);
     return sb.toString();

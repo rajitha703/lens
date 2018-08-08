@@ -21,8 +21,8 @@ package org.apache.lens.server.api;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.lens.api.parse.Parser;
-import org.apache.lens.server.api.authorization.DefaultAuthorizer;
 import org.apache.lens.server.api.authorization.Authorizer;
+import org.apache.lens.server.api.authorization.DefaultAuthorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
 import org.apache.lens.server.api.query.DefaultDownloadResultUrlProvider;
@@ -365,11 +365,6 @@ public final class LensConfConstants {
   public static final String USER_RESOLVER_LDAP_FIELDS = SERVER_PFX + "user.resolver.ldap.fields";
 
   /**
-   * The Constant USER_GROUP_LOOKUP_FIELDS.
-   */
-  public static final String USER_GROUP_LOOKUP_FIELDS = SERVER_PFX + "user.group.lookup.fields";
-
-  /**
    * The Constant USER_RESOLVER_LDAP_INTERMEDIATE_DB_INSERT_SQL.
    */
   public static final String USER_RESOLVER_LDAP_INTERMEDIATE_DB_INSERT_SQL = SERVER_PFX
@@ -380,18 +375,6 @@ public final class LensConfConstants {
    */
   public static final String USER_RESOLVER_LDAP_INTERMEDIATE_DB_DELETE_SQL = SERVER_PFX
     + "user.resolver.ldap.intermediate.db.delete.sql";
-
-  /**
-   * The Constant USER_GROUP_DB_INSERT_SQL.
-   */
-  public static final String USER_GROUP_DB_INSERT_SQL = SERVER_PFX
-    + "user.group.db.insert.sql";
-
-  /**
-   * The Constant USER_GROUP_INTERMEDIATE_DB_DELETE_SQL.
-   */
-  public static final String USER_GROUP_DB_DELETE_SQL = SERVER_PFX
-    + "user.group.db.delete.sql";
 
   /**
    * The Constant USER_RESOLVER_LDAP_BIND_DN.
@@ -416,12 +399,12 @@ public final class LensConfConstants {
   /**
    * The Constant USER_AUTHORIZATION.
    */
-  public static final String USER_NAME_BASED_AUTHORIZATION = SERVER_PFX + "user.name.authorization.enable";
+  public static final String USER_NAME_BASED_AUTHORIZATION = QUERY_PFX + "user.name.authorization.enable";
 
   /**
    * The Constant USER_GROUPS_BASED_AUTHORIZATION.
    */
-  public static final String USER_GROUPS_BASED_AUTHORIZATION = SERVER_PFX + "user.groups.authorization.enable";
+  public static final String USER_GROUPS_BASED_AUTHORIZATION = QUERY_PFX + "user.groups.authorization.enable";
 
   /**
    * The default USER_AUTHORIZATION.
@@ -1381,7 +1364,8 @@ public final class LensConfConstants {
   /**
    * This property is to enable authorization checks while downloading result.
    */
-  public static final String ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK = "lens.enable.result.download.authorization.check";
+  public static final String ENABLE_RESULT_DOWNLOAD_AUTHORIZATION_CHECK =
+    "lens.enable.result.download.authorization.check";
 
   /**
    * Default Value of the config "lens.enable.result.download.authorization.check"

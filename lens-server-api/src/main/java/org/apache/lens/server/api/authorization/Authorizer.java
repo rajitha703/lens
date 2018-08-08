@@ -28,5 +28,6 @@ public interface Authorizer {
  * @param userGroups the user groups
  * @return if authorized or no
  */
-  boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user, Set<String> userGroups);
+  boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
+    Set<String> userGroups);
 }
