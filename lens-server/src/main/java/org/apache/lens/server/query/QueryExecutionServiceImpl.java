@@ -45,7 +45,6 @@ import org.apache.lens.api.Priority;
 import org.apache.lens.api.error.ErrorCollection;
 import org.apache.lens.api.query.*;
 import org.apache.lens.api.query.QueryStatus.Status;
-import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.metadata.DateUtil;
 import org.apache.lens.driver.hive.HiveDriver;
 import org.apache.lens.driver.jdbc.JDBCDriver;
@@ -3312,7 +3311,7 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
     String userPrincipalName) throws LensException {
 
     String loggedInUser;
-    if(sessionHandle != null) {
+    if (sessionHandle != null) {
       validateAndAuthorizeSession(sessionHandle, userPrincipalName);
       loggedInUser = getSession(sessionHandle).getLoggedInUser();
     } else {
@@ -3337,7 +3336,8 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
     return getResponse(sessionHandle, queryHandle, ctx);
   }
 
-  private Response getResponse(LensSessionHandle sessionHandle, final QueryHandle queryHandle, final QueryContext ctx) throws LensException {
+  private Response getResponse(LensSessionHandle sessionHandle, final QueryHandle queryHandle, final QueryContext ctx)
+    throws LensException {
 
     LensResultSet resultSet = getResultset(queryHandle);
     if (!resultSet.isHttpResultAvailable()) {

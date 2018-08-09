@@ -35,6 +35,7 @@ public class IdBriefErrorTemplate implements PrettyPrintable {
 
   @Override
   public String toPrettyString() {
+
     StringBuilder sb = new StringBuilder();
     if (idKey != null && StringUtils.isNotBlank(idValue)) {
       sb.append(idKey.getConstant()).append(": ").append(this.idValue).append("\n");

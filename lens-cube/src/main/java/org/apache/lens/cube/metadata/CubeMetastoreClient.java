@@ -357,7 +357,7 @@ public class CubeMetastoreClient {
     } else if (entity instanceof XSegmentation) {
       createSegmentation((XSegmentation) entity);
     } else {
-      throw new LensException("Unable to create entity " + entity + " as it's unrecognizable: " +entity.getClass());
+      throw new LensException("Unable to create entity " + entity + " as it's unrecognizable: " + entity.getClass());
     }
   }
 

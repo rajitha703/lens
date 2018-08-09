@@ -593,7 +593,7 @@ public abstract class BaseLensService extends CompositeService implements Extern
       throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle);
     }
 
-    if(!session.getLoggedInUser().equals(userPrincipalName)) {
+    if (!session.getLoggedInUser().equals(userPrincipalName)) {
       throw new LensException(SESSION_UNAUTHORIZED.getLensErrorInfo(), handle);
     }
   }
