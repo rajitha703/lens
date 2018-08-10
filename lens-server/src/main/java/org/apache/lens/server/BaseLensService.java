@@ -253,12 +253,13 @@ public abstract class BaseLensService extends CompositeService implements Extern
    * @param password      the password
    * @throws LensException the lens exception
    */
-  public void restoreSession(LensSessionHandle sessionHandle, String userName, String password) throws LensException {
+  public void restoreSession(LensSessionHandle sessionHandle, String userName, String password,
+                             Map<String, String> configuration) throws LensException {
     HandleIdentifier handleIdentifier = new HandleIdentifier(sessionHandle.getPublicId(), sessionHandle.getSecretId());
     SessionHandle hiveSessionHandle = new SessionHandle(new TSessionHandle(handleIdentifier.toTHandleIdentifier()));
     try {
       cliService.createSessionWithSessionHandle(hiveSessionHandle, userName, password,
-        new HashMap<String, String>());
+        new HashMap<>());
       LensSessionHandle restoredSession = new LensSessionHandle(hiveSessionHandle.getHandleIdentifier().getPublicId(),
         hiveSessionHandle.getHandleIdentifier().getSecretId());
       SESSION_MAP.put(restoredSession.getPublicId().toString(), restoredSession);

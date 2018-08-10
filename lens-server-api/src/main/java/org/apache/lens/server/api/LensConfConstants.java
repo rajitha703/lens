@@ -1341,6 +1341,10 @@ public final class LensConfConstants {
 
   public static final String SSL_KEYSTORE_PASSWORD = SERVER_PFX + "ssl.password";
 
+  public static final String QUERY_START_DATE_IN_DAYS = "lens.cube.query.start.date.value";
+
+  public static final String QUERY_END_DATE = "lens.cube.query.end.date.value";
+
   /**
    * Message map for configured policy
    */
