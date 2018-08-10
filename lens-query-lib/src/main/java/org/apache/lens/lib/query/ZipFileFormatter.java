@@ -146,7 +146,6 @@ public class ZipFileFormatter extends AbstractFileFormatter {
     fs.rename(tmpPath, finalPath);
     finalPath = finalPath.makeQualified(fs);
     fileSize = fs.getFileStatus(finalPath).getLen();
-    fs.rename(tmpPath, finalPath);
     ctx.setResultSetPath(getFinalOutputPath());
   }
 

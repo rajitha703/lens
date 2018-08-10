@@ -3312,6 +3312,7 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
 
     String loggedInUser;
     if (sessionHandle != null) {
+      //@TODO this check can be introduced in other api calls as well if required
       validateAndAuthorizeSession(sessionHandle, userPrincipalName);
       loggedInUser = getSession(sessionHandle).getLoggedInUser();
     } else {

@@ -580,19 +580,8 @@ public abstract class BaseLensService extends CompositeService implements Extern
 
   @Override
   public void validateAndAuthorizeSession(LensSessionHandle handle, String userPrincipalName) throws LensException {
-    if (handle == null) {
-      throw new LensException(SESSION_ID_NOT_PROVIDED.getLensErrorInfo());
-    }
-    LensSessionImpl session;
-    try {
-      session = getSession(handle);
-    } catch (ClientErrorException e) {
-      throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle, e);
-    }
-    if (!session.isActive() || session.isMarkedForClose()) {
-      throw new LensException(SESSION_CLOSED.getLensErrorInfo(), handle);
-    }
-
+    validateSession(handle);
+    LensSessionImpl session = getSession(handle);
     if (!session.getLoggedInUser().equals(userPrincipalName)) {
       throw new LensException(SESSION_UNAUTHORIZED.getLensErrorInfo(), handle);
     }
