@@ -39,18 +39,19 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class TimerangeResolver implements ContextRewriter {
 
-
   @Override
   public void rewriteContext(CubeQueryContext cubeql) throws LensException {
     if (cubeql.getCube() == null) {
       return;
     }
     extractTimeRange(cubeql);
-//    for(TimeRange timeRange : cubeql.getTimeRanges()) {
-//      timeRange.getFromDate().after(new Date(cubeql.getConf().getTimeDuration(LensConfConstants.QUERY_START_DATE_IN_DAYS)) )
-//    }
+    CubeInterface cube = cubeql.getCube();
+    for(TimeRange timeRange : cubeql.getTimeRanges()) {
+      if(!(timeRange.getFromDate().after(cube.getStartTime()) && timeRange.getToDate().before(cube.getEndTime()))) {
+        throw new LensException(LensCubeErrorCode.QUERY_OUT_OF_ALLOWED_RANGE.getLensErrorInfo());
+      }
+    }
   }
-
 
   private void extractTimeRange(CubeQueryContext cubeql) throws LensException {
     // get time range -
