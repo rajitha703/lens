@@ -61,12 +61,13 @@ public class QueryAuthorizationResolver implements ContextRewriter {
           continue;
         }
         AbstractCubeTable tbl = cubeql.getCubeTableForAlias(alias);
-        Set<String> columns = entry.getValue();
+        Set<String> queriedcolumns = entry.getValue();
 
-        Set<String> restrictedFields = ((AbstractBaseTable) tbl).getRestrictedColumnsFromQuery(columns);
-        log.info("Restricted columns queried : "+ restrictedFields);
-        if (restrictedFields != null && !restrictedFields.isEmpty()) {
-          for (String col : restrictedFields) {
+        Set<String> restrictedFieldsQueried =
+          getRestrictedColumnsFromQuery(((AbstractBaseTable) tbl).getRestrictedColumns(), queriedcolumns);
+        log.info("Restricted queriedcolumns queried : "+ restrictedFieldsQueried);
+        if (restrictedFieldsQueried != null && !restrictedFieldsQueried.isEmpty()) {
+          for (String col : restrictedFieldsQueried) {
             AuthorizationUtil.isAuthorized(getAuthorizer(), tbl.getName(), col,
               LensPrivilegeObject.LensPrivilegeObjectType.COLUMN, ActionType.SELECT, cubeql.getConf());
           }
@@ -74,5 +75,13 @@ public class QueryAuthorizationResolver implements ContextRewriter {
       }
     }
     log.info("<== Query Authorization enabled : "+ isAuthorizationCheckEnabled);
+  }
+
+  /*
+  * Returns the intersection of queried and restricted columns of table
+  * */
+  private static Set<String> getRestrictedColumnsFromQuery(Set<String> restrictedColumns, Set<String> queriedColumns){
+    restrictedColumns.retainAll(queriedColumns);
+    return restrictedColumns;
   }
 }

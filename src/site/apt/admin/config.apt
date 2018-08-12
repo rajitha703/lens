@@ -263,9 +263,9 @@ Lens server configuration
 *--+--+---+--+
 |117|lens.server.total.query.cost.ceiling.per.user|-1.0|A query submitted by user will be launched only if total query cost of all current launched queries of user is less than or equal to total query cost ceiling defined by this property. This configuration value is only useful when TotalQueryCostCeilingConstraint is enabled by using org.apache.lens.server.query.constraint.TotalQueryCostCeilingConstraintFactory as one of the factories in lens.server.query.constraint.factories property. Default is -1.0 which means that there is no limit on the total query cost of launched queries submitted by a user.|
 *--+--+---+--+
-|118|lens.server.user.group.fixed.value|test|Required for FIXED user resolver. when lens.server.user.group.type=FIXED, This will be the value user groups will resolve to.|
+|118|lens.server.user.group.fixed.value|test|Required for FIXED user group resolver. when lens.server.user.group.type=FIXED, This will be the value user groups will resolve to.|
 *--+--+---+--+
-|119|lens.server.user.group.type|FIXED|Type of user config resolver. allowed values are FIXED, PROPERTYBASED, DATABASE, LDAP_BACKED_DATABASE, CUSTOM.|
+|119|lens.server.user.group.type|FIXED|Type of user group config resolver. allowed values are FIXED, CUSTOM.|
 *--+--+---+--+
 |120|lens.server.user.resolver.custom.class|full.package.name.Classname|Required for CUSTOM user resolver. In case the provided implementations are not sufficient for user config resolver, a custom classname can be provided. Class should extend org.apache.lens.server.user.UserConfigLoader|
 *--+--+---+--+
