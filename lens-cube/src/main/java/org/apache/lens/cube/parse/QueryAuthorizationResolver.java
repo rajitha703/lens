@@ -61,11 +61,11 @@ public class QueryAuthorizationResolver implements ContextRewriter {
           continue;
         }
         AbstractCubeTable tbl = cubeql.getCubeTableForAlias(alias);
-        Set<String> queriedcolumns = entry.getValue();
+        Set<String> queriedColumns = entry.getValue();
 
         Set<String> restrictedFieldsQueried =
-          getRestrictedColumnsFromQuery(((AbstractBaseTable) tbl).getRestrictedColumns(), queriedcolumns);
-        log.info("Restricted queriedcolumns queried : "+ restrictedFieldsQueried);
+          getRestrictedColumnsFromQuery(((AbstractBaseTable) tbl).getRestrictedColumns(), queriedColumns);
+        log.info("Restricted queriedColumns queried : "+ restrictedFieldsQueried);
         if (restrictedFieldsQueried != null && !restrictedFieldsQueried.isEmpty()) {
           for (String col : restrictedFieldsQueried) {
             AuthorizationUtil.isAuthorized(getAuthorizer(), tbl.getName(), col,
