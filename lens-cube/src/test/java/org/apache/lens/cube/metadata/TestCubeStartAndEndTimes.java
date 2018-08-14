@@ -31,7 +31,7 @@ import org.apache.lens.server.api.error.LensException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class CubeTest {
+public class TestCubeStartAndEndTimes {
 
   Date now = new Date();
 

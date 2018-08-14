@@ -341,36 +341,32 @@ public class DerivedCube extends AbstractCubeTable implements CubeInterface {
 
   @Override
   public Date getAbsoluteStartTime() {
-    return MetastoreUtil.getDateFromProperty(this.getProperties().get(MetastoreConstants.CUBE_ABSOLUTE_START_TIME),
-      false, true);
+    return parent.getAbsoluteStartTime();
   }
 
   @Override
   public Date getRelativeStartTime() {
-    return MetastoreUtil.getDateFromProperty(this.getProperties().get(MetastoreConstants.CUBE_RELATIVE_START_TIME),
-      true, true);
+    return parent.getRelativeStartTime();
   }
 
   @Override
   public Date getStartTime() {
-    return Collections.max(Lists.newArrayList(getRelativeStartTime(), getAbsoluteStartTime()));
+    return parent.getStartTime();
   }
 
   @Override
   public Date getAbsoluteEndTime() {
-    return MetastoreUtil.getDateFromProperty(this.getProperties().get(MetastoreConstants.CUBE_ABSOLUTE_END_TIME),
-      false, false);
+    return parent.getAbsoluteEndTime();
   }
 
   @Override
   public Date getRelativeEndTime() {
-    return MetastoreUtil.getDateFromProperty(this.getProperties().get(MetastoreConstants.CUBE_RELATIVE_END_TIME),
-      true, false);
+    return parent.getRelativeEndTime();
   }
 
   @Override
   public Date getEndTime() {
-    return Collections.min(Lists.newArrayList(getRelativeEndTime(), getAbsoluteEndTime()));
+    return parent.getEndTime();
   }
 
 }
