@@ -22,17 +22,11 @@ package org.apache.lens.cube.parse;
 import static org.apache.lens.cube.metadata.DateFactory.*;
 import static org.apache.lens.cube.parse.CandidateTablePruneCause.CandidateTablePruneCode.TIME_RANGE_NOT_ANSWERABLE;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 import java.util.*;
 
-import org.apache.lens.cube.metadata.Cube;
-import org.apache.lens.cube.metadata.CubeFactTable;
-import org.apache.lens.cube.metadata.DateUtil;
-import org.apache.lens.cube.metadata.MetastoreConstants;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.error.LensException;
 
@@ -41,7 +35,6 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.ParseException;
 
 import org.joda.time.DateTime;
-import org.mockito.Mockito;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -112,7 +105,7 @@ public class TestTimeRangeResolver extends TestQueryRewrite {
 
   @Test
   public void testQueryTimeRange() throws LensException {
-    String query = "select msr2 from " + CubeTestSetup.TEST_CUBE_NAME + " where "  + PREV_FIVE_TO_NEXT_ONE_YEAR_RANGE;
+    String query = "select msr2 from " + CubeTestSetup.TEST_CUBE_NAME + " where "  + PREV_FIVE_TO_NEXT_FIVE_YEAR_RANGE;
 
     LensException e = getLensExceptionInRewrite(query, getConf());
     assertEquals(e.getErrorInfo().getErrorName(), "QUERY_OUT_OF_ALLOWED_RANGE");
