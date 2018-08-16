@@ -135,7 +135,6 @@ public class CubeTestSetup {
 
   static {
     factValidityProperties.put(MetastoreConstants.FACT_RELATIVE_START_TIME, "now.year - 90 days");
-
   }
 
 
