@@ -47,6 +47,7 @@ import org.apache.lens.server.api.metastore.DataCompletenessChecker;
 import org.apache.lens.server.api.util.LensUtil;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
@@ -129,7 +130,7 @@ public class CubeMetastoreClient {
     return completenessChecker;
   }
 
-  public Authorizer getAuthorizer() {
+  private Authorizer getAuthorizer() {
     if (authorizer == null) {
       authorizer = ReflectionUtils.newInstance(config.getClass(MetastoreConstants.AUTHORIZER_CLASS,
         LensConfConstants.DEFAULT_AUTHORIZER, Authorizer.class), this.config);
@@ -157,7 +158,8 @@ public class CubeMetastoreClient {
     if (isAuthorizationEnabled()) {
       String currentdb = SessionState.get().getCurrentDatabase();
       AuthorizationUtil.isAuthorized(getAuthorizer(), currentdb,
-        LensPrivilegeObject.LensPrivilegeObjectType.DATABASE, ActionType.UPDATE, getConf());
+        LensPrivilegeObject.LensPrivilegeObjectType.DATABASE, ActionType.UPDATE, getConf(),
+        SessionState.getSessionConf());
     }
   }
 
