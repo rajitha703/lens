@@ -38,7 +38,9 @@ import org.apache.lens.cube.metadata.timeline.EndsAndHolesPartitionTimeline;
 import org.apache.lens.cube.metadata.timeline.PartitionTimeline;
 import org.apache.lens.cube.metadata.timeline.StoreAllPartitionTimeline;
 import org.apache.lens.cube.metadata.timeline.TestPartitionTimelines;
+import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.error.LensException;
+import org.apache.lens.server.api.query.save.exception.PrivilegeException;
 import org.apache.lens.server.api.util.LensUtil;
 
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -2981,4 +2983,27 @@ public class TestCubeMetastoreClient {
     conf.setBoolean(MetastoreConstants.METASTORE_ENABLE_CACHING, true);
     client = CubeMetastoreClient.getInstance(conf);
   }
+
+  @Test(priority = 4)
+  public void testMetastoreAuthorization() throws HiveException, LensException {
+
+    client = CubeMetastoreClient.getInstance(conf);
+    client.getConf().setBoolean(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK, true);
+    client.getConf().setBoolean(LensConfConstants.USER_GROUPS_BASED_AUTHORIZATION,true);
+    client.getConf().set(MetastoreConstants.AUTHORIZER_CLASS, "org.apache.lens.cube.parse.MockAuthorizer");
+    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test3");
+    try {
+      client.createCube("testcache4", cubeMeasures, cubeDimensions);
+      fail("Privilege exception supposed to be thrown for updating TestCubeMetastoreClient database, however not seeing " +
+        "expected behaviour");
+    }catch (PrivilegeException actualException){
+      PrivilegeException expectedException =
+        new PrivilegeException("DATABASE", "TestCubeMetastoreClient", "UPDATE");
+      assertEquals(expectedException, actualException);
+    }
+    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1");
+    client.createCube("testcache4", cubeMeasures, cubeDimensions);
+
+  }
+
 }
