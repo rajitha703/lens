@@ -68,7 +68,6 @@ public abstract class TestQueryRewrite {
     hconf.setStrings(LensConfConstants.COMPLETENESS_CHECKER_CLASS,
             "org.apache.lens.cube.parse.MockCompletenessChecker");
     hconf.setBoolean(LensConfConstants.ENABLE_DATACOMPLETENESS_CHECK, true);
-    hconf.set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1, lens-nonauth-test2");
     SessionState.start(hconf);
 
     setup = new CubeTestSetup();

@@ -20,21 +20,25 @@ package org.apache.lens.cube.parse;
 
 import static org.apache.lens.cube.metadata.DateFactory.TWO_DAYS_RANGE;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
+
 import org.apache.lens.cube.metadata.MetastoreConstants;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.error.LensException;
+import org.apache.lens.server.api.query.save.exception.PrivilegeException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.ql.session.SessionState;
 
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-public class TestQueryAuthorizationResolver extends TestQueryRewrite
-{
+public class TestQueryAuthorizationResolver extends TestQueryRewrite {
   private Configuration conf = new Configuration();
 
   @BeforeClass
-  public void beforeClassFieldsCannotBeQueriedTogetherTest() {
+  public void beforeClassTestQueryAuthorizationResolver() {
     conf.setBoolean(LensConfConstants.ENABLE_QUERY_AUTHORIZATION_CHECK, true);
     conf.setBoolean(LensConfConstants.USER_GROUPS_BASED_AUTHORIZATION, true);
     conf.set(MetastoreConstants.AUTHORIZER_CLASS, "org.apache.lens.cube.parse.MockAuthorizer");
@@ -43,9 +47,20 @@ public class TestQueryAuthorizationResolver extends TestQueryRewrite
   @Test
   public void testRestrictedColumnsFromQuery() throws LensException {
 
+    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test2");
     String testQuery = "select dim11 from basecube where " + TWO_DAYS_RANGE;
-    rewrite(testQuery, conf);
 
+    try {
+      rewrite(testQuery, conf);
+      fail("Privilege exception supposed to be thrown for selecting restricted columns in basecube, "
+         + "however not seeing expected behaviour");
+    } catch (PrivilegeException actualException) {
+      PrivilegeException expectedException =
+        new PrivilegeException("COLUMN", "basecube", "SELECT");
+      assertEquals(expectedException, actualException);
+    }
+    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1");
+    rewrite(testQuery, conf);
   }
 
 }

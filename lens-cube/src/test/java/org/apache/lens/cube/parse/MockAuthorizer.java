@@ -32,7 +32,7 @@ public class MockAuthorizer implements Authorizer {
   @Getter
   Set<String> authorizedUserGroups;
   MockAuthorizer(){
-     init();
+    init();
   }
 
   public void init(){
@@ -43,12 +43,12 @@ public class MockAuthorizer implements Authorizer {
   public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
     Set<String> userGroups) {
     //check query authorization
-    if(lensPrivilegeObject.getTable().equals("basecube") && accessType.equals(ActionType.SELECT)) {
+    if (lensPrivilegeObject.getTable().equals("basecube") && accessType.equals(ActionType.SELECT)) {
       userGroups.retainAll(getAuthorizedUserGroups());
       return !userGroups.isEmpty();
     }
     // check metastore schema authorization
-    if(lensPrivilegeObject.getTable().equals("TestCubeMetastoreClient") && accessType.equals(ActionType.UPDATE)) {
+    if (lensPrivilegeObject.getTable().equals("TestCubeMetastoreClient") && accessType.equals(ActionType.UPDATE)) {
       userGroups.retainAll(getAuthorizedUserGroups());
       return !userGroups.isEmpty();
     }
