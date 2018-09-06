@@ -23,6 +23,7 @@ import static org.apache.lens.cube.error.LensCubeErrorCode.SYNTAX_ERROR;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metrics.MethodMetricsContext;
 import org.apache.lens.server.api.metrics.MethodMetricsFactory;
@@ -50,8 +51,12 @@ public class CubeQueryRewriter {
   private final HiveConf hconf;
   private Context qlCtx = null;
   private boolean lightFactFirst;
+  private Authorizer authorizer;
 
   public CubeQueryRewriter(Configuration conf, HiveConf hconf) {
+    this(conf, hconf, null);
+  }
+  public CubeQueryRewriter(Configuration conf, HiveConf hconf, Authorizer authorizer) {
     this.conf = conf;
     this.hconf = hconf;
     try {
@@ -64,6 +69,7 @@ public class CubeQueryRewriter {
     ImmutableList.Builder<ContextRewriter> builder = ImmutableList.builder();
     setupRewriters(builder);
     rewriters = builder.build();
+    this.authorizer = authorizer;
   }
 
   /*
@@ -231,7 +237,7 @@ public class CubeQueryRewriter {
     } catch (SemanticException e) {
       throw new LensException(SYNTAX_ERROR.getLensErrorInfo(), e, e.getMessage());
     }
-    CubeQueryContext ctx = new CubeQueryContext(astnode, analyzer.getCubeQB(), conf, hconf);
+    CubeQueryContext ctx = new CubeQueryContext(astnode, analyzer.getCubeQB(), conf, hconf, authorizer);
     rewrite(rewriters, ctx);
     return ctx;
   }

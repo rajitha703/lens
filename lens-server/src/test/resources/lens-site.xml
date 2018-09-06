@@ -237,4 +237,23 @@
     <description>password for cert file</description>
   </property>
 
+  <property>
+    <name>lens.cube.metastore.enable.metastore.authorization.check</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>authorizer.class</name>
+    <value>org.apache.lens.server.authorization.MockAuthorizer</value>
+  </property>
+
+  <property>
+    <name>lens.server.user.group.custom.class</name>
+    <value>org.apache.lens.server.authorization.MockUserGroupLoader</value>
+  </property>
+
+  <property>
+    <name>lens.cube.query.user.groups.authorization.enable</name>
+    <value>true</value>
+  </property>
 </configuration>

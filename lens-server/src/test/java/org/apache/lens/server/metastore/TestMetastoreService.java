@@ -90,7 +90,9 @@ public class TestMetastoreService extends LensJerseyTest {
   public void create() throws Exception {
     cubeObjectFactory = new ObjectFactory();
     metastoreService = LensServices.get().getService(CubeMetastoreService.NAME);
-    lensSessionId = metastoreService.openSession("foo", "bar", new HashMap<String, String>());
+    Map<String, String> conf = new HashMap<>();
+    conf.put(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1");
+    lensSessionId = metastoreService.openSession("foo", "bar", conf);
   }
 
   @AfterTest

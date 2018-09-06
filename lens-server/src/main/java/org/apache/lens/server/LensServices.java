@@ -30,8 +30,10 @@ import java.util.concurrent.*;
 
 import org.apache.lens.api.error.ErrorCollection;
 import org.apache.lens.api.error.ErrorCollectionFactory;
+import org.apache.lens.cube.metadata.MetastoreConstants;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.ServiceProvider;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.events.LensEventService;
 import org.apache.lens.server.api.metrics.MetricsService;
@@ -50,6 +52,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hive.service.CompositeService;
 import org.apache.hive.service.Service;
 import org.apache.hive.service.auth.HiveAuthFactory;
@@ -139,6 +142,10 @@ public class LensServices extends CompositeService implements ServiceProvider {
   @Getter
   private final LogSegregationContext logSegregationContext;
 
+
+  /** The authorizer. */
+  private Authorizer authorizer;
+
   /**
    * Incr counter.
    *
@@ -220,6 +227,8 @@ public class LensServices extends CompositeService implements ServiceProvider {
       addService(new MetricsServiceImpl(MetricsService.NAME));
       addService(new StatisticsService(StatisticsService.STATS_SVC_NAME));
 
+      authorizer = ReflectionUtils.newInstance(conf.getClass
+          (LensConfConstants.AUTHORIZER_CLASS, LensConfConstants.DEFAULT_AUTHORIZER, Authorizer.class), conf);
       // Add configured services, these are instances of LensService which need a CLIService instance
       // for session management
       String[] serviceNames = conf.getStrings(SERVICE_NAMES);
@@ -240,6 +249,7 @@ public class LensServices extends CompositeService implements ServiceProvider {
             log.info("Adding {}  service with {}", sName, serviceClass);
             Constructor<?> constructor = serviceClass.getConstructor(CLIService.class);
             BaseLensService service = (BaseLensService) constructor.newInstance(cliService);
+            service.setAuthorizer(authorizer);
             addService(service);
             lensServices.add(service);
           } else if (Service.class.isAssignableFrom(cls)) {

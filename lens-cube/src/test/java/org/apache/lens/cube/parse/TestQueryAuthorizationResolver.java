@@ -23,10 +23,11 @@ import static org.apache.lens.cube.metadata.DateFactory.TWO_DAYS_RANGE;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.fail;
 
-import org.apache.lens.cube.metadata.MetastoreConstants;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.query.save.exception.PrivilegeException;
+import org.apache.lens.server.authorization.MockAuthorizer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.session.SessionState;
@@ -41,7 +42,6 @@ public class TestQueryAuthorizationResolver extends TestQueryRewrite {
   public void beforeClassTestQueryAuthorizationResolver() {
     conf.setBoolean(LensConfConstants.ENABLE_QUERY_AUTHORIZATION_CHECK, true);
     conf.setBoolean(LensConfConstants.USER_GROUPS_BASED_AUTHORIZATION, true);
-    conf.set(MetastoreConstants.AUTHORIZER_CLASS, "org.apache.lens.cube.parse.MockAuthorizer");
   }
 
   @Test
@@ -49,9 +49,9 @@ public class TestQueryAuthorizationResolver extends TestQueryRewrite {
 
     SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test2");
     String testQuery = "select dim11 from basecube where " + TWO_DAYS_RANGE;
-
+    Authorizer mockAuthorizer = new MockAuthorizer();
     try {
-      rewrite(testQuery, conf);
+      rewriteAuthorizedCtx(testQuery, conf, mockAuthorizer);
       fail("Privilege exception supposed to be thrown for selecting restricted columns in basecube, "
          + "however not seeing expected behaviour");
     } catch (PrivilegeException actualException) {
@@ -60,7 +60,7 @@ public class TestQueryAuthorizationResolver extends TestQueryRewrite {
       assertEquals(expectedException, actualException);
     }
     SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1");
-    rewrite(testQuery, conf);
+    rewriteAuthorizedCtx(testQuery, conf, mockAuthorizer);
   }
 
 }

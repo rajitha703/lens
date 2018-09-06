@@ -30,6 +30,7 @@ import org.apache.lens.api.error.LensError;
 import org.apache.lens.cube.error.LensCubeErrorCode;
 import org.apache.lens.cube.error.NoCandidateFactAvailableException;
 import org.apache.lens.server.api.*;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -95,6 +96,13 @@ public abstract class TestQueryRewrite {
     throws LensException {
     log.info("User query: {}", query);
     CubeQueryRewriter driver = new CubeQueryRewriter(conf, hconf);
+    return driver.rewrite(query);
+  }
+
+  protected CubeQueryContext rewriteAuthorizedCtx(String query, Configuration conf, Authorizer authorizer)
+    throws LensException {
+    log.info("User query: {}", query);
+    CubeQueryRewriter driver = new CubeQueryRewriter(conf, hconf, authorizer);
     return driver.rewrite(query);
   }
 

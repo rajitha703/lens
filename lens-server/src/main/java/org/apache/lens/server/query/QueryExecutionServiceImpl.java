@@ -1702,7 +1702,8 @@ public class QueryExecutionServiceImpl extends BaseLensService implements QueryE
       // Initially we obtain individual runnables for rewrite and estimate calls
       // These are mapped against the driver, so that later it becomes easy to chain them
       // for each driver.
-      Map<LensDriver, RewriteUtil.DriverRewriterRunnable> rewriteRunnables = RewriteUtil.rewriteQuery(ctx);
+      Map<LensDriver, RewriteUtil.DriverRewriterRunnable> rewriteRunnables =
+        RewriteUtil.rewriteQuery(ctx, getAuthorizer());
       Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnables = ctx.getDriverEstimateRunnables();
 
       int numDrivers = ctx.getDriverContext().getDrivers().size();

@@ -50,6 +50,7 @@ import org.apache.lens.cube.metadata.join.TableRelationship;
 import org.apache.lens.cube.parse.join.AutoJoinContext;
 import org.apache.lens.cube.parse.join.JoinClause;
 import org.apache.lens.cube.parse.join.JoinUtils;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 
 import org.apache.commons.lang.StringUtils;
@@ -142,7 +143,7 @@ public class CubeQueryContext extends TracksQueriedColumns implements QueryAST, 
 
   void addQueriedPhrase(QueriedPhraseContext qur) {
     queriedPhrases.add(qur);
-    qur.setPosition(queriedPhrases.size() -1);
+    qur.setPosition(queriedPhrases.size() - 1);
   }
 
   @Getter
@@ -188,7 +189,7 @@ public class CubeQueryContext extends TracksQueriedColumns implements QueryAST, 
   @Setter
   private DenormalizationResolver.DenormalizationContext deNormCtx;
   @Getter
-  private PruneCauses<Candidate>  storagePruningMsgs = new PruneCauses<>();
+  private PruneCauses<Candidate> storagePruningMsgs = new PruneCauses<>();
   @Getter
   private Map<Dimension, PruneCauses<CubeDimensionTable>> dimPruningMsgs =
     new HashMap<Dimension, PruneCauses<CubeDimensionTable>>();
@@ -197,7 +198,13 @@ public class CubeQueryContext extends TracksQueriedColumns implements QueryAST, 
   private String fromString;
   @Getter
   private TimeRangeWriter rangeWriter = null;
-  public CubeQueryContext(ASTNode ast, QB qb, Configuration queryConf, HiveConf metastoreConf)
+  @Getter
+  private Authorizer authorizer;
+
+  public CubeQueryContext(ASTNode ast, QB qb, Configuration queryConf, HiveConf metastoreConf) throws LensException {
+    this(ast, qb, queryConf, metastoreConf,null);
+  }
+  public CubeQueryContext(ASTNode ast, QB qb, Configuration queryConf, HiveConf metastoreConf, Authorizer authorizer)
     throws LensException {
     this.ast = ast;
     this.qb = qb;
@@ -228,6 +235,8 @@ public class CubeQueryContext extends TracksQueriedColumns implements QueryAST, 
 
     this.rangeWriter = ReflectionUtils.newInstance(conf.getClass(CubeQueryConfUtil.TIME_RANGE_WRITER_CLASS,
       CubeQueryConfUtil.DEFAULT_TIME_RANGE_WRITER, TimeRangeWriter.class), conf);
+
+    this.authorizer = authorizer;
   }
 
   boolean hasCubeInQuery() {

@@ -39,16 +39,11 @@ import lombok.extern.slf4j.Slf4j;
 public class QueryAuthorizationResolver implements ContextRewriter {
 
   @Getter
-  private Authorizer authorizer;
-  @Getter
   private Boolean isAuthorizationCheckEnabled;
 
   QueryAuthorizationResolver(Configuration conf) {
     isAuthorizationCheckEnabled = conf.getBoolean(LensConfConstants.ENABLE_QUERY_AUTHORIZATION_CHECK,
       LensConfConstants.DEFAULT_ENABLE_QUERY_AUTHORIZATION_CHECK);
-    authorizer = ReflectionUtils.newInstance(
-      conf.getClass(MetastoreConstants.AUTHORIZER_CLASS, LensConfConstants.DEFAULT_AUTHORIZER, Authorizer.class),
-      conf);
   }
   @Override
   public void rewriteContext(CubeQueryContext cubeql) throws LensException {
@@ -69,7 +64,7 @@ public class QueryAuthorizationResolver implements ContextRewriter {
         log.info("Restricted queriedColumns queried : "+ restrictedFieldsQueried);
         if (restrictedFieldsQueried != null && !restrictedFieldsQueried.isEmpty()) {
           for (String col : restrictedFieldsQueried) {
-            AuthorizationUtil.isAuthorized(getAuthorizer(), tbl.getName(), col,
+            AuthorizationUtil.isAuthorized(cubeql.getAuthorizer(), tbl.getName(), col,
               LensPrivilegeObject.LensPrivilegeObjectType.COLUMN, ActionType.SELECT, cubeql.getConf(),
               SessionState.getSessionConf());
           }

@@ -28,11 +28,14 @@ import javax.ws.rs.NotFoundException;
 
 import org.apache.lens.api.LensSessionHandle;
 import org.apache.lens.api.metastore.*;
+import org.apache.lens.cube.authorization.AuthorizationUtil;
 import org.apache.lens.cube.metadata.*;
 import org.apache.lens.cube.metadata.timeline.PartitionTimeline;
 import org.apache.lens.server.BaseLensService;
 import org.apache.lens.server.LensServerConf;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.api.authorization.ActionType;
+import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.health.HealthStatus;
 import org.apache.lens.server.api.metastore.CubeMetastoreService;
@@ -44,6 +47,7 @@ import org.apache.hadoop.hive.metastore.api.*;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Partition;
+import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hive.service.cli.CLIService;
 
 import com.google.common.collect.Lists;
@@ -52,12 +56,23 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMetastoreService {
 
+
+  private Boolean isAuthorizationCheckEnabled;
+
   public CubeMetastoreServiceImpl(CLIService cliService) {
     super(NAME, cliService);
   }
 
   synchronized CubeMetastoreClient getClient(LensSessionHandle sessionid) throws LensException {
     return getSession(sessionid).getCubeMetastoreClient();
+  }
+  
+  private boolean isAuthorizationEnabled() {
+    if (isAuthorizationCheckEnabled == null) {
+      isAuthorizationCheckEnabled = getHiveConf().getBoolean(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK,
+        LensConfConstants.DEFAULT_ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK);
+    }
+    return isAuthorizationCheckEnabled;
   }
 
 
@@ -159,6 +174,14 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
     return null;
   }
 
+    private void checkIfAuthorized(String currentdb, Configuration sessionConf) throws LensException {
+    if (isAuthorizationEnabled()) {
+      AuthorizationUtil.isAuthorized(getAuthorizer(), currentdb,
+        LensPrivilegeObject.LensPrivilegeObjectType.DATABASE, ActionType.UPDATE, getHiveConf(),
+        sessionConf);
+    }
+  }
+
   /**
    * Create cube based on the JAXB cube object
    *
@@ -167,6 +190,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
    */
   @Override
   public void createCube(LensSessionHandle sessionid, XCube cube) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).createCube(cube);
       log.info("Created cube " + cube.getName());
@@ -197,6 +221,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
    * @param cubeName cube name
    */
   public void dropCube(LensSessionHandle sessionid, String cubeName) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)) {
       getClient(sessionid).dropCube(cubeName);
     }
@@ -210,6 +235,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
    */
   @Override
   public void updateCube(LensSessionHandle sessionid, XCube cube) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).alterCube(cube);
       log.info("Cube updated " + cube.getName());
@@ -226,6 +252,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
    */
   @Override
   public void createDimensionTable(LensSessionHandle sessionid, XDimensionTable xDimTable) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).createCubeDimensionTable(xDimTable);
       log.info("Dimension Table created " + xDimTable.getTableName());
@@ -234,6 +261,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void dropDimensionTable(LensSessionHandle sessionid, String dimTblName, boolean cascade) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).dropDimensionTable(dimTblName, cascade);
       log.info("Dropped dimension table " + dimTblName + " cascade? " + cascade);
@@ -249,6 +277,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void updateDimensionTable(LensSessionHandle sessionid, XDimensionTable dimensionTable) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).alterCubeDimensionTable(dimensionTable);
       log.info("Updated dimension table " + dimensionTable.getTableName());
@@ -269,6 +298,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void addDimTableStorage(LensSessionHandle sessionid,
     String dimTblName, XStorageTableElement storageTable) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       CubeMetastoreClient msClient = getClient(sessionid);
       CubeDimensionTable dimTable = msClient.getDimensionTable(dimTblName);
@@ -285,6 +315,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void dropAllStoragesOfDimTable(LensSessionHandle sessionid, String dimTblName) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       CubeMetastoreClient msClient = getClient(sessionid);
       CubeDimensionTable tab = msClient.getDimensionTable(dimTblName);
@@ -321,6 +352,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void dropAllStoragesOfFact(LensSessionHandle sessionid, String factName) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       CubeMetastoreClient msClient = getClient(sessionid);
       CubeFactTable tab = msClient.getCubeFactTable(factName);
@@ -339,6 +371,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void dropStorageOfDimTable(LensSessionHandle sessionid, String dimTblName, String storage)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       CubeMetastoreClient msClient = getClient(sessionid);
       CubeDimensionTable tab = msClient.getDimensionTable(dimTblName);
@@ -372,6 +405,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void createFactTable(LensSessionHandle sessionid, XFact fact) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).createFactTable(fact);
       log.info("Created fact table " + fact.getName());
@@ -380,6 +414,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void updateFactTable(LensSessionHandle sessionid, XFact fact) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).alterCubeFactTable(fact);
       log.info("Updated fact table " + fact.getName());
@@ -391,6 +426,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void createSegmentation(LensSessionHandle sessionid, XSegmentation cubeSeg) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).createSegmentation(cubeSeg);
       log.info("Created segmentation " + cubeSeg.getName());
@@ -399,6 +435,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void updateSegmentation(LensSessionHandle sessionid, XSegmentation cubeSeg) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).alterSegmentation(cubeSeg);
       log.info("Updated segmentation " + cubeSeg.getName());
@@ -409,6 +446,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void dropFactTable(LensSessionHandle sessionid, String fact, boolean cascade) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).dropFact(fact, cascade);
       log.info("Dropped fact table " + fact + " cascade? " + cascade);
@@ -417,6 +455,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void dropSegmentation(LensSessionHandle sessionid, String cubeSegName) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).dropSegmentation(cubeSegName);
       log.info("Dropped segemntation " + cubeSegName);
@@ -512,6 +551,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void addStorageToFact(LensSessionHandle sessionid, String fact, XStorageTableElement storageTable)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     Set<UpdatePeriod> updatePeriods = new TreeSet<>();
     for (XUpdatePeriod sup : storageTable.getUpdatePeriods().getUpdatePeriod()) {
       updatePeriods.add(UpdatePeriod.valueOf(sup.name()));
@@ -529,6 +569,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
 
   @Override
   public void dropStorageOfFact(LensSessionHandle sessionid, String fact, String storage) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       checkFactStorage(sessionid, fact, storage);
       getClient(sessionid).dropStorageFromFact(fact, storage);
@@ -818,6 +859,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void createStorage(LensSessionHandle sessionid, XStorage storage)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).createStorage(storage);
       log.info("Created storage " + storage.getName());
@@ -828,6 +870,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void dropStorage(LensSessionHandle sessionid, String storageName)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).dropStorage(storageName);
       log.info("Dropped storage " + storageName);
@@ -837,6 +880,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void alterStorage(LensSessionHandle sessionid, String storageName,
     XStorage storage) throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).alterStorage(storage);
       log.info("Altered storage " + storageName);
@@ -848,6 +892,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public XStorage getStorage(LensSessionHandle sessionid, String storageName)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       return JAXBUtils.xstorageFromStorage(getClient(sessionid).getStorage(storageName));
     }
@@ -926,6 +971,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void createDimension(LensSessionHandle sessionid, XDimension dimension)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).createDimension(dimension);
       log.info("Created dimension " + dimension.getName());
@@ -943,6 +989,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void dropDimension(LensSessionHandle sessionid, String dimName)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).dropDimension(dimName);
       log.info("Dropped dimension " + dimName);
@@ -952,6 +999,7 @@ public class CubeMetastoreServiceImpl extends BaseLensService implements CubeMet
   @Override
   public void updateDimension(LensSessionHandle sessionid, String dimName, XDimension dimension)
     throws LensException {
+    checkIfAuthorized(getSession(sessionid).getCurrentDatabase(), getSession(sessionid).getSessionConf());
     try (SessionContext ignored = new SessionContext(sessionid)){
       getClient(sessionid).alterDimension(dimension);
       log.info("Altered dimension " + dimName);

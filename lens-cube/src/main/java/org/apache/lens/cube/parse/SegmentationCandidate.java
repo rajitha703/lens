@@ -148,7 +148,7 @@ public class SegmentationCandidate implements Candidate {
         innerConf.set(LensConfConstants.QUERY_METRIC_UNIQUE_ID_CONF_KEY,
           conf.get(LensConfConstants.QUERY_METRIC_UNIQUE_ID_CONF_KEY) + "-" + segment.getName());
       }
-      CubeQueryRewriter rewriter = new CubeQueryRewriter(innerConf, hconf);
+      CubeQueryRewriter rewriter = new CubeQueryRewriter(innerConf, hconf, cubeQueryContext.getAuthorizer());
       CubeQueryContext ctx = rewriter.rewrite(ast);
       cubeQueryContextMap.put(segment.getName(), ctx);
       if (!ctx.getCandidates().isEmpty()) {

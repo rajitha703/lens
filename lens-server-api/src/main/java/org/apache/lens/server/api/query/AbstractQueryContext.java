@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.Priority;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.driver.DriverQueryPlan;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.error.LensException;
@@ -134,13 +135,17 @@ public abstract class AbstractQueryContext implements Serializable {
   @Setter
   private Priority priority;
 
+  @Getter
+  @Setter
+  private Authorizer authorizer;
+
 
   protected AbstractQueryContext(final String query, final String user, final LensConf qconf, final Configuration conf,
     final Collection<LensDriver> drivers, boolean mergeDriverConf) {
     this(query, user, qconf, conf, drivers, mergeDriverConf, null);
   }
   protected AbstractQueryContext(final String query, final String user, final LensConf qconf, final Configuration conf,
-    final Collection<LensDriver> drivers, boolean mergeDriverConf, Set<String> userGroups) {
+    final Collection<LensDriver> drivers, boolean mergeDriverConf, Authorizer authorizer) {
     if (conf.getBoolean(LensConfConstants.ENABLE_QUERY_METRICS, LensConfConstants.DEFAULT_ENABLE_QUERY_METRICS)) {
       UUID metricId = UUID.randomUUID();
       conf.set(LensConfConstants.QUERY_METRIC_UNIQUE_ID_CONF_KEY, metricId.toString());
@@ -166,6 +171,8 @@ public abstract class AbstractQueryContext implements Serializable {
     } else {
       database = "default";
     }
+
+    this.authorizer = authorizer;
   }
 
   // called after the object is constructed from serialized object

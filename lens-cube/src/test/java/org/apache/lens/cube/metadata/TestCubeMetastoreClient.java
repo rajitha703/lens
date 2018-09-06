@@ -146,10 +146,6 @@ public class TestCubeMetastoreClient {
     Hive.get(conf).createDatabase(database);
     SessionState.get().setCurrentDatabase(TestCubeMetastoreClient.class.getSimpleName());
     client = CubeMetastoreClient.getInstance(conf);
-    client.getConf().setBoolean(LensConfConstants.ENABLE_METASTORE_SCHEMA_AUTHORIZATION_CHECK, true);
-    client.getConf().setBoolean(LensConfConstants.USER_GROUPS_BASED_AUTHORIZATION, true);
-    client.getConf().set(MetastoreConstants.AUTHORIZER_CLASS, "org.apache.lens.cube.parse.MockAuthorizer");
-    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1");
     defineCube(CUBE_NAME, CUBE_NAME_WITH_PROPS, DERIVED_CUBE_NAME, DERIVED_CUBE_NAME_WITH_PROPS);
     defineUberDims();
   }
@@ -2988,23 +2984,4 @@ public class TestCubeMetastoreClient {
     conf.setBoolean(MetastoreConstants.METASTORE_ENABLE_CACHING, true);
     client = CubeMetastoreClient.getInstance(conf);
   }
-
-  @Test(priority = 4)
-  public void testMetastoreAuthorization() throws HiveException, LensException {
-
-    client = CubeMetastoreClient.getInstance(new HiveConf(TestCubeMetastoreClient.class));
-    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test2");
-    try {
-      client.createCube("testcache5", cubeMeasures, cubeDimensions);
-      fail("Privilege exception supposed to be thrown for updating TestCubeMetastoreClient"
-        + " database, however not seeing expected behaviour");
-    } catch (PrivilegeException actualException) {
-      PrivilegeException expectedException =
-        new PrivilegeException("DATABASE", "TestCubeMetastoreClient", "UPDATE");
-      assertEquals(expectedException, actualException);
-    }
-    SessionState.getSessionConf().set(LensConfConstants.SESSION_USER_GROUPS, "lens-auth-test1");
-    client.createCube("testcache5", cubeMeasures, cubeDimensions);
-  }
-
 }

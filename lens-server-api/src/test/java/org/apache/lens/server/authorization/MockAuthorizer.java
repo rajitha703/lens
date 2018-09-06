@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.cube.parse;
+package org.apache.lens.server.authorization;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,7 +31,7 @@ public class MockAuthorizer implements Authorizer {
 
   @Getter
   Set<String> authorizedUserGroups;
-  MockAuthorizer(){
+  public MockAuthorizer(){
     init();
   }
 
@@ -48,7 +48,7 @@ public class MockAuthorizer implements Authorizer {
       return !userGroups.isEmpty();
     }
     // check metastore schema authorization
-    if (lensPrivilegeObject.getTable().equals("TestCubeMetastoreClient") && accessType.equals(ActionType.UPDATE)) {
+    if (lensPrivilegeObject.getTable().startsWith("TestMetastoreService_") && accessType.equals(ActionType.UPDATE)) {
       userGroups.retainAll(getAuthorizedUserGroups());
       return !userGroups.isEmpty();
     }

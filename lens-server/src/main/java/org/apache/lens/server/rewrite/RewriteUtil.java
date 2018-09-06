@@ -28,6 +28,7 @@ import org.apache.lens.cube.parse.CubeQueryContext;
 import org.apache.lens.cube.parse.CubeQueryRewriter;
 import org.apache.lens.cube.parse.HQLParser;
 import org.apache.lens.driver.cube.RewriterPlan;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.driver.DriverQueryPlan;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.error.LensException;
@@ -267,8 +268,9 @@ public final class RewriteUtil {
    * @return the rewriter
    * @throws LensException the lens exception
    */
-  static CubeQueryRewriter getCubeRewriter(Configuration queryConf, HiveConf hconf) throws LensException {
-    return new CubeQueryRewriter(queryConf, hconf);
+  static CubeQueryRewriter getCubeRewriter(Configuration queryConf, HiveConf hconf, Authorizer authorizer)
+    throws LensException {
+    return new CubeQueryRewriter(queryConf, hconf, authorizer);
   }
 
   /**
@@ -292,7 +294,20 @@ public final class RewriteUtil {
    * @return the map
    * @throws LensException the lens exception
    */
-  public static Map<LensDriver, DriverRewriterRunnable> rewriteQuery(AbstractQueryContext ctx) throws LensException {
+  public static Map<LensDriver, DriverRewriterRunnable> rewriteQuery(AbstractQueryContext ctx)
+    throws LensException {
+    return rewriteQuery(ctx, null);
+  }
+  /**
+   * Rewrite query.
+   *
+   * @param ctx the query context
+   * @param authorizer the authorizer
+   * @return the map
+   * @throws LensException the lens exception
+   */
+  public static Map<LensDriver, DriverRewriterRunnable> rewriteQuery(AbstractQueryContext ctx, Authorizer authorizer)
+    throws LensException {
     try {
 
       String replacedQuery = getReplacedQuery(ctx.getPhase1RewrittenQuery());
@@ -300,7 +315,7 @@ public final class RewriteUtil {
       List<RewriteUtil.CubeQueryInfo> cubeQueries = findCubePositions(replacedQuery, ctx.getHiveConf());
 
       for (LensDriver driver : ctx.getDriverContext().getEligibleDrivers()) {
-        runnables.put(driver, new DriverRewriterRunnable(driver, ctx, cubeQueries, replacedQuery));
+        runnables.put(driver, new DriverRewriterRunnable(driver, ctx, cubeQueries, replacedQuery, authorizer));
       }
 
       return runnables;
@@ -345,10 +360,14 @@ public final class RewriteUtil {
     /** Get eventual rewritten query */
     private String rewrittenQuery;
 
+    @Getter
+    private Authorizer authorizer;
+
     public DriverRewriterRunnable(LensDriver driver,
       AbstractQueryContext ctx,
       List<CubeQueryInfo> cubeQueries,
-      String replacedQuery) {
+      String replacedQuery,
+      Authorizer authorizer) {
       this.driver = driver;
       this.ctx = ctx;
       this.cubeQueries = cubeQueries;
@@ -356,6 +375,7 @@ public final class RewriteUtil {
       if (cubeQueries != null) {
         cubeQueryCtx = new ArrayList<>(cubeQueries.size());
       }
+      this.authorizer = authorizer;
     }
 
     @Override
@@ -374,7 +394,7 @@ public final class RewriteUtil {
       try {
         if (cubeQueries.size() > 0) {
           // avoid creating rewriter if there are no cube queries
-          rewriter = getCubeRewriter(ctx.getDriverContext().getDriverConf(driver), ctx.getHiveConf());
+          rewriter = getCubeRewriter(ctx.getDriverContext().getDriverConf(driver), ctx.getHiveConf(), authorizer);
           ctx.setOlapQuery(true);
         }
 

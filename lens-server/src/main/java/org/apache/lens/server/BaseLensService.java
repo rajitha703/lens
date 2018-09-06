@@ -45,6 +45,7 @@ import org.apache.lens.api.util.PathValidator;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.LensService;
 import org.apache.lens.server.api.SessionValidator;
+import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.events.LensEvent;
 import org.apache.lens.server.api.events.LensEventService;
@@ -70,6 +71,8 @@ import org.apache.hive.service.cli.SessionHandle;
 import org.apache.hive.service.cli.session.SessionManager;
 import org.apache.hive.service.rpc.thrift.TSessionHandle;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -112,6 +115,9 @@ public abstract class BaseLensService extends CompositeService implements Extern
 
   private final int maxNumSessionsPerUser;
 
+  @Setter
+  private Authorizer authorizer;
+
   /**
    * Instantiates a new lens service.
    *
@@ -122,6 +128,11 @@ public abstract class BaseLensService extends CompositeService implements Extern
     super(name);
     this.cliService = cliService;
     maxNumSessionsPerUser = getMaximumNumberOfSessionsPerUser();
+  }
+
+  protected BaseLensService(String name, CLIService cliService, Authorizer authorizer) {
+    this(name, cliService);
+    this.authorizer = authorizer;
   }
 
   private static class SessionUser {
@@ -155,6 +166,10 @@ public abstract class BaseLensService extends CompositeService implements Extern
   private boolean isMaxSessionsLimitReachedPerUser(String userName) {
     Integer numSessions = SESSIONS_PER_USER.get(userName);
     return numSessions != null && numSessions >= maxNumSessionsPerUser;
+  }
+
+  protected Authorizer getAuthorizer(){
+    return this.authorizer;
   }
 
 

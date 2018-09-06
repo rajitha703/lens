@@ -1435,4 +1435,7 @@ public final class LensConfConstants {
    */
   public static final String RETRY_MESSAGE_MAP = "retry.messages.contains.map";
 
+  public static final String AUTHORIZER_CLASS = "authorizer.class";
+
+
 }
