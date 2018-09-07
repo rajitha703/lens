@@ -35,6 +35,8 @@ import org.apache.lens.server.api.query.cost.QueryCost;
  */
 public final class LensConfConstants {
 
+  public static final String AUTHORIZER_CLASS = "authorizer.class";
+
   private LensConfConstants() throws LensException {
     throw new LensException("Can't instantiate LensConfConstants");
   }

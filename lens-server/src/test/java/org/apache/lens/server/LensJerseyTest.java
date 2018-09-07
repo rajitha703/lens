@@ -39,6 +39,7 @@ import org.apache.lens.api.jaxb.LensJAXBContextResolver;
 import org.apache.lens.api.util.MoxyJsonConfigurationContextResolver;
 import org.apache.lens.driver.hive.TestRemoteHiveDriver;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.api.authorization.LensAuthorizer;
 import org.apache.lens.server.api.metrics.LensMetricsUtil;
 import org.apache.lens.server.api.metrics.MetricsService;
 import org.apache.lens.server.api.query.QueryExecutionService;
@@ -170,6 +171,7 @@ public abstract class LensJerseyTest extends JerseyTest {
 
     LensServices.get().init(LensServerConf.getHiveConf());
     LensServices.get().start();
+    LensAuthorizer.get().init(LensServerConf.getHiveConf());
 
     // Check if mock service is started
     Service mockSvc = LensServices.get().getService(MockNonLensService.NAME);

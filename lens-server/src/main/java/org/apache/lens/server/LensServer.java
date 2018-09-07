@@ -27,6 +27,7 @@ import javax.ws.rs.core.UriBuilder;
 
 import org.apache.lens.api.jaxb.LensJAXBContextResolver;
 import org.apache.lens.server.api.LensConfConstants;
+import org.apache.lens.server.api.authorization.LensAuthorizer;
 import org.apache.lens.server.api.metrics.MetricsService;
 import org.apache.lens.server.error.GenericExceptionMapper;
 import org.apache.lens.server.error.LensJAXBValidationExceptionMapper;
@@ -137,6 +138,7 @@ public class LensServer {
   public void startServices(HiveConf conf) {
     LensServices.get().init(conf);
     LensServices.get().start();
+    LensAuthorizer.get().init(conf);
   }
 
   /**
