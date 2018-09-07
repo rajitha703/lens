@@ -39,7 +39,6 @@ import org.apache.lens.cube.metadata.timeline.PartitionTimelineFactory;
 
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensAuthorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 
