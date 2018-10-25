@@ -46,4 +46,9 @@ public final class LensAuthorizer {
   public static LensAuthorizer get(){
     return INSTANCE;
   }
+
+  public Authorizer getAuthorizer() {
+    return this.authorizer;
+  }
+
 }
