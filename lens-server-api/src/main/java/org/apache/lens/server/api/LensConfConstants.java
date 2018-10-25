@@ -793,13 +793,11 @@ public final class LensConfConstants {
    */
   public static final String LENS_PRINCIPAL = SERVER_PFX
           + "principal";
-
   /**
    * Lens keytab for kerberos authentication
    */
   public static final String LENS_KEYTAB = SERVER_PFX
     + "keytab";
-
 
   /**
    * Hive principal for kerberos authentication
