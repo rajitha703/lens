@@ -23,6 +23,7 @@ import org.apache.lens.server.api.LensConfConstants;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 
+//Singleton instance of Authorizer class
 public final class LensAuthorizer {
 
   private static final LensAuthorizer INSTANCE = new LensAuthorizer();
@@ -40,13 +41,8 @@ public final class LensAuthorizer {
   }
   /**
    *
-   * @return the singleton instance of the scheduler.
+   * @return the singleton instance of the authorizer.
    */
-
-  public Authorizer getAuthorizer() {
-    return this.authorizer;
-  }
-
   public static LensAuthorizer get(){
     return INSTANCE;
   }

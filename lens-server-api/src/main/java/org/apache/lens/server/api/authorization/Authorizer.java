@@ -21,6 +21,8 @@ package org.apache.lens.server.api.authorization;
 
 import java.util.Set;
 
+import org.apache.hadoop.conf.Configurable;
+
 public interface Authorizer {
  /**
  * @param lensPrivilegeObject the privilege object

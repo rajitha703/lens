@@ -18,12 +18,21 @@
  */
 package org.apache.lens.cube.authorization;
 
+import static org.apache.lens.server.api.LensConfConstants.LENS_PRINCIPAL;
+
+import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.Set;
 
+import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.authorization.ActionType;
 import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 
+import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.SecureClientLogin;
+import org.apache.ranger.audit.provider.MiscUtil;
 import org.apache.ranger.plugin.audit.RangerDefaultAuditHandler;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequest;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequestImpl;
@@ -31,21 +40,50 @@ import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 // Apache Ranger implementation for Authorization in Lens
 
 @Slf4j
-public class RangerLensAuthorizer implements Authorizer {
+public class RangerLensAuthorizer implements Authorizer, Configurable {
 
   @Getter
   private RangerBasePlugin rangerBasePlugin;
+
+  @Getter @Setter
+  private Configuration conf;
 
   RangerLensAuthorizer() {
     this.init();
   }
 
+  private void authWithKerberos(Configuration conf) {
+    System.out.println("Principal : "+ conf.get(LensConfConstants.LENS_PRINCIPAL)+" Keytab : "+ conf.get(
+      LensConfConstants.LENS_KEYTAB));
+    String localHostName = null;
+    try {
+      localHostName = java.net.InetAddress.getLocalHost().getCanonicalHostName();
+    } catch (UnknownHostException e1) {
+      log.warn("Error getting local host name : "+e1.getMessage());
+    }
+
+    String principal = null;
+    try {
+      principal = SecureClientLogin.getPrincipal(conf.get(LENS_PRINCIPAL), localHostName);
+    } catch (IOException e1) {
+      log.warn("Error getting "+ LENS_PRINCIPAL+" : "+e1.getMessage());
+    }
+    String keytab = conf.get(LensConfConstants.LENS_KEYTAB);
+    if(log.isDebugEnabled()){
+      log.debug("Ranger LENS Principal : "+principal+", Keytab : "+keytab);
+    }
+    MiscUtil.authWithKerberos(keytab, principal, null);
+  }
+
   public void init() {
+
+    authWithKerberos(this.conf);
     rangerBasePlugin = new RangerBasePlugin("lens", "lens");
     rangerBasePlugin.setResultProcessor(new RangerDefaultAuditHandler());
     rangerBasePlugin.init();
@@ -96,5 +134,4 @@ public class RangerLensAuthorizer implements Authorizer {
 
   enum LensObjectType {NONE, TABLE, COLUMN}
 
-  ;
 }

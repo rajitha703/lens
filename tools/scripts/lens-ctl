@@ -76,6 +76,13 @@ EOF
 }
 
 start() {
+
+  # kinit as lens
+
+  #---------------------------------------------------------------------------------------
+  sudo -u $OWNER kinit -kt $KEY_TAB_FILE $OWNER@PROD.INMOBI.COM
+  #---------------------------------------------------------------------------------------
+
   # make sure the process is not running
   if [ -f $LENS_PID_FILE ]; then
     if kill -0 `cat $LENS_PID_FILE` > /dev/null 2>&1; then

@@ -995,6 +995,12 @@
   </property>
 
   <property>
+    <name>lens.server.keytab</name>
+    <value></value>
+    <description>lens server principal name, must be in format lens/_HOST@KDC_REALM</description>
+  </property>
+
+  <property>
     <name>lens.server.ssl.enabled</name>
     <value>false</value>
     <description>flag to enable https communication between lens server and client.</description>
@@ -1010,6 +1016,13 @@
     <name>lens.server.ssl.password</name>
     <value>password</value>
     <description>password for cert file</description>
+  </property>
+
+  <property>
+    <name>lens.server.authorizer.class</name>
+    <value>org.apache.lens.server.api.authorization.DefaultAuthorizer</value>
+    <description>The class that implements the Authorizer Interface. It will be used wherever authorization check
+    is enabled</description>
   </property>
 
 </configuration>

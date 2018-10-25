@@ -136,9 +136,9 @@ public class LensServer {
    * @param conf the conf
    */
   public void startServices(HiveConf conf) {
+    LensAuthorizer.get().init(conf);
     LensServices.get().init(conf);
     LensServices.get().start();
-    LensAuthorizer.get().init(conf);
   }
 
   /**
