@@ -18,10 +18,11 @@
  */
 package org.apache.lens.server.api.authorization;
 
+import java.lang.reflect.Constructor;
+
 import org.apache.lens.server.api.LensConfConstants;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.util.ReflectionUtils;
 
 //Singleton instance of Authorizer class
 public final class LensAuthorizer {
@@ -34,10 +35,17 @@ public final class LensAuthorizer {
   private LensAuthorizer() {
   }
 
-  public void init(Configuration hiveConf){
-    this.authorizer =  ReflectionUtils.newInstance(
-    hiveConf.getClass(LensConfConstants.AUTHORIZER_CLASS, LensConfConstants.DEFAULT_AUTHORIZER, Authorizer.class),
-    hiveConf);
+  public void init(Configuration hiveConf) {
+    try {
+      Class<?> clazz = Class.forName(hiveConf.get(LensConfConstants.AUTHORIZER_CLASS,
+        LensConfConstants.DEFAULT_AUTHORIZER));
+      Constructor<?> constructor = clazz.getConstructor(Configuration.class);
+      this.authorizer = (Authorizer) constructor.newInstance(new Configuration(hiveConf));
+    } catch (Exception e) {
+      throw new RuntimeException("Couldn't initialize authorizer class : " + hiveConf
+        .get(LensConfConstants.AUTHORIZER_CLASS, LensConfConstants.DEFAULT_AUTHORIZER)
+        + e.getMessage());
+    }
   }
   /**
    *

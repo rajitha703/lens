@@ -24,12 +24,11 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Set;
 
+import org.apache.lens.server.api.AbstractLensAuthorizer;
 import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.SecureClientLogin;
 import org.apache.ranger.audit.provider.MiscUtil;
@@ -40,26 +39,23 @@ import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 // Apache Ranger implementation for Authorization in Lens
 
 @Slf4j
-public class RangerLensAuthorizer implements Authorizer, Configurable {
+public class RangerLensAuthorizer extends AbstractLensAuthorizer {
 
   @Getter
   private RangerBasePlugin rangerBasePlugin;
 
-  @Getter @Setter
-  private Configuration conf;
-
-  RangerLensAuthorizer() {
+  public RangerLensAuthorizer(Configuration conf) {
+    super(conf);
     this.init();
   }
 
   private void authWithKerberos(Configuration conf) {
-    System.out.println("Principal : "+ conf.get(LensConfConstants.LENS_PRINCIPAL)+" Keytab : "+ conf.get(
+    log.info("Principal : "+ conf.get(LensConfConstants.LENS_PRINCIPAL)+" Keytab : "+ conf.get(
       LensConfConstants.LENS_KEYTAB));
     String localHostName = null;
     try {
@@ -75,15 +71,14 @@ public class RangerLensAuthorizer implements Authorizer, Configurable {
       log.warn("Error getting "+ LENS_PRINCIPAL+" : "+e1.getMessage());
     }
     String keytab = conf.get(LensConfConstants.LENS_KEYTAB);
-    if(log.isDebugEnabled()){
-      log.debug("Ranger LENS Principal : "+principal+", Keytab : "+keytab);
-    }
     MiscUtil.authWithKerberos(keytab, principal, null);
   }
 
   public void init() {
-
-    authWithKerberos(this.conf);
+    if (getConf().getBoolean(LensConfConstants.RANGER_AUTH_ENABLED,
+      LensConfConstants.DEFAULT_RANGER_AUTH_ENABLED_VALUE)) {
+      authWithKerberos(getConf());
+    }
     rangerBasePlugin = new RangerBasePlugin("lens", "lens");
     rangerBasePlugin.setResultProcessor(new RangerDefaultAuditHandler());
     rangerBasePlugin.init();

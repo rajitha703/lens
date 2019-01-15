@@ -16,23 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.lens.server.api.authorization;
+package org.apache.lens.server.api;
 
 import java.util.Set;
 
-import org.apache.lens.server.api.AbstractLensAuthorizer;
+import org.apache.lens.server.api.authorization.ActionType;
+import org.apache.lens.server.api.authorization.Authorizer;
+import org.apache.lens.server.api.authorization.LensPrivilegeObject;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 
-public class DefaultAuthorizer extends AbstractLensAuthorizer {
+public abstract class AbstractLensAuthorizer implements Authorizer, Configurable {
 
-  public DefaultAuthorizer(Configuration conf){
-    super(conf);
+  private Configuration conf;
+
+  public AbstractLensAuthorizer() {
+    this(null);
+  }
+
+  public AbstractLensAuthorizer(Configuration conf) {
+    setConf(conf);
   }
 
   @Override
-  public boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType, String user,
-    Set<String> userGroups) {
-    return true;
+  public void setConf(Configuration conf) {
+    this.conf = conf;
   }
+
+  @Override
+  public Configuration getConf() {
+    return conf;
+  }
+
+  public abstract boolean authorize(LensPrivilegeObject lensPrivilegeObject, ActionType accessType,
+    String user, Set<String> userGroups);
 }

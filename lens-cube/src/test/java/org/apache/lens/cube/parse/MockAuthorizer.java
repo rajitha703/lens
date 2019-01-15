@@ -21,17 +21,20 @@ package org.apache.lens.cube.parse;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.lens.server.api.AbstractLensAuthorizer;
 import org.apache.lens.server.api.authorization.ActionType;
-import org.apache.lens.server.api.authorization.Authorizer;
 import org.apache.lens.server.api.authorization.LensPrivilegeObject;
+
+import org.apache.hadoop.conf.Configuration;
 
 import lombok.Getter;
 
-public class MockAuthorizer implements Authorizer {
+public class MockAuthorizer extends AbstractLensAuthorizer {
 
   @Getter
   Set<String> authorizedUserGroups;
-  MockAuthorizer(){
+  public MockAuthorizer(Configuration conf) {
+    super(conf);
     init();
   }
 

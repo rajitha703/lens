@@ -21,8 +21,6 @@ package org.apache.lens.server.api;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.lens.api.parse.Parser;
-import org.apache.lens.server.api.authorization.Authorizer;
-import org.apache.lens.server.api.authorization.DefaultAuthorizer;
 import org.apache.lens.server.api.error.LensException;
 import org.apache.lens.server.api.metastore.*;
 import org.apache.lens.server.api.query.DefaultDownloadResultUrlProvider;
@@ -794,10 +792,9 @@ public final class LensConfConstants {
   public static final String LENS_PRINCIPAL = SERVER_PFX
           + "principal";
   /**
-   * Lens keytab for kerberos authentication
+   * Lens Service keytab for kerberos authentication
    */
-  public static final String LENS_KEYTAB = SERVER_PFX
-    + "keytab";
+  public static final String LENS_KEYTAB = "lens.service.keytab";
 
   /**
    * Hive principal for kerberos authentication
@@ -1437,9 +1434,10 @@ public final class LensConfConstants {
 
   public static final String AUTHORIZER_CLASS = SERVER_PFX + "authorizer.class";
 
-  public static final Class<? extends Authorizer> DEFAULT_AUTHORIZER =
-    DefaultAuthorizer.class.asSubclass(Authorizer.class);
+  public static final String DEFAULT_AUTHORIZER = "org.apache.lens.server.api.authorization.DefaultAuthorizer";
 
+  public static final String RANGER_AUTH_ENABLED = SERVER_PFX + "ranger.auth.enabled";
 
+  public static final boolean DEFAULT_RANGER_AUTH_ENABLED_VALUE = false;
 
 }
